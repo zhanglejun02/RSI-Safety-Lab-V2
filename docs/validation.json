@@ -1,0 +1,101 @@
+{
+  "version": "0.4.0",
+  "tests": {
+    "passed": 222,
+    "skipped": 0,
+    "scope": "complete standalone repository"
+  },
+  "api_calls": 0,
+  "implementation": "980ae67202ebc23f0b50b5895370cd08309126330bee65a7be549052bc3611bb",
+  "matrix": {
+    "protocol": "agent-benchmark-matrix-v2",
+    "origin": "CONTROL",
+    "api_calls": 0,
+    "methods": [
+      "frozen",
+      "gepa",
+      "openevolve",
+      "hyperagents"
+    ],
+    "roots": 12,
+    "slots": 18,
+    "episodes": 141,
+    "actor_calls": 319,
+    "editor_calls": 24,
+    "tool_calls": 178,
+    "native_admitted": 18,
+    "committed": 18,
+    "active_changes": 15,
+    "archive_only": 3,
+    "resume_unchanged_files": 2231
+  },
+  "archived_run_review": {
+    "original_files": 878,
+    "original_inventory_sha256": "a653b8d2c734631686ea599f930f3ffc3e152471e6cf1ae69b5aa0d569d6e974",
+    "originals_unchanged": true,
+    "protocol": "banking-frozen-discrimination-v1",
+    "replay": {
+      "analysis_sha256": "ddcc54ab5b81cb10edc7d1da511aa3b6d1f33c80e4af2695588008cb0327b368",
+      "api_calls": 0,
+      "fresh_effects": 0,
+      "implementation": "8d4768f4f4e8fcc2eb14404f5b52ebef1bf18e6d101c2981100468a81248f3bd",
+      "logical_ledgers_unchanged": true,
+      "network_disabled": true,
+      "protocol": "banking-frozen-discrimination-v1",
+      "requests": 199
+    },
+    "reviewer_sha256": "795c736f2e9ebd0676dd8c3738d59cecd93227e0ab7afbd3a271fd1616ec4fd2",
+    "worker_exit_code": 0
+  },
+  "clone_acceptance": {
+    "workflow": "git clone --no-local; fresh venv; constrained editable install; pytest; native controls",
+    "python": "3.12.0",
+    "tests_passed": 222,
+    "tests_skipped": 0,
+    "pip_check": "passed",
+    "controls": {
+      "protocol": "agent-benchmark-matrix-v2",
+      "origin": "CONTROL",
+      "api_calls": 0,
+      "methods": [
+        "frozen",
+        "gepa",
+        "openevolve",
+        "hyperagents"
+      ],
+      "roots": 12,
+      "slots": 18,
+      "episodes": 141,
+      "actor_calls": 319,
+      "editor_calls": 24,
+      "tool_calls": 178,
+      "native_admitted": 18,
+      "committed": 18,
+      "active_changes": 15,
+      "archive_only": 3,
+      "resume_unchanged_files": 2231
+    }
+  },
+  "wheel_acceptance": {
+    "installed_location": "venv/site-packages/rsi_lab",
+    "from_checkout": false,
+    "implementation": "980ae67202ebc23f0b50b5895370cd08309126330bee65a7be549052bc3611bb",
+    "roots": 12,
+    "methods": [
+      "frozen",
+      "gepa",
+      "openevolve",
+      "hyperagents"
+    ],
+    "api_calls": 0,
+    "resume_unchanged_files": 2231,
+    "wheel_sha256": "6772b0cb7d89e80ec3aa94f16fac5f72b894bd3722e39774311032f48f1d906b",
+    "pip_check": "passed",
+    "package_files_verified": 63
+  },
+  "upstream_licenses_preserved": true,
+  "git_remote_configured": false,
+  "active_first_party_modules": 43,
+  "packaged_python_files_including_initializers_and_vendor": 58,
+  "ci_remote_runs_observed": false
+}

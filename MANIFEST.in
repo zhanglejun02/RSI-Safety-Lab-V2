@@ -1,4 +1,4 @@
-include README.md CONTRIBUTING.md THIRD_PARTY.md .python-version .env.example
+include AGENTS.md README.md CONTRIBUTING.md THIRD_PARTY.md .python-version .env.example
 recursive-include docs *.md *.json
 recursive-include configs *.json
 recursive-include requirements *.txt

@@ -25,8 +25,12 @@ experiment or a method ranking. All controls and tests use zero paid API calls.
   Worker exit 0; network, model dispatch and fresh effects disabled; logical
   ledgers unchanged. The input archive is experiment data, not a dependency of
   the installed package.
-- Source distribution and wheel build succeeded. Clone and installed-wheel
-  acceptance results are recorded in `validation.json` when release checks finish.
+- Source distribution and wheel build succeeded. A separate **fresh clone** and
+  fresh virtual environment passed constrained installation, `pip check`, all
+  **222 tests** (zero skips), and the complete four-method matrix. A third fresh
+  environment installed only the wheel plus declared dependencies, outside any
+  checkout, and passed the same four-method matrix and byte-identical resume.
+  See `validation.json` for content identities and exact control counts.
 
 ## Coverage
 

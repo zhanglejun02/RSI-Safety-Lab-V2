@@ -1,0 +1,89 @@
+{
+  "profile": "banking-h2",
+  "mode": "scripted",
+  "settings": {
+    "protocol": "banking-h2-case-finding-v2",
+    "horizon": 2,
+    "max_steps": 12,
+    "methods": [
+      "openevolve",
+      "hyperagents"
+    ],
+    "seeds": [
+      2026110703,
+      2026110704
+    ],
+    "public_tasks": [
+      6,
+      7,
+      11,
+      14
+    ],
+    "evaluation_tasks": [
+      0,
+      1,
+      2,
+      3,
+      13,
+      15
+    ],
+    "optimization": {
+      "episodes": 36,
+      "actor": {
+        "base_url": "https://api.moonshot.cn/v1",
+        "model": "kimi-k2.6",
+        "api_key_env": "MOONSHOT_API_KEY",
+        "temperature": 0.6,
+        "thinking_mode": "disabled",
+        "timeout_seconds": 120.0,
+        "max_prompt_bytes": 65536,
+        "max_output_tokens": 1024,
+        "max_calls": 432,
+        "max_total_tokens": 360000
+      },
+      "editor": {
+        "base_url": "https://api.moonshot.cn/v1",
+        "model": "kimi-k2.6",
+        "api_key_env": "MOONSHOT_API_KEY",
+        "temperature": 0.6,
+        "thinking_mode": "disabled",
+        "timeout_seconds": 120.0,
+        "max_prompt_bytes": 65536,
+        "max_output_tokens": 8192,
+        "max_calls": 6,
+        "max_total_tokens": 128000
+      }
+    },
+    "deployment": {
+      "episodes": 48,
+      "actor": {
+        "base_url": "https://api.moonshot.cn/v1",
+        "model": "kimi-k2.6",
+        "api_key_env": "MOONSHOT_API_KEY",
+        "temperature": 0.6,
+        "thinking_mode": "disabled",
+        "timeout_seconds": 120.0,
+        "max_prompt_bytes": 65536,
+        "max_output_tokens": 1024,
+        "max_calls": 576,
+        "max_total_tokens": 640000
+      }
+    },
+    "verification": {
+      "episodes": 18,
+      "repeats": 3,
+      "actor": {
+        "base_url": "https://api.moonshot.cn/v1",
+        "model": "kimi-k2.6",
+        "api_key_env": "MOONSHOT_API_KEY",
+        "temperature": 0.6,
+        "thinking_mode": "disabled",
+        "timeout_seconds": 120.0,
+        "max_prompt_bytes": 65536,
+        "max_output_tokens": 1024,
+        "max_calls": 216,
+        "max_total_tokens": 360000
+      }
+    }
+  }
+}

@@ -1,0 +1,37 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "rsi-safety-lab"
+version = "0.4.0"
+description = "Reproducible agent safety benchmark evaluation for frozen agents and self-improving methods"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = []
+
+[project.optional-dependencies]
+dev = ["pytest>=8,<10"]
+gepa = ["gepa==0.1.4"]
+openevolve = ["openevolve @ https://codeload.github.com/algorithmicsuperintelligence/openevolve/tar.gz/73448d715968b3578d8458b16295e827edd2b6bf"]
+agentbench = [
+    "agentdojo==0.1.35",
+    "gepa==0.1.4",
+    "openevolve @ https://codeload.github.com/algorithmicsuperintelligence/openevolve/tar.gz/73448d715968b3578d8458b16295e827edd2b6bf",
+]
+
+[project.scripts]
+rsi-lab = "rsi_lab.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+rsi_lab = ["data/*.json"]
+"rsi_lab.subjects" = ["hyperagents_vendor/*.md", "hyperagents_vendor/*.json", "hyperagents_vendor/*.py", "hyperagents_vendor/agent/*.py"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["src"]
+addopts = "-ra"
+

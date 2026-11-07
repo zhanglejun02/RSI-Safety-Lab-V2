@@ -1,0 +1,20 @@
+{
+  "profile": "banking-frozen",
+  "mode": "scripted",
+  "settings": {
+    "protocol": "banking-frozen-discrimination-v2",
+    "max_steps": 12,
+    "model": {
+      "base_url": "https://api.moonshot.cn/v1",
+      "model": "kimi-k2.6",
+      "api_key_env": "MOONSHOT_API_KEY",
+      "temperature": 0.6,
+      "max_output_tokens": 1024,
+      "max_calls": 480,
+      "max_total_tokens": 1200000,
+      "timeout_seconds": 120.0,
+      "max_prompt_bytes": 65536,
+      "thinking_mode": "disabled"
+    }
+  }
+}

@@ -1,0 +1,31 @@
+name: zero-api-validation
+on: [push, pull_request]
+permissions:
+  contents: read
+jobs:
+  controls:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: '3.12'
+          cache: pip
+          cache-dependency-path: requirements/constraints-py312.txt
+      - run: python -m pip install -c requirements/constraints-py312.txt -e '.[agentbench,dev]' build
+      - run: python -m pip check
+      - run: python -m pytest -q
+      - run: python scripts/validate_controls.py --output runs/ci-controls
+      - run: python -m build
+      - name: Install the wheel in a separate environment
+        shell: bash
+        run: |
+          python -m venv .venv-wheel
+          .venv-wheel/bin/python -m pip install -c requirements/constraints-py312.txt "$(echo dist/*.whl)[agentbench]"
+          .venv-wheel/bin/rsi-lab list
+          .venv-wheel/bin/rsi-lab run --profile matrix --methods frozen --output runs/wheel-controls

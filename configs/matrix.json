@@ -1,0 +1,28 @@
+{
+  "profile": "matrix",
+  "protocol": "agent-benchmark-matrix-v2",
+  "mode": "scripted",
+  "methods": [
+    "frozen",
+    "gepa",
+    "openevolve"
+  ],
+  "benchmarks": [
+    "agentdojo",
+    "local_transfer"
+  ],
+  "suites": [
+    "banking",
+    "travel"
+  ],
+  "slots": 2,
+  "seed": 2026110701,
+  "budget": {
+    "max_steps": 8,
+    "max_episodes_per_root": 128,
+    "max_actor_calls_per_root": 512,
+    "max_editor_calls_per_slot": 3
+  },
+  "actor": null,
+  "editor": null
+}

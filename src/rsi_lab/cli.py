@@ -4,7 +4,7 @@ import json
 from pathlib import Path
 import sys
 
-from rsi_lab.agent_bench import PROFILES, default_config, inspect_run, run_experiment
+from rsi_lab.agent_bench import PROFILES, default_config, inspect_run, plan_experiment, run_experiment
 from rsi_lab.errors import LabError, ValidationError
 from rsi_lab.methods import METHODS, describe_methods
 
@@ -13,6 +13,10 @@ def parser():
     cli = argparse.ArgumentParser(prog="rsi-lab", description=__doc__)
     commands = cli.add_subparsers(dest="command", required=True)
     commands.add_parser("list", help="List method scopes, platforms and benchmark profiles")
+    commands.add_parser("catalog", help="List installed native AgentDojo task/goal IDs without running episodes")
+    plan = commands.add_parser("plan", help="Resolve and freeze the selected evaluation allocation; zero API calls")
+    plan.add_argument("--config", required=True, type=Path)
+    plan.add_argument("--output", type=Path, help="Optional immutable plan file for run --plan")
     config = commands.add_parser("config", help="Print an editable, zero API configuration")
     config.add_argument("--profile", choices=PROFILES, default="matrix")
     config.add_argument("--methods", nargs="+", choices=METHODS)
@@ -24,6 +28,7 @@ def parser():
     run.add_argument("--output", required=True, type=Path)
     run.add_argument("--resume", action="store_true")
     run.add_argument("--env-file", type=Path)
+    run.add_argument("--plan", type=Path, help="Require this frozen allocation and source identity")
     inspect = commands.add_parser("inspect", help="Verify a completed run without model calls")
     inspect.add_argument("--output", required=True, type=Path)
     review = commands.add_parser("review-frozen", help="Inspect an archived source/run in an isolated copy")
@@ -35,7 +40,7 @@ def parser():
 def select_methods(config, names):
     if not names:
         return config
-    if config["profile"] == "matrix":
+    if config["profile"] in ("matrix", "safety-study"):
         config["methods"] = names
     elif config["profile"] == "banking-h2":
         config["settings"]["methods"] = names
@@ -58,9 +63,21 @@ def main(argv=None):
     args = parser().parse_args(argv)
     try:
         if args.command == "list":
-            from rsi_lab.benchmarks import BENCHMARKS
-            result = {"methods": describe_methods(), "benchmarks": list(BENCHMARKS), "profiles": PROFILES,
-                      "scope": "AgentDojo is the external benchmark; local_transfer is a synthetic CONTROL fixture"}
+            from rsi_lab.benchmarks import describe_benchmarks
+            descriptions = describe_benchmarks()
+            result = {"methods": describe_methods(), "benchmarks": [b["name"] for b in descriptions],
+                      "benchmark_capabilities": descriptions, "profiles": PROFILES,
+                      "scope": "Separate injection security, agent harmfulness and text refusal metrics; scripted results are CONTROL"}
+        elif args.command == "catalog":
+            from rsi_lab.benchmarks.agentdojo_suite import available_catalog
+            result = available_catalog()
+        elif args.command == "plan":
+            result = plan_experiment(json.loads(args.config.read_text()))
+            if args.output:
+                from rsi_lab.engine.continuation import save_record
+                if args.output.exists():
+                    raise ValidationError("Plan output exists; choose a new path")
+                save_record(args.output, result)
         elif args.command == "config":
             result = select_methods(default_config(args.profile), args.methods)
         elif args.command == "run":
@@ -69,7 +86,9 @@ def main(argv=None):
             if args.env_file:
                 from rsi_lab.infra.environment import load_environment
                 load_environment(args.env_file, tuple(_credential_names(config) | {"SSL_CERT_FILE"}))
-            summary = run_experiment(config, args.output, resume=args.resume)
+            from rsi_lab.engine.continuation import read_record
+            expected = read_record(args.plan) if args.plan else None
+            summary = run_experiment(config, args.output, resume=args.resume, expected_plan=expected)
             result = {"output": str(args.output.resolve()), "protocol": summary["protocol"],
                       "origin": summary.get("origin", summary.get("mode", config["mode"])),
                       "report": str(args.output.resolve() / "report.md")}

@@ -1,0 +1,47 @@
+{
+  "profile": "matrix",
+  "protocol": "agent-benchmark-matrix-v2",
+  "mode": "http",
+  "methods": [
+    "frozen",
+    "openevolve"
+  ],
+  "benchmarks": [
+    "agentdojo"
+  ],
+  "suites": [
+    "banking"
+  ],
+  "slots": 1,
+  "seed": 2026110801,
+  "budget": {
+    "max_steps": 8,
+    "max_episodes_per_root": 9,
+    "max_actor_calls_per_root": 72,
+    "max_editor_calls_per_slot": 1
+  },
+  "actor": {
+    "base_url": "https://api.deepseek.com",
+    "model": "deepseek-flash",
+    "api_key_env": "DEEPSEEK_API_KEY",
+    "temperature": 0.0,
+    "timeout_seconds": 90.0,
+    "max_prompt_bytes": 65536,
+    "thinking_mode": "disabled",
+    "max_output_tokens": 1024,
+    "max_calls": 72,
+    "max_total_tokens": 150000
+  },
+  "editor": {
+    "base_url": "https://api.deepseek.com",
+    "model": "deepseek-flash",
+    "api_key_env": "DEEPSEEK_API_KEY",
+    "temperature": 0.0,
+    "timeout_seconds": 90.0,
+    "max_prompt_bytes": 65536,
+    "thinking_mode": "disabled",
+    "max_output_tokens": 2048,
+    "max_calls": 1,
+    "max_total_tokens": 32768
+  }
+}

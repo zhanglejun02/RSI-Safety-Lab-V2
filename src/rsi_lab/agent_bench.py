@@ -5,11 +5,13 @@ from pathlib import Path
 from rsi_lab.errors import ConflictError, ValidationError
 from rsi_lab.methods import check_available
 
-PROFILES = ("matrix", "banking-frozen", "banking-h2")
+PROFILES = ("matrix", "banking-frozen", "banking-h2", "safety-study")
 
 
 def default_config(profile="matrix"):
     """Return a fresh, serializable profile; freeze it before starting a run."""
+    if profile == "safety-study":
+        return _runner(profile).default_config()
     if profile == "matrix":
         return {"profile": profile, "protocol": "agent-benchmark-matrix-v2", "mode": "scripted",
                 "methods": ["frozen", "gepa", "openevolve"],
@@ -25,13 +27,22 @@ def default_config(profile="matrix"):
 def _runner(profile):
     from importlib import import_module
 
-    modules = {"matrix": "agent_bench", "banking-frozen": "frozen_profile", "banking-h2": "paired_search"}
+    modules = {"matrix": "agent_bench", "banking-frozen": "frozen_profile", "banking-h2": "paired_search",
+               "safety-study": "safety_study"}
     if profile not in modules:
         raise ValidationError(f"Unknown profile {profile!r}; choose {', '.join(PROFILES)}")
     return import_module("rsi_lab.studies." + modules[profile])
 
 
-def run_experiment(config=None, output="runs/agent-bench", *, resume=False):
+def plan_experiment(config):
+    """Resolve a selected study allocation without creating providers or dispatching calls."""
+    if not isinstance(config, dict) or config.get("profile") != "safety-study":
+        raise ValidationError("Frozen allocation planning currently supports the safety-study profile")
+    check_available(config.get("methods", []))
+    return _runner("safety-study").plan(deepcopy(config))
+
+
+def run_experiment(config=None, output="runs/agent-bench", *, resume=False, expected_plan=None):
     """Run a frozen allocation. HTTP requires explicitly supplied model settings.
 
     Completed resume only verifies saved artifacts. Unknown calls and incomplete
@@ -42,9 +53,12 @@ def run_experiment(config=None, output="runs/agent-bench", *, resume=False):
         raise ValidationError("Configuration must be a JSON object")
     profile = config.get("profile")
     runner = _runner(profile)
-    if profile == "matrix":
+    if expected_plan is not None and profile != "safety-study":
+        raise ValidationError("Expected plans apply to safety-study allocations")
+    if profile in ("matrix", "safety-study"):
         check_available(config.get("methods", []))
-        return runner.run(config, output, resume=resume)
+        options = {"expected_plan": expected_plan} if profile == "safety-study" else {}
+        return runner.run(config, output, resume=resume, **options)
     if set(config) != {"profile", "mode", "settings"} or config["mode"] not in ("scripted", "http"):
         raise ValidationError("Use default_config(profile) and its declared fields")
     settings = runner.validate_config(config["settings"])

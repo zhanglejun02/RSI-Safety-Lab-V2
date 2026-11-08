@@ -45,10 +45,15 @@ def project_audit_view(prepared, *, probe_options=()):
     metrics = {name: evidence[name] for name in metric_names if type(evidence) is dict and name in evidence
                and type(evidence[name]) in (str, bool, int, float)
                and len(canonical_bytes(evidence[name])) <= 256}
-    return AuditView(prepared.identity,
-        canonical_bytes({"before": old, "after": new,
-                         "inheritance_before": prepared.base.state_json,
-                         "inheritance_after": prepared.draft.candidate.state_json}).decode(),
+    import difflib
+    diff = "\n".join(difflib.unified_diff(
+        canonical_bytes(old).decode().splitlines(), canonical_bytes(new).decode().splitlines(),
+        fromfile="base", tofile="candidate"))
+    projection = {"version_diff_excerpt": diff.encode()[:20000].decode(errors="ignore"),
+                  "truncated": len(diff.encode()) > 20000,
+                  "inheritance_before_sha256": digest(prepared.base.state_json),
+                  "inheritance_after_sha256": digest(prepared.draft.candidate.state_json)}
+    return AuditView(prepared.identity, canonical_bytes(projection).decode(),
         canonical_bytes({"system_id": old.system_id, "native_metrics": metrics,
                          "native_evidence_sha256": digest(evidence)}).decode(),
         prepared.draft.native_valid, component, prepared.base == prepared.draft.candidate, probe_options)

@@ -12,6 +12,7 @@ dependencies = []
 
 [project.optional-dependencies]
 dev = ["pytest>=8,<10"]
+safetybench = ["inspect-evals==0.27.0", "inspect-ai==0.3.288", "multiprocess==0.70.17"]
 gepa = ["gepa==0.1.4"]
 openevolve = ["openevolve @ https://codeload.github.com/algorithmicsuperintelligence/openevolve/tar.gz/73448d715968b3578d8458b16295e827edd2b6bf#sha256=5b307c521c85aaea4465e22db4fe73004f359aa29de902b33b6fe33a2b06f0ed"]
 agentbench = [
@@ -27,7 +28,7 @@ rsi-lab = "rsi_lab.cli:main"
 where = ["src"]
 
 [tool.setuptools.package-data]
-rsi_lab = ["data/*.json"]
+rsi_lab = ["data/*.json", "data/*.md"]
 "rsi_lab.subjects" = ["hyperagents_vendor/*.md", "hyperagents_vendor/*.json", "hyperagents_vendor/*.py", "hyperagents_vendor/agent/*.py"]
 
 [tool.pytest.ini_options]

@@ -113,7 +113,7 @@ def _actor_provider(directory, config, module, cases):
                                 provider_id="scripted.actor.control.v1", max_calls=config["budget"]["max_actor_calls_per_root"])
 
 
-def _editor_provider(directory, config, method):
+def _editor_provider(directory, config, method, *, control_instructions=None):
     if config["mode"] == "http":
         return DurableChatProvider(directory / "editor.sqlite", ChatConfig.from_dict({"schema_version": 1, **config["editor"]}))
     from rsi_lab.agents.runtime import DEFAULT_INSTRUCTIONS, source
@@ -121,7 +121,8 @@ def _editor_provider(directory, config, method):
     def reply(operation, messages):
         with instance._db() as db:
             index = db.execute("SELECT COUNT(*) FROM chat_requests").fetchone()[0]
-        program = source(DEFAULT_INSTRUCTIONS + f"\nCONTROL_COMPLETE: solve the user task. Revision {index}.")
+        program = source((control_instructions or DEFAULT_INSTRUCTIONS + "\nCONTROL_COMPLETE: solve the user task.")
+                         + f" Revision {index}.")
         if method == "hyperagents":
             if operation.endswith("/model-1"):
                 return {"text": "<json>" + json_text({"tool_name": "write_files", "tool_input": {

@@ -67,7 +67,8 @@ def _context(base, system, evidence):
 
 
 
-def _slot(output, root, index, adapter, package, provider, manifest, *, environment_identity=None):
+def _slot(output, root, index, adapter, package, provider, manifest, *, environment_identity=None, gate=None,
+          resources=None):
     root_dir = output / root["path"]
     location = root_dir / f"step-{index:04}"
     if (location / "fatal.json").exists():
@@ -109,6 +110,8 @@ def _slot(output, root, index, adapter, package, provider, manifest, *, environm
                 "accept" if prepared.draft.native_valid and evidence["platform_accepted"] else "reject",
                 evidence["extra_gate"] if "evaluation" in base.version.component("task_contract")
                 else "registered_public_complete_correct")
+        if gate is not None:
+            decision = gate.decide(prepared, decision, location)
         receipt = ActivationController(location / "activation.sqlite", digest(manifest)).apply(
             adapter, prepared, decision, environment_sha256=environment_hash)
         save_record(location / "activation.json", {"decision": decision, "receipt": receipt})
@@ -194,6 +197,8 @@ def _slot(output, root, index, adapter, package, provider, manifest, *, environm
         "public_evaluation_cost": evaluator.synthetic_cost(),
         "native_error": evidence.get("native_error"),
         "prepared_sha256": digest(prepared) if prepared_path.exists() else None}
+    if resources is not None:
+        value["resources"] = resources()
     save_record(location / "active.json", active)
     save_record(location / "slot.json", value)
     return value

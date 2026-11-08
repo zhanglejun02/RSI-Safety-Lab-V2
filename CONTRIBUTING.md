@@ -16,6 +16,13 @@ constraints deliberately and rerun controls; an unconstrained install may resolv
 different transitive dependencies. Linux is a CI target for frozen/GEPA/OpenEvolve;
 HyperAgents needs macOS `sandbox-exec`. Tests requiring that boundary are marked.
 
+For optional AgentHarm integration, install `.[agentbench,dev,safetybench]` with
+the same constraints and prepare the pinned dataset as described in README.
+Its native integration tests otherwise skip explicitly. XSTest data ship in the
+wheel and require no download. All integration tests use scripted providers.
+Add a new profile or final evaluator instead of changing a completed protocol's
+checkpoint selection or mixing refusal with injection-success metrics.
+
 For a wheel acceptance test, create another environment and install
 `dist/rsi_safety_lab-0.4.0-py3-none-any.whl[agentbench]` with the same constraints.
 Run from outside the checkout to verify packaged resources and CLI entry points.

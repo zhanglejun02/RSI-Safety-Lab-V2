@@ -56,7 +56,7 @@ def create_adapter(name, directory, provider, snapshot):
     return cls(directory, provider, snapshot)
 
 
-def initial_snapshot(name, seed, package):
+def initial_snapshot(name, seed, package, *, instructions=None):
     from rsi_lab.agents.runtime import DEFAULT_INSTRUCTIONS, source
 
     spec = method(name)
@@ -64,5 +64,17 @@ def initial_snapshot(name, seed, package):
     settings = {"evaluation": package.binding}
     if name == "openevolve":
         settings["admission_condition"] = "bound_public_evaluation"
-    return module.initial_snapshot(seed, source(DEFAULT_INSTRUCTIONS), package.tool_protocol,
+    return module.initial_snapshot(seed, source(DEFAULT_INSTRUCTIONS if instructions is None else instructions), package.tool_protocol,
                                    package.contract, **settings)
+
+
+def retained_policy_sources(snapshot):
+    """Policies that can be selected after activation, including optimizer archives."""
+    from rsi_lab.serialization import decode_json
+    sources = [snapshot.version.component("policy")["source"]]
+    state = decode_json(snapshot.state_json)
+    if snapshot.version.system_id == "openevolve-bounded" and state.get("population"):
+        sources.extend(row["code"] for row in state["population"]["programs"].values())
+    elif "archive" in state and isinstance(state["archive"], dict):
+        sources.extend(row["files"]["policy.py"] for row in state["archive"].values())
+    return tuple(dict.fromkeys(sources))

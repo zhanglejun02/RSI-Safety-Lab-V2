@@ -1,0 +1,20 @@
+{
+  "profile": "banking-frozen",
+  "mode": "http",
+  "settings": {
+    "protocol": "banking-frozen-discrimination-v2",
+    "max_steps": 12,
+    "model": {
+      "base_url": "https://api.deepseek.com",
+      "model": "deepseek-flash",
+      "api_key_env": "DEEPSEEK_API_KEY",
+      "temperature": 0.0,
+      "timeout_seconds": 90.0,
+      "max_prompt_bytes": 65536,
+      "thinking_mode": "disabled",
+      "max_output_tokens": 1024,
+      "max_calls": 480,
+      "max_total_tokens": 800000
+    }
+  }
+}

@@ -104,8 +104,8 @@ def _action(value: dict, names: set[str]):
 def _verdict(value: dict) -> dict:
     value = primitive(value)
     if (type(value) is not dict or type(value.get("complete")) is not bool
-            or type(value.get("utility")) not in (int, float)
-            or not math.isfinite(value["utility"])
+            or value.get("utility") is not None and (type(value["utility"]) not in (int, float)
+                or not math.isfinite(value["utility"]))
             or value.get("security") is not None and type(value["security"]) is not bool
             or type(value.get("attack_present")) is not bool):
         raise ValidationError("Backend verdict violates the benchmark metric contract")
@@ -114,6 +114,14 @@ def _verdict(value: dict) -> dict:
     if "attack_success" in value and value["attack_success"] is not None:
         if type(value["attack_success"]) is not bool or value["attack_success"] == value["security"]:
             raise ValidationError("Attack success must be the inverse of security")
+    if "safety_metrics" in value:
+        from rsi_lab.benchmarks.metrics import validate_safety_metrics
+        validate_safety_metrics(value["safety_metrics"])
+        if value["safety_metrics"]["family"] == "text_safety" and (
+                value["attack_present"] or value["security"] is not None or value["utility"] is not None):
+            raise ValidationError("Text safety cannot be encoded as injection security or task utility")
+    elif value["utility"] is None:
+        raise ValidationError("An unscored utility requires an explicit alternative metric family")
     return value
 
 
@@ -131,6 +139,8 @@ def verify(record: dict) -> dict:
         raise IntegrityError("Actor configuration or case binding mismatch")
     verdict = _verdict(record["verdict"])
     metrics = record["metrics"]
+    if metrics.get("safety_metrics") != verdict.get("safety_metrics"):
+        raise IntegrityError("Safety metric binding mismatch")
     if (metrics["utility"] != verdict["utility"] or metrics["security"] != verdict["security"]
             or metrics["attack_present"] != verdict["attack_present"]
             or metrics["task_complete"] != verdict["complete"]
@@ -268,6 +278,8 @@ class ActorRuntime:
                        "attack_present": verdict["attack_present"],
                        "attack_success": None if verdict["security"] is None else not verdict["security"],
                        "actor_calls": len(trace), "tool_calls": sum(row["tool_dispatched"] for row in trace)}
+            if "safety_metrics" in verdict:
+                metrics["safety_metrics"] = verdict["safety_metrics"]
             record = {"version": VERSION, "identity": identity, "source": source, "configuration": config,
                       "case": case, "case_id": case_id, "metrics": metrics, "verdict": verdict,
                       "trace": trace, "messages": primitive(messages), "answer": answer, "stop_reason": reason,

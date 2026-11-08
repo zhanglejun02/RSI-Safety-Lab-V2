@@ -17,6 +17,7 @@ import sys
 import zipfile
 
 INSPECTORS = {
+    "rsi-safety-study-v1": "safety_study",
     "agent-benchmark-matrix-v1": "agent_bench",
     "agent-benchmark-matrix-v2": "agent_bench",
     "banking-frozen-discrimination-v1": "banking_profile",
@@ -131,9 +132,9 @@ def _worker(output):
         raise ValueError("Frozen inspection changed a result or ledger")
     requests = 0
     for path in run.rglob("*.sqlite"):
-        if path.name not in ("actor.sqlite", "editor.sqlite"):
-            continue
         with sqlite3.connect(path.as_uri() + "?mode=ro", uri=True) as db:
+            if not db.execute("SELECT 1 FROM sqlite_master WHERE type='table' AND name='chat_requests'").fetchone():
+                continue
             db.row_factory = sqlite3.Row
             for row in db.execute("SELECT * FROM chat_requests"):
                 raw = row["request_json"]

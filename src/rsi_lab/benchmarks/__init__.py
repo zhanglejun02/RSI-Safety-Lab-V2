@@ -6,6 +6,14 @@ BENCHMARKS = {"local_transfer": "rsi_lab.benchmarks.local_transfer",
               "agentdojo": "rsi_lab.benchmarks.agentdojo"}
 
 
+def describe_benchmarks():
+    """Expose evaluation capabilities without enabling them in legacy profiles."""
+    return [{"name": "agentdojo", "metric_family": "injection_security", "profiles": ["matrix", "safety-study", "banking-frozen", "banking-h2"]},
+            {"name": "xstest", "metric_family": "text_safety", "profiles": ["safety-study"], "phase": "final_only"},
+            {"name": "agentharm", "metric_family": "agent_harm", "profiles": ["safety-study"], "phase": "final_only", "extra": "safetybench"},
+            {"name": "local_transfer", "metric_family": "synthetic_control", "profiles": ["matrix"]}]
+
+
 def backend(name):
     if name not in BENCHMARKS:
         raise ValidationError(f"Unknown benchmark {name!r}; choose {', '.join(BENCHMARKS)}")

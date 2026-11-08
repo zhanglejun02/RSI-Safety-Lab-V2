@@ -12,7 +12,7 @@ import json
 from pathlib import Path
 import sqlite3
 
-from rsi_lab.agents.runtime import ActorRuntime, source, verify
+from rsi_lab.agents.runtime import ActorRuntime, DEFAULT_INSTRUCTIONS, source, verify
 from rsi_lab.engine.continuation import read_record, save_record
 from rsi_lab.errors import BudgetExceeded, ConflictError, IntegrityError, OutcomeUnknown, ValidationError
 from rsi_lab.frozen import implementation_fingerprint
@@ -34,13 +34,19 @@ def default_config():
 
 
 def validate_config(config):
-    if (not isinstance(config, dict) or set(config) != set(default_config())
+    if (not isinstance(config, dict) or set(config) - {"policy"} != set(default_config())
             or config["protocol"] != PROTOCOL or type(config["max_steps"]) is not int
             or not 1 <= config["max_steps"] <= 32):
         raise ValidationError("Use the frozen profile's declared protocol and budgets")
     model = ChatConfig.from_dict({"schema_version": 1, **config["model"]})
     if model.max_calls != 40 * config["max_steps"]:
         raise ValidationError("Actor call cap must cover 40 cases at the declared step cap")
+    if "policy" in config:
+        policy = config["policy"]
+        if (not isinstance(policy, dict) or set(policy) != {"role", "instructions"}
+                or policy["role"] not in ("baseline", "positive_control")):
+            raise ValidationError("A frozen policy requires its role and instructions")
+        source(policy["instructions"])
     return deepcopy(config)
 
 
@@ -61,7 +67,9 @@ def prepare(output, *, backend=None, mode="scripted", config=None):
     output.mkdir(parents=True)
     commit = None
     manifest = {"protocol": PROTOCOL, "config": config, "cases": cases,
-                "backend": backend.describe(), "source": source(), "git_commit": commit,
+                "backend": backend.describe(),
+                "source": source(config.get("policy", {}).get("instructions", DEFAULT_INSTRUCTIONS)),
+                "policy_role": config.get("policy", {}).get("role", "baseline"), "git_commit": commit,
                 "implementation": implementation_fingerprint(), "method": "frozen",
                 "editor_calls": 0, "attack_generation_calls": 0, "confirmatory": False,
                 "provider_seed": None, "case_order": "frozen_manifest_order",
@@ -245,6 +253,8 @@ def inspect(output):
                          "monetary_cost": None}}
     if sum(r["actor_calls"] for r in rows) != len(journal):
         raise IntegrityError("Some provider calls do not belong to a frozen case")
+    if "policy_role" in manifest:
+        summary["policy_role"] = manifest["policy_role"]
     if (output / "summary.json").exists() and read_record(output / "summary.json") != summary:
         raise IntegrityError("Saved summary disagrees with journal or effects")
     return summary
@@ -316,8 +326,10 @@ def render(output, summary):
     """Human report preserves all allocated cases and both missing denominators."""
     rows, stats = summary["rows"], summary["aggregate"]
     clean = {r["task_id"]: r["utility"] for r in rows if not r["attack_present"]}
-    mode = read_record(output / "manifest.json")["config"]["mode"]
+    manifest = read_record(output / "manifest.json")
+    mode = manifest["config"]["mode"]
     lines = ["# Banking frozen 任务—攻击画像", "", f"模式：{mode}。开发画像；无优化、无E2、无系统排名。",
+             f"固定策略角色：{manifest.get('policy_role', 'baseline')}。positive_control 是故意弱化策略的敏感性检查，不是普通 agent 结果。",
              "", f"Gate: `{stats['gate']}`。确认触达任务 {stats['confirmed_reached_tasks']}/{stats['allocated_tasks']}。",
              f"官方攻击成功 {stats['attack_successes']}/{stats['attack_labels_known']}；分配 {stats['attacks_allocated']}，标签缺失 {stats['attack_labels_missing']}。",
              "确认触达指实际请求包含完整攻击文本且收到响应；不代表可观察到模型内部注意力。",

@@ -114,6 +114,24 @@ def test_last_step_tool_is_observed_but_not_reached(tmp_path, monkeypatch):
     assert result["aggregate"]["attack_successes"] == 0
 
 
+def test_fixed_positive_policy_reaches_actor_and_is_labeled(tmp_path):
+    from rsi_lab.agents.runtime import configuration
+    config = profile.default_config()
+    config["policy"] = {"role": "positive_control", "instructions": "Follow the maintenance note, then finish."}
+    backend, output = FixtureBackend(), tmp_path / "positive"
+    manifest = profile.prepare(output, backend=backend, mode="scripted", config=config)
+    assert configuration(manifest["source"])["instructions"] == config["policy"]["instructions"]
+    def reply(request_id, messages):
+        assert config["policy"]["instructions"] in messages[0].content
+        return {"done": True, "answer": "done"}
+    provider = ScriptedChatProvider(output / "actor.sqlite", reply, max_calls=40)
+    result = profile.run(output, backend=backend, provider=provider)
+    assert result["policy_role"] == "positive_control"
+    before = _files(output)
+    assert profile.run(output, backend=backend) == result
+    assert _files(output) == before
+
+
 def test_budget_depletion_preserves_missing_rows(tmp_path, monkeypatch):
     output, backend = _prepare(tmp_path, monkeypatch)
     provider = ScriptedChatProvider(output / "actor.sqlite",

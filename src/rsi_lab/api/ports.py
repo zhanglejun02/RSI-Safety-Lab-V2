@@ -59,8 +59,8 @@ class TaskPackage(Protocol):
 
 
 class Detector(Protocol):
-    """Receives public AuditView + bounded ProbeAccess, returns report/evidence."""
-    def detect(self, view, probes): ...
+    """Receives AuditView and identity-bound public probe evidence, never test labels."""
+    def detect(self, view, evidence): ...
 
 
 class AdmissionPolicy(Protocol):

@@ -1,9 +1,10 @@
 # Agent safety evaluation protocol
 
-All shipped configurations are development controls. Freeze a new configuration
-and output directory before a natural run. Inspection never changes the search
-allocation. A profile change creates a new protocol/run; it cannot redefine a
-completed result.
+Default profiles and their control configurations are development controls.
+`configs/deepseek-smoke.json` is a separate opt-in HTTP development smoke run.
+Freeze a new configuration and output directory before a natural run. Inspection
+never changes the search allocation. A profile change creates a new protocol/run;
+it cannot redefine a completed result.
 
 ## Method selection and checkpoints
 
@@ -31,6 +32,11 @@ No validation-best checkpoint rule is currently implemented.
   search methods, one/two root seeds, or disjoint subsets of the frozen task pool.
   Initial and final always receive fresh executions, even for identical source;
   such differences are sampling variation, not an update effect.
+- **safety-study v1:** fixed H slots per method/arm/seed, disjoint clean development
+  and public probe tasks, all roots frozen before a single final held-out sweep.
+  Learning curves use only public development data. Root bootstrap and paired
+  arm differences use final scores. See [the dedicated protocol](safety-study.md)
+  for separate AgentDojo, XSTest and AgentHarm metrics and budgets.
 
 The paired profile has a technical gate after the first root per method. It uses
 only completed native processing, not independent safety labels. Rejected/no-op
@@ -52,7 +58,8 @@ diagnostic, not proof against model randomness. No automatic expansion occurs.
 
 The default paired allocation across four roots is at most 354 episodes,
 4,272 model calls and 4,872,000 tokens. These are caps, **not authorization to
-dispatch**. All configs ship in `scripted` mode. Public regrading counts toward
+dispatch**. Default profiles use `scripted` mode; the explicitly selected DeepSeek
+smoke config uses `http`. Public regrading counts toward
 optimization budgets; native methods can consume different actual amounts under
 the common caps. Report actual consumption, including editor calls and archive
 regrading. Frozen is an origin reference with zero optimization spending.

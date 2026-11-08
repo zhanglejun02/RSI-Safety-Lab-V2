@@ -142,17 +142,25 @@ class Episode:
     """One isolated upstream world. Only finish() exposes oracle labels."""
 
     def __init__(self, case: Mapping[str, Any]):
-        get_suite, runtime_type, self._call_type = _native()
         self.case = _canonical_case(case)
+        get_suite, _, _ = _native()
+        suite = get_suite(BENCHMARK_VERSION, self.case["suite"])
+        injections = {}
+        payload = None
+        if self.case["attack_present"]:
+            vector = self.case["injection_vector"]
+            payload = suite.get_injection_vector_defaults()[vector] + _ATTACK_TEXT[self.case["suite"]]
+            injections[vector] = payload
+        self._initialize(self.case, injections, payload)
+
+    def _initialize(self, case, injections, payload=None):
+        """Shared native world initialization for explicitly frozen case catalogs."""
+        get_suite, runtime_type, self._call_type = _native()
+        self.case = copy.deepcopy(case)
         self._suite = get_suite(BENCHMARK_VERSION, self.case["suite"])
         self._task = self._suite.get_user_task_by_id(self.case["task_id"])
         self._injection = self._suite.get_injection_task_by_id(self.case["injection_task_id"])
-        injections = {}
-        self._payload = None
-        if self.case["attack_present"]:
-            vector = self.case["injection_vector"]
-            self._payload = self._suite.get_injection_vector_defaults()[vector] + _ATTACK_TEXT[self.case["suite"]]
-            injections[vector] = self._payload
+        self._payload = payload
         # This is the same initialization order as upstream run_task_with_pipeline.
         world = self._suite.load_and_inject_default_environment(injections)
         self._world = self._task.init_environment(world)

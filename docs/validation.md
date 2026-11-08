@@ -4,6 +4,69 @@ Engineering acceptance records and separately labeled pilot observations follow.
 All controls and tests use zero paid API calls. Scripted outcomes are not natural
 experiments or method rankings.
 
+## Scheduling cleanup and matched-regime checks (2026-11-08)
+
+The duplicated 164-line parallel config is replaced by a six-line execution-only
+overlay. CLI plan/run and the Python loader resolve it before freezing; changed
+overlay settings are rejected by the saved plan. README contains usage, the study
+runbook contains limits/recovery, and architecture contains the code map.
+The original timing manifests establish **6,000 RPM**, not the limiter test's
+1,800 RPM or the shipped overlay's 60 RPM; the historical record below is corrected.
+
+Full validation: **248 passed**, two upstream deprecation warnings, zero paid calls.
+The four-method native control completed **7 roots / 28 final rows / 84 final
+episodes** with the previous scientific projections and provider counts intact.
+Read-only resume and frozen review verified **5,345 files / 1,062 requests**.
+The wheel installed outside the checkout passed dependency checks and the new
+overlay CLI flow: **4 roots / 64 final episodes**, with **2,360 files / 472 requests**
+preserved through resume/review. The earlier real main run also retained all
+**2,488 files**. Implementation fingerprint:
+`801ca17c17a11b62207962ddcaf9fa347a23cf4c5cc756da1b912bf68072c5f6`.
+
+The reusable `scripts/validate_scheduling.py` froze both plans before each pair,
+then ran serial followed by parallel without concurrent tests. Both sides share
+the same RPM and `max_in_flight: 2`; only root workers change from 1 to 2.
+Each root uses the main pool's four clean development tasks and 16 final cases.
+All policies are frozen; these are scheduling checks, not RSI treatment arms.
+
+| Workload | Roots per side | RPM | Serial seconds | Parallel seconds | Calls (serial / parallel) | Observed speedup |
+|---|---:|---:|---:|---:|---:|---:|
+| Local prescribed actions, 200 ms delay | 8 | null | 133.167 | 89.037 | 536 / 536 | 1.496× |
+| Local prescribed actions, 200 ms delay | 2 | 60 | 134.759 | 139.753 | 134 / 134 | 0.964× |
+| Real DeepSeek flash | 2 | null | 183.696 | 105.684 | 156 / 155 | 1.738× |
+
+The eight-root local pair completed 128 final episodes per side with identical
+scientific projections, no missing results/timing and no HTTP errors. Increasing
+root count did not approach 2× in this control; each root/phase still starts a
+fresh process. Its synthetic fixture tokens are not model costs.
+At the shipped 60 RPM, client overlap was **1 / 1** and two workers were about
+3.7% slower, with the same scores/calls and no missing results or HTTP errors.
+Request pacing dominated the 200 ms fixture. This does not imply that 60 RPM is
+always a bottleneck: longer responses can still benefit from overlap at that rate.
+
+The explicitly requested real API diagnostic is separate from zero-paid-call
+validation. It completed 32 final episodes per side, using **267,334 / 263,606
+tokens** (**530,940 total**); mean transport latency was **1.146 / 1.147 seconds**.
+Observed client overlap was **1 / 2**. There were no 429/5xx, unknown calls,
+missing timing/token usage, missing final episodes or token-cap overruns.
+There were **2 / 1 confirmed but invalid model responses**, handled by the
+existing actor's subsequent-step feedback path; unknown calls were not retried.
+Responses, calls and scientific projections differ, as remote determinism was
+never promised. The fixed serial-first order, changing remote load/cache and
+single timing pair prevent interpreting 1.738× as an isolated causal speedup or
+an account-wide throughput guarantee. No confidence interval or token saving is
+claimed, and these runs do not estimate a method's utility/safety advantage.
+
+Frozen inputs: `runs/infra-refine-inputs-20261108`. Outputs and copied validation
+driver: `runs/infra-refine-local8-20261108` and
+`runs/infra-refine-local60-20261108`, plus `runs/infra-refine-deepseek-20261108`.
+Each contains both resolved configs, plans,
+per-run measurements, original study artifacts and an immutable comparison.
+All six completed runs passed read-only resume and frozen-source review:
+**8,096 original files unchanged / 1,651 requests verified**, with network and
+fresh effects disabled during review. The aggregate audit record is
+`runs/infra-refine-review-record-20261108.json`.
+
 ## Root scheduling and performance acceptance (2026-11-08)
 
 This optimization adds operational measurements and bounded local spawn workers
@@ -31,7 +94,13 @@ not additional natural-model experiments. Original control output:
 A separate timing control ran **two frozen roots**, four development tasks and
 16 final cases per root against an actual localhost HTTP server. It returned
 prescribed native actions after a 200 ms delay; no remote model or billable model
-tokens were involved. Runs were executed sequentially without concurrent test
+tokens were involved. Both archived manifests specify **6,000 RPM** and
+`max_in_flight: 2`; only `root_workers` changes from 1 to 2. The separate
+three-worker limiter regression uses 1,800 RPM and an 80 ms delay, and is not the
+source of the timing result. The shipped 60 RPM overlay is a conservative
+example, not this experiment's regime. At 60 RPM, 134 requests need at least
+133 seconds between the first and last request starts, before other overhead.
+Runs were executed sequentially without concurrent test
 jobs. Their final policy content, task/attack scores, learning curves and call
 counts matched; raw configuration, timing and artifact identities differ.
 

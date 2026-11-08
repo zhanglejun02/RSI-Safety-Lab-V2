@@ -1,26 +1,24 @@
 from copy import deepcopy
 from concurrent.futures.process import BrokenProcessPool
-from contextlib import closing, contextmanager
+from contextlib import closing
 import csv
-from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 import json
 import os
 from pathlib import Path
 import sqlite3
-from threading import Lock, Thread
 import time
 
 import pytest
 
-from rsi_lab.agent_bench import plan_experiment, run_experiment
-from rsi_lab.benchmarks.agentdojo_suite import Catalog
+from rsi_lab.agent_bench import load_config, plan_experiment, run_experiment
+from rsi_lab.cli import main
 from rsi_lab.engine.continuation import read_record
 from rsi_lab.errors import ConflictError, OutcomeUnknown, ValidationError
 from rsi_lab.infra.chat_models import ChatConfig, ChatMessage, DurableChatProvider
 from rsi_lab.infra.runlock import run_lock
 from rsi_lab.review import inventory, review
-from rsi_lab.serialization import canonical_bytes, decode_json, digest
 from rsi_lab.studies.scheduling import Scheduler, settings
+from scripts.validate_scheduling import delayed_actor, scientific_projection as science
 
 
 def config():
@@ -31,19 +29,20 @@ def config():
     return value
 
 
-def science(summary):
-    return [{**{k: r[k] for k in ("root_id", "final_source_sha256", "metrics", "primary", "estimates")},
-             "curve": [(p["public"]["score"], p.get("policy_changed", False)) for p in r["learning_curve"]]}
-            for r in summary["rows"]]
-
-
-def test_parallel_roots_preserve_results_barrier_and_completed_resume(tmp_path, monkeypatch):
+def test_parallel_roots_preserve_results_barrier_and_completed_resume(tmp_path, monkeypatch, capsys):
     serial = config()
     expected = run_experiment(serial, tmp_path / "serial")
     parallel = deepcopy(serial)
     parallel["execution"] = {"root_workers": 2, "max_in_flight": 2}
     output = tmp_path / "parallel"
-    actual = run_experiment(parallel, output)
+    config_path, overlay, plan = [tmp_path / name for name in ("base.json", "execution.json", "plan.json")]
+    config_path.write_text(json.dumps(serial))
+    overlay.write_text(json.dumps(parallel["execution"]))
+    args = ["--config", str(config_path), "--execution", str(overlay)]
+    assert main(["plan", *args, "--output", str(plan)]) == 0
+    assert main(["run", *args, "--plan", str(plan), "--output", str(output)]) == 0
+    capsys.readouterr()
+    actual = read_record(output / "summary.json")
     assert science(actual) == science(expected)
     assert actual["statistics"] == expected["statistics"]
     phases = [read_record(p) for p in output.glob("roots/*/performance/*.json")]
@@ -62,6 +61,23 @@ def test_parallel_roots_preserve_results_barrier_and_completed_resume(tmp_path, 
     assert run_experiment(parallel, output, resume=True) == actual
     assert inventory(output) == before
     assert review(output, tmp_path / "review")["originals_unchanged"]
+    overlay.write_text(json.dumps({"root_workers": 2, "max_in_flight": 1}))
+    assert main(["run", *args, "--plan", str(plan), "--output", str(tmp_path / "drift")]) == 2
+    assert "frozen plan" in capsys.readouterr().err.lower()
+
+
+def test_execution_overlay_cannot_change_scientific_inputs(tmp_path):
+    base = Path("configs/agentdojo-main.json")
+    config = load_config(base, execution="configs/execution/parallel.json")
+    execution = config.pop("execution")
+    assert config == load_config(base)
+    assert execution["root_workers"] == 2 and execution["requests_per_minute"] == 60
+    overlay = tmp_path / "invalid.json"
+    overlay.write_text(json.dumps({"seeds": [99]}))
+    with pytest.raises(ValidationError, match="execution"):
+        load_config(base, execution=overlay)
+    with pytest.raises(ValidationError, match="safety-study"):
+        load_config("configs/matrix.json", execution=overlay)
 
 
 def test_execution_allocation_is_checked_before_dispatch():
@@ -138,44 +154,27 @@ def test_dead_worker_does_not_restart_unknown_call(tmp_path):
     assert provider.summary()["reserved_tokens"] > 0
 
 
-@contextmanager
-def delayed_actor(config, delay):
-    """Actual local HTTP with prescribed native actions; no paid model or natural result."""
-    backend = Catalog(config["training"])
-    cases = {digest(c["case_id"]): c for c in backend.catalog}
-    state, lock = {"active": 0, "peak": 0, "calls": 0, "starts": []}, Lock()
-    class Handler(BaseHTTPRequestHandler):
-        def do_POST(self):
-            body = decode_json(self.rfile.read(int(self.headers["Content-Length"])))
-            with lock:
-                state["active"] += 1; state["calls"] += 1
-                state["peak"] = max(state["peak"], state["active"])
-                state["starts"].append(time.monotonic())
-            try:
-                time.sleep(delay)
-                messages = body["messages"]
-                request = decode_json(messages[1]["content"])
-                history = [decode_json(m["content"]) for m in messages[2:] if m["role"] == "user"]
-                action = backend.scripted_reply(cases[request["case_id"]], history, messages[0]["content"])
-                raw = canonical_bytes({"model": "local-fixture", "choices": [{"finish_reason": "stop",
-                    "message": {"content": json.dumps(action)}}],
-                    "usage": {"prompt_tokens": 20, "completion_tokens": 10, "total_tokens": 30}})
-                self.send_response(200); self.send_header("Content-Length", str(len(raw)))
-                self.end_headers(); self.wfile.write(raw)
-            finally:
-                with lock:
-                    state["active"] -= 1
-        def log_message(self, *args):
-            pass
-    try:
-        server = ThreadingHTTPServer(("127.0.0.1", 0), Handler)
-    except PermissionError:
-        pytest.skip("Local HTTP listener requires the native validation host")
-    thread = Thread(target=server.serve_forever, daemon=True); thread.start()
-    try:
-        yield f"http://127.0.0.1:{server.server_port}", state
-    finally:
-        server.shutdown(); server.server_close(); thread.join()
+def _fail_or_finish(directory, action):
+    directory = Path(directory)
+    (directory / (action + "-started")).touch()
+    other = "finish-started" if action == "fail" else "fail-started"
+    deadline = time.monotonic() + 10
+    while not (directory / other).exists():
+        if time.monotonic() > deadline:
+            raise TimeoutError("Peer did not start")
+        time.sleep(0.01)
+    if action == "fail":
+        raise RuntimeError("ordinary worker exception")
+    time.sleep(0.1)
+    (directory / "finished").touch()
+
+
+def test_worker_exception_drains_running_job_without_scheduling_more(tmp_path):
+    scheduler = Scheduler(settings({"execution": {"root_workers": 2}}))
+    with pytest.raises(RuntimeError, match="ordinary worker"):
+        scheduler.run(_fail_or_finish, [(tmp_path, action) for action in ("fail", "finish", "queued")])
+    assert (tmp_path / "finished").exists()
+    assert not (tmp_path / "queued-started").exists()
 
 
 def test_parallel_local_http_limits_and_timing(tmp_path):
@@ -190,6 +189,8 @@ def test_parallel_local_http_limits_and_timing(tmp_path):
     assert min(b - a for a, b in zip(state["starts"], state["starts"][1:])) > 0.02
     assert summary["performance"]["transport_seconds"]["mean"] >= 0.08
     assert summary["performance"]["transport_seconds"]["count"] == state["calls"]
+    assert summary["performance"]["observed_peak_in_flight"] == state["peak"]
+    assert summary["performance"]["http_429"] == summary["performance"]["http_5xx"] == 0
     assert all(r["metrics"]["missing_episodes"] == 0 for r in summary["rows"])
     with (tmp_path / "http/performance-roots.csv").open() as handle:
         assert all(float(r["cpu_percent_one_core"]) >= 0 for r in csv.DictReader(handle))

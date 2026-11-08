@@ -217,6 +217,28 @@ source copy. Legacy completed runs retain their original source and protocol.
 
 ## Scheduling and operational measurements
 
+Use the same canonical JSON with `--execution configs/execution/parallel.json`
+on both `plan` and `run`. In Python, use `load_config(path, execution=overlay)`
+before `plan_experiment`/`run_experiment`. The overlay replaces the **entire**
+execution block; it cannot change methods, seeds, models or tasks. Omitted fields
+use scheduler defaults, not values inherited from the base block. Only the
+resolved config is frozen, so editing either input is detected by `run --plan`.
+No inheritance tree or recursive config merge is involved.
+
+| Execution setting | Default | Meaning |
+|---|---:|---|
+| `root_workers` | 1 | 1–8 local workers |
+| `max_in_flight` | 1 | 1–8 concurrent HTTP transports across this study |
+| `requests_per_minute` | null | Optional request-start pacing; null disables this client RPM limit |
+| `cooldown_seconds` | 30 | Future-request delay after HTTP 429/5xx, 0–300 seconds |
+| `max_total_calls` | null | Optional ceiling on the full allocated provider call caps |
+| `max_total_tokens` | null | Optional ceiling on the full allocated token reservations |
+
+The shipped overlay uses 60 RPM conservatively; it is not tuned to any provider
+quota or derived from a speed measurement. It can dominate short-response
+workloads. Choose pacing using measured latency and the account's limits, then
+freeze it. A null RPM limit still preserves concurrency and cooldown bounds.
+
 Serial execution is the default. `execution.root_workers` enables 2–8 local spawn
 workers; root generation and root final evaluation form two separate phases with
 the existing all-roots-frozen barrier between them. Each root/phase owns a fresh
@@ -242,6 +264,17 @@ Explicit coordinator restart resets pacing/cooldown state; durable provider
 budgets and unknown-call reservations remain intact. Live root locks block resume,
 including when a worker has already saved its result but has not exited.
 
+On an ordinary uncaught root exception, the coordinator stops submitting roots,
+cancels queued work and waits for running jobs before surfacing the error. A
+**process crash** breaks the pool; the executor can terminate other workers, so
+their completion is not guaranteed. Preserve the output and inspect its journals
+and missing/fatal records. Once workers have exited, use the original configuration
+and `run --resume --plan ...`; never delete reservations or locks to force progress.
+Resume can continue untouched work but does not refill unknown/terminal missing
+episodes or repair fatal programming errors. An HTTP 429/5xx is recorded as
+unknown: final evaluation normally marks that episode missing and continues after
+cooldown; it does not automatically abort or rerun the whole study.
+
 Episode duration is already recorded by the actor. New independent telemetry adds
 transport duration (excluding quota wait), queue wait, HTTP error status, root
 phase wall time and process-tree CPU seconds. `performance.json` and three CSVs
@@ -250,14 +283,30 @@ Episode timings cover saved ActorRuntime results; interrupted episodes and nativ
 Inspect episodes have no such result timing. Their calls remain in provider
 timing, or explicitly missing if interrupted before timing could be persisted.
 CPU percentage uses one logical core as 100%, not the whole machine.
+`observed_peak_in_flight` counts overlapping saved client transport intervals,
+not server-side connections; missing timing and wall-clock adjustments limit its
+interpretation. HTTP 429/5xx totals are included in the same report.
 
-Compare serial/parallel **scientific projections**: final policy content, scores,
+For deterministic controls compare **scientific projections**: final policy content, scores,
 learning curves, admissions and calls. Raw summaries also contain configuration,
 timestamps, telemetry and content identities, so byte equality across different
 schedules is not expected. Completed resume is still byte-identical within a run.
 Remote model nondeterminism and provider load can affect responses under a new
 schedule; control equivalence is not proof of identical natural-model outcomes.
 Distributed scheduling and large remote-model parallel runs need separate validation.
+All methods and arms in a scientific comparison must use the same execution
+settings. Serial/parallel A/B is an infrastructure diagnostic, never a method arm.
+The Python process API requires an importable main module guarded by
+`if __name__ == "__main__":`; the CLI already provides this.
+
+`scripts/validate_scheduling.py --config ... --output ...` reuses the public runner
+for one serial/parallel timing pair. Supply a frozen-only AgentDojo configuration
+with explicit RPM (including null). Its default is a local 200 ms HTTP fixture;
+only explicit `--remote --env-file .env` uses the configured model. Both plans are
+saved before dispatch, only worker count differs, and calls/tokens/errors/observed
+overlap are retained. The fixed order and one pair are descriptive, not a causal
+speed estimate or confidence interval. Run timing pairs without concurrent tests;
+freeze new output directories for new regimes and preserve existing artifacts.
 
 ## References and notices
 

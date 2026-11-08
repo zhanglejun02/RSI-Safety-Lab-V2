@@ -4,7 +4,7 @@ import json
 from pathlib import Path
 import sys
 
-from rsi_lab.agent_bench import PROFILES, default_config, inspect_run, plan_experiment, run_experiment
+from rsi_lab.agent_bench import PROFILES, default_config, inspect_run, load_config, plan_experiment, run_experiment
 from rsi_lab.errors import LabError, ValidationError
 from rsi_lab.methods import METHODS, describe_methods
 
@@ -29,6 +29,8 @@ def parser():
     run.add_argument("--resume", action="store_true")
     run.add_argument("--env-file", type=Path)
     run.add_argument("--plan", type=Path, help="Require this frozen allocation and source identity")
+    for command in (plan, run):
+        command.add_argument("--execution", type=Path, help="Replace execution settings from this JSON object; requires --config")
     inspect = commands.add_parser("inspect", help="Verify a completed run without model calls")
     inspect.add_argument("--output", required=True, type=Path)
     review = commands.add_parser("review-frozen", help="Inspect an archived source/run in an isolated copy")
@@ -72,7 +74,7 @@ def main(argv=None):
             from rsi_lab.benchmarks.agentdojo_suite import available_catalog
             result = available_catalog()
         elif args.command == "plan":
-            result = plan_experiment(json.loads(args.config.read_text()))
+            result = plan_experiment(load_config(args.config, execution=args.execution))
             if args.output:
                 from rsi_lab.engine.continuation import save_record
                 if args.output.exists():
@@ -81,7 +83,9 @@ def main(argv=None):
         elif args.command == "config":
             result = select_methods(default_config(args.profile), args.methods)
         elif args.command == "run":
-            config = json.loads(args.config.read_text()) if args.config else default_config(args.profile)
+            if args.execution and not args.config:
+                raise ValidationError("--execution requires --config")
+            config = load_config(args.config, execution=args.execution) if args.config else default_config(args.profile)
             config = select_methods(config, args.methods)
             if args.env_file:
                 from rsi_lab.infra.environment import load_environment

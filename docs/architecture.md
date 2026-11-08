@@ -13,7 +13,7 @@ method registry → native adapter → prepared update → platform activation
 | Directory / entry | Responsibility |
 |---|---|
 | `methods.py` | Canonical method IDs, mutable scope, platform support, factories |
-| `agent_bench.py`, `cli.py` | One Python API and CLI; named, serializable profile configurations |
+| `agent_bench.py`, `cli.py` | One Python API and CLI; canonical configs plus execution-only overlays resolved before freezing |
 | `studies/runner.py` | Durable proposal slot, native decision, platform admission, actual editor context matching |
 | `studies/agent_bench.py` | Method × benchmark matrix and all-active-version reporting |
 | `studies/frozen_profile.py` | Fixed-policy pool execution, actual payload exposure, known/missing effect labels |
@@ -50,26 +50,11 @@ the exact configuration and installed source. One multi-suite study optimizes
 one policy per root; suite/task/attack strata are repeated measurements, not
 additional roots. Completed resume remains read-only and skips fresh planning.
 
-With `execution.root_workers > 1`, the coordinator uses the standard library's
-[spawn process executor](https://docs.python.org/3.12/library/concurrent.futures.html#concurrent.futures.ProcessPoolExecutor).
-It submits at most N jobs, each in a fresh process. Workers receive only an output
-path, root identity and phase; they verify frozen source/catalog identity and own
-one root lock. Adapter objects, providers and SQLite connections never cross IPC.
-The coordinator waits for the generation phase, persists the root-hash barrier,
-then schedules final evaluation and aggregates rows in their original order.
-After an error, no new roots are submitted; running jobs drain before the run lock
-is released. Explicit resume uses the durable records and never restarts unknown
-calls. Force-killed workers fail through the executor; isolation is not disabled.
-Before scheduling and crossing phase/aggregation boundaries, the coordinator
-checks every root lock, including roots with cached results. A replacement
-coordinator therefore cannot skip a still-running worker's final writes.
-
-HTTP providers share a semaphore and request-start clock, not a database. Each
-provider retains its own atomic call/token reservations. A global allocation cap
-is checked against the complete sum of provider caps before workers start, so
-budget availability cannot depend on which root wins a scheduling race. Timing is
-stored in a separate `chat_timings` table and performance files, outside receipts,
-public feedback, admission decisions and scientific statistics.
+`scheduling.py` passes only root identity, phase and output path to spawn workers;
+`safety_study.py` owns the phase barrier and stable result order. Providers share
+`DispatchLimiter` primitives, never SQLite connections. `chat_timings` and
+`performance.py` are observational side channels. Scheduling, failure and recovery
+semantics live in the [runbook](safety-study.md#scheduling-and-operational-measurements).
 
 ## Add a method
 

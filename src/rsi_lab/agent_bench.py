@@ -1,11 +1,26 @@
 """Public configuration and execution API. Default runs make zero API calls."""
 from copy import deepcopy
+import json
 from pathlib import Path
 
 from rsi_lab.errors import ConflictError, ValidationError
 from rsi_lab.methods import check_available
 
 PROFILES = ("matrix", "banking-frozen", "banking-h2", "safety-study")
+
+
+def load_config(path, *, execution=None):
+    """Load a full config and optionally replace only its execution settings."""
+    config = json.loads(Path(path).read_text())
+    if not isinstance(config, dict):
+        raise ValidationError("Configuration must be a JSON object")
+    if execution is not None:
+        if config.get("profile") != "safety-study":
+            raise ValidationError("Execution overlays require the safety-study profile")
+        from rsi_lab.studies.scheduling import settings
+        config["execution"] = json.loads(Path(execution).read_text())
+        settings(config)
+    return config
 
 
 def default_config(profile="matrix"):

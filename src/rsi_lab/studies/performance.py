@@ -2,7 +2,6 @@
 from contextlib import contextmanager, closing
 import csv
 import os
-from pathlib import Path
 import resource
 import sqlite3
 import statistics
@@ -45,6 +44,17 @@ def distribution(values):
             "p50": statistics.median(values), "p95": values[max(0, (95 * len(values) + 99) // 100 - 1)]}
 
 
+def peak_overlap(intervals):
+    """Observed client transport overlap; missing timings cannot establish a bound."""
+    events = [(timestamp, change) for start, elapsed in intervals if elapsed > 0
+              for timestamp, change in ((start, 1), (start + elapsed, -1))]
+    active = peak = 0
+    for _, change in sorted(events):
+        active += change
+        peak = max(peak, active)
+    return peak
+
+
 def _csv(path, rows):
     if rows:
         with path.open("w", newline="") as handle:
@@ -54,7 +64,7 @@ def _csv(path, rows):
 
 
 def collect(output, execution):
-    episodes, providers, phases, latency, queue = [], [], [], [], []
+    episodes, providers, phases, latency, queue, intervals = [], [], [], [], [], []
     for path in sorted(output.glob("roots/*/performance/*.json")):
         phases.append({"root_id": path.parents[1].name, **read_record(path)})
     for path in sorted(output.glob("roots/*/**/*-episodes/*/result.json")):
@@ -72,9 +82,11 @@ def collect(output, execution):
             if not db.execute("SELECT 1 FROM sqlite_master WHERE name='chat_requests'").fetchone():
                 continue
             counts = dict(db.execute("SELECT status,COUNT(*) FROM chat_requests GROUP BY status"))
-            times = db.execute("SELECT elapsed_seconds,queue_seconds,http_status FROM chat_timings").fetchall()
+            times = db.execute("SELECT elapsed_seconds,queue_seconds,http_status,started_at FROM chat_timings").fetchall()
         elapsed, waited = [r[0] for r in times], [r[1] for r in times]
-        latency.extend(elapsed); queue.extend(waited)
+        latency.extend(elapsed)
+        queue.extend(waited)
+        intervals.extend((r[3], r[0]) for r in times)
         total = sum(counts.values())
         providers.append({"journal": str(path.relative_to(output)), "calls": total,
             "timed_calls": len(times), "timing_missing_calls": total - len(times),
@@ -87,9 +99,12 @@ def collect(output, execution):
     result = {"execution": execution, "coordinator_phases": coordinator,
         "episode_seconds": distribution([r["elapsed_seconds"] for r in episodes]),
         "transport_seconds": distribution(latency), "queue_seconds": distribution(queue),
+        "observed_peak_in_flight": peak_overlap(intervals),
+        "http_429": sum(p["http_429"] for p in providers),
+        "http_5xx": sum(p["http_5xx"] for p in providers),
         "timing_missing_calls": sum(p["timing_missing_calls"] for p in providers),
         "root_phase_count": len(phases),
-        "scope": "Operational diagnostics only; control latency is not remote API latency. CPU is process-tree CPU, not whole-host utilization. Native Inspect episodes are excluded from episode timing."}
+        "scope": "Operational diagnostics only; control latency is not remote API latency. Peak overlap uses saved client wall-clock intervals, excluding missing timings. CPU is process-tree CPU, not whole-host utilization. Native Inspect episodes are excluded from episode timing."}
     _csv(output / "performance-episodes.csv", episodes)
     _csv(output / "performance-api.csv", providers)
     _csv(output / "performance-roots.csv", phases)

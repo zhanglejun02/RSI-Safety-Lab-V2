@@ -21,6 +21,9 @@ method registry → native adapter → prepared update → platform activation
 | `studies/safety_study.py`, `statistics.py` | Fixed-H search per independent root/arm, final-only evaluation, paired root bootstrap |
 | `studies/planning.py` | Selected allocation, screening history, primary endpoint and budget preflight; no model calls |
 | `studies/agentdojo_reporting.py` | Final case/task/attack projections and phase costs, using the existing root statistics |
+| `studies/scheduling.py` | Bounded fresh-process root jobs, full-allocation budget checks and shared HTTP admission |
+| `studies/performance.py` | Operational wall/CPU/episode/API timing, excluded from optimization and benchmark metrics |
+| `infra/dispatch.py` | Shared concurrent-request limit, request spacing and future-request cooldown; no retries |
 | `benchmarks/agentdojo_suite.py` | Native task inventory and selected single-/multi-suite catalogs; reusable fixed attack implementations |
 | `agents/runtime.py` | Multiturn actor, tool dispatch, immutable episode effects and receipts |
 | `agents/program.py` | Bounded AST interpreter; candidate emits actor instructions, never arbitrary host Python |
@@ -46,6 +49,27 @@ budgets without running actors or graders. `run --plan` binds that allocation to
 the exact configuration and installed source. One multi-suite study optimizes
 one policy per root; suite/task/attack strata are repeated measurements, not
 additional roots. Completed resume remains read-only and skips fresh planning.
+
+With `execution.root_workers > 1`, the coordinator uses the standard library's
+[spawn process executor](https://docs.python.org/3.12/library/concurrent.futures.html#concurrent.futures.ProcessPoolExecutor).
+It submits at most N jobs, each in a fresh process. Workers receive only an output
+path, root identity and phase; they verify frozen source/catalog identity and own
+one root lock. Adapter objects, providers and SQLite connections never cross IPC.
+The coordinator waits for the generation phase, persists the root-hash barrier,
+then schedules final evaluation and aggregates rows in their original order.
+After an error, no new roots are submitted; running jobs drain before the run lock
+is released. Explicit resume uses the durable records and never restarts unknown
+calls. Force-killed workers fail through the executor; isolation is not disabled.
+Before scheduling and crossing phase/aggregation boundaries, the coordinator
+checks every root lock, including roots with cached results. A replacement
+coordinator therefore cannot skip a still-running worker's final writes.
+
+HTTP providers share a semaphore and request-start clock, not a database. Each
+provider retains its own atomic call/token reservations. A global allocation cap
+is checked against the complete sum of provider caps before workers start, so
+budget availability cannot depend on which root wins a scheduling race. Timing is
+stored in a separate `chat_timings` table and performance files, outside receipts,
+public feedback, admission decisions and scientific statistics.
 
 ## Add a method
 

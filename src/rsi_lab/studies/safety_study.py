@@ -19,6 +19,7 @@ from . import agent_bench as matrix, runner
 from .statistics import summarize
 from .planning import compile_plan
 from . import agentdojo_reporting as reporting
+from . import performance, scheduling
 
 PROTOCOL = "rsi-safety-study-v1"
 
@@ -44,7 +45,7 @@ def default_config():
 
 def validate_config(config):
     default = default_config()
-    if not isinstance(config, dict) or set(config) - {"study", "prompts"} != set(default) or config["protocol"] != PROTOCOL:
+    if not isinstance(config, dict) or set(config) - {"study", "prompts", "execution"} != set(default) or config["protocol"] != PROTOCOL:
         raise ValidationError("Start with the safety-study configuration schema")
     for key, choices in (("methods", METHODS), ("arms", ARMS)):
         values = config[key]
@@ -93,6 +94,7 @@ def validate_config(config):
             source(prompts["initial_instructions"])
         if len(prompts.get("editor_guidance", "").encode()) > 4096:
             raise ValidationError("Editor guidance exceeds 4096 bytes")
+    scheduling.settings(config)
     return deepcopy(config)
 
 
@@ -103,7 +105,8 @@ def _provider(directory, config, phase, backend=None, cases=(), method=None):
     if config["mode"] == "http":
         role = phase if phase in ("editor", "judge") else "actor"
         settings = {**config["models"][role], "max_calls": cap}
-        return DurableChatProvider(directory / (phase + ".sqlite"), ChatConfig.from_dict({"schema_version": 1, **settings}))
+        return DurableChatProvider(directory / (phase + ".sqlite"), ChatConfig.from_dict({"schema_version": 1, **settings}),
+                                   limiter=scheduling.limiter())
     if phase == "editor":
         control = legacy_config()
         control["slots"] = config["slots"]
@@ -170,99 +173,22 @@ def _run(config, output, expected_plan=None):
                 "confirmatory": False, "origin": "control" if config["mode"] == "scripted" else "natural"}
     save_record(output / "manifest.json", manifest)
     matrix._archive(output)
-    for root in roots:
-        directory = output / root["path"]
-        if (directory / "root.json").exists():
-            continue
-        actor = _provider(directory, config, "train", backend, backend.cases("dev"))
-        runtime = _runtime(directory, actor, config, "train")
-        prompts = config.get("prompts", {})
-        package = AgentBenchmarkTaskPackage(backend, backend.cases("dev"), runtime,
-                                            editor_guidance=prompts.get("editor_guidance"))
-        origin = initial_snapshot(root["system"], root["seed"], package,
-                                  instructions=prompts.get("initial_instructions", DEFAULT_INSTRUCTIONS))
-        editor = None if root["system"] == "frozen" else _provider(directory, config, "editor", method=root["system"])
-        adapter = create_adapter(root["system"], directory / "system", editor, origin)
-        probe_provider, probes = None, None
-        if root["arm"] == "probe_gate":
-            probe_provider = _provider(directory, config, "probe", backend, backend.cases("probe"))
-            probes = ProbeRunner(_runtime(directory, probe_provider, config, "probe"), backend, backend.cases("probe"))
-        gate = None if root["arm"] == "native_only" else UpdateGate(root["arm"], probes, **config["gate"])
-        baseline = matrix._measure_baseline(adapter, package, directory, root, origin)
-        def resources():
-            return {"train": actor.summary(), "editor": editor.summary() if editor else None,
-                    "probe": probe_provider.summary() if probe_provider else None}
-        baseline_cost = directory / "baseline-resources.json"
-        if not baseline_cost.exists():
-            save_record(baseline_cost, resources())
-        slots = [runner._slot(output, root, step, adapter, package, editor, manifest, gate=gate, resources=resources)
-                 for step in range(1, config["slots"] + 1)] if editor else []
-        curve = [{"step": 0, "public": baseline["public"], "resources": read_record(baseline_cost)}] + [
-            {"step": s["step"], "public": s["public_active"], "status": s["status"],
-             "activated": s["committed"], "source_sha256": digest(s["active_source"]),
-             "policy_changed": s["base_source"] != s["active_source"],
-             "resources": s["resources"]} for s in slots]
-        save_record(directory / "root.json", {"root": root, "origin": origin, "slots": slots,
-            "final_snapshot": adapter.snapshot(), "learning_curve": curve,
-            "train_usage": actor.summary(), "editor_usage": editor.summary() if editor else None,
-            "probe_usage": probe_provider.summary() if probe_provider else None})
+    scheduling.ensure_roots_idle(output, roots)
+    scheduler = scheduling.Scheduler(compiled["execution"])
+    with performance.span(output, "generation"):
+        scheduler.run(_root_job, [(output, root, "generation") for root in roots
+                                 if not (output / root["path"] / "root.json").exists()])
+    scheduling.ensure_roots_idle(output, roots)
     save_record(output / "generation_complete.json", {"manifest_sha256": digest(manifest),
         "roots": {r["root_id"]: digest(read_record(output / r["path"] / "root.json")) for r in roots}})
-    findings = []
-    for root in roots:
-        directory = output / root["path"]
-        score_path = directory / "scores.json"
-        if score_path.exists():
-            findings.extend(read_record(score_path)["rows"])
-            continue
-        saved = read_record(directory / "root.json")
-        from rsi_lab.api import SystemSnapshot
-        final = SystemSnapshot.from_dict(saved["final_snapshot"])
-        program = final.version.component("policy")["source"]
-        provider = _provider(directory, config, "test", backend, backend.cases("heldout"))
-        runtime = _runtime(directory, provider, config, "test")
-        observations = []
-        for case in backend.cases("heldout"):
-            operation = root["root_id"] + "/final/" + digest(case)
-            path = directory / "final" / (digest(case) + ".json")
-            if path.exists():
-                record = read_record(path)
-            else:
-                try:
-                    record = runtime.execute(program, case, backend, operation)
-                except (BudgetExceeded, OutcomeUnknown) as exc:
-                    record = {"metrics": {"complete": False, "utility": None, "security": None,
-                        "attack_present": case["attack_present"], "actor_calls": None, "tool_calls": None},
-                        "error": type(exc).__name__}
-                save_record(path, record)
-            observations.append(record)
-        metrics = matrix._aggregate(observations)
-        # Incomplete coverage is explicit missing for method comparisons; show observed summaries separately.
-        estimates = {k: metrics[k] if metrics["missing_episodes"] == 0 else None
-                     for k in ("clean_utility", "attacked_utility", "attack_success_rate")}
-        estimates.update({"training_actor_calls": saved["train_usage"]["dispatched_calls"],
-                          "editor_calls": (saved["editor_usage"] or {}).get("dispatched_calls", 0),
-                          "probe_actor_calls": (saved["probe_usage"] or {}).get("dispatched_calls", 0),
-                          "test_actor_calls": provider.summary()["dispatched_calls"]})
-        common = {"root_id": root["root_id"], "method": root["system"], "arm": root["arm"], "seed": root["seed"]}
-        benchmark_name = "agentdojo/" + next(iter(backend.suites)) if len(backend.suites) == 1 else "agentdojo/selected-suites"
-        rows = [{**common, "benchmark": benchmark_name,
-                 "final_source_sha256": digest(program), "metrics": metrics, "estimates": estimates,
-                 "cases": [reporting.case_row(case, record) for case, record in
-                           zip(backend.cases("heldout"), observations, strict=True)],
-                 "strata": reporting.strata(backend.cases("heldout"), observations),
-                 "primary": reporting.primary(backend.cases("heldout"), observations, compiled["study"]),
-                 "learning_curve": saved["learning_curve"], "train_usage": saved["train_usage"],
-                 "editor_usage": saved["editor_usage"], "probe_usage": saved["probe_usage"],
-                 "test_usage": provider.summary()}]
-        from rsi_lab.benchmarks.final_evaluation import evaluate
-        rows.extend(evaluate(program, directory, config, common,
-            provider_factory=lambda path, phase, *args: _provider(path, config, phase, *args),
-            runtime_factory=lambda path, provider, phase: _runtime(path, provider, config, phase)))
-        save_record(score_path, {"rows": rows})
-        findings.extend(rows)
+    with performance.span(output, "evaluation"):
+        scheduler.run(_root_job, [(output, root, "evaluation") for root in roots
+                                 if not (output / root["path"] / "scores.json").exists()])
+    scheduling.ensure_roots_idle(output, roots)
+    findings = [row for root in roots for row in read_record(output / root["path"] / "scores.json")["rows"]]
+    measured_performance = performance.collect(output, compiled["execution"])
     summary = {"protocol": PROTOCOL, "origin": manifest["origin"], "confirmatory": False,
-               "not_a_system_ranking": True, "rows": findings,
+               "not_a_system_ranking": True, "rows": findings, "performance": measured_performance,
                "study": compiled["study"], "allocation": {k: compiled[k] for k in
                    ("catalog_sha256", "partitions", "final_episodes_per_root", "final_episodes_total", "initial_policy_sha256")},
                "statistics": summarize(findings, seed=config["statistics"]["seed"], samples=config["statistics"]["bootstrap_samples"]),
@@ -279,6 +205,124 @@ def _run(config, output, expected_plan=None):
     summary["file_inventory"] = inventory(output)
     save_record(output / "summary.json", summary)
     return summary
+
+
+def _root_job(output, root, phase):
+    """Only this process owns this root's providers, state, worlds and journals."""
+    output = Path(output)
+    directory = output / root["path"]
+    directory.mkdir(parents=True, exist_ok=True)
+    with run_lock(directory):
+        manifest, compiled = read_record(output / "manifest.json"), read_record(output / "plan.json")
+        if (root not in manifest["roots"] or digest(compiled) != manifest["plan_sha256"]
+                or implementation_fingerprint() != manifest["implementation"]):
+            raise IntegrityError("Worker inputs differ from the frozen study")
+        if phase not in ("generation", "evaluation"):
+            raise ValidationError("Unknown root phase")
+        result = directory / ("root.json" if phase == "generation" else "scores.json")
+        if result.exists():
+            return
+        with performance.span(directory, phase):
+            if phase == "evaluation":
+                barrier = read_record(output / "generation_complete.json")
+                expected = {r["root_id"]: digest(read_record(output / r["path"] / "root.json"))
+                            for r in manifest["roots"]}
+                if barrier != {"manifest_sha256": digest(manifest), "roots": expected}:
+                    raise IntegrityError("Final evaluation requires every frozen root")
+            config = manifest["config"]
+            backend = Catalog(config["training"])
+            if backend.catalog != manifest["catalog"]:
+                raise IntegrityError("Worker catalog differs from frozen cases")
+            if phase == "generation":
+                _generate_root(config, output, root, backend, manifest)
+            else:
+                _evaluate_root(config, output, root, backend, compiled)
+
+
+def _generate_root(config, output, root, backend, manifest):
+    directory = output / root["path"]
+    actor = _provider(directory, config, "train", backend, backend.cases("dev"))
+    runtime = _runtime(directory, actor, config, "train")
+    prompts = config.get("prompts", {})
+    package = AgentBenchmarkTaskPackage(backend, backend.cases("dev"), runtime,
+                                        editor_guidance=prompts.get("editor_guidance"))
+    origin = initial_snapshot(root["system"], root["seed"], package,
+                              instructions=prompts.get("initial_instructions", DEFAULT_INSTRUCTIONS))
+    editor = None if root["system"] == "frozen" else _provider(directory, config, "editor", method=root["system"])
+    adapter = create_adapter(root["system"], directory / "system", editor, origin)
+    probe_provider, probes = None, None
+    if root["arm"] == "probe_gate":
+        probe_provider = _provider(directory, config, "probe", backend, backend.cases("probe"))
+        probes = ProbeRunner(_runtime(directory, probe_provider, config, "probe"), backend, backend.cases("probe"))
+    gate = None if root["arm"] == "native_only" else UpdateGate(root["arm"], probes, **config["gate"])
+    baseline = matrix._measure_baseline(adapter, package, directory, root, origin)
+    def resources():
+        return {"train": actor.summary(), "editor": editor.summary() if editor else None,
+                "probe": probe_provider.summary() if probe_provider else None}
+    baseline_cost = directory / "baseline-resources.json"
+    if not baseline_cost.exists():
+        save_record(baseline_cost, resources())
+    slots = [runner._slot(output, root, step, adapter, package, editor, manifest, gate=gate, resources=resources)
+             for step in range(1, config["slots"] + 1)] if editor else []
+    curve = [{"step": 0, "public": baseline["public"], "resources": read_record(baseline_cost)}] + [
+        {"step": s["step"], "public": s["public_active"], "status": s["status"],
+         "activated": s["committed"], "source_sha256": digest(s["active_source"]),
+         "policy_changed": s["base_source"] != s["active_source"],
+         "resources": s["resources"]} for s in slots]
+    save_record(directory / "root.json", {"root": root, "origin": origin, "slots": slots,
+        "final_snapshot": adapter.snapshot(), "learning_curve": curve,
+        "train_usage": actor.summary(), "editor_usage": editor.summary() if editor else None,
+        "probe_usage": probe_provider.summary() if probe_provider else None})
+
+
+def _evaluate_root(config, output, root, backend, compiled):
+    directory = output / root["path"]
+    score_path = directory / "scores.json"
+    saved = read_record(directory / "root.json")
+    from rsi_lab.api import SystemSnapshot
+    final = SystemSnapshot.from_dict(saved["final_snapshot"])
+    program = final.version.component("policy")["source"]
+    provider = _provider(directory, config, "test", backend, backend.cases("heldout"))
+    runtime = _runtime(directory, provider, config, "test")
+    observations = []
+    for case in backend.cases("heldout"):
+        operation = root["root_id"] + "/final/" + digest(case)
+        path = directory / "final" / (digest(case) + ".json")
+        if path.exists():
+            record = read_record(path)
+        else:
+            try:
+                record = runtime.execute(program, case, backend, operation)
+            except (BudgetExceeded, OutcomeUnknown) as exc:
+                record = {"metrics": {"complete": False, "utility": None, "security": None,
+                    "attack_present": case["attack_present"], "actor_calls": None, "tool_calls": None},
+                    "error": type(exc).__name__}
+            save_record(path, record)
+        observations.append(record)
+    metrics = matrix._aggregate(observations)
+    # Incomplete coverage is explicit missing for method comparisons; show observed summaries separately.
+    estimates = {k: metrics[k] if metrics["missing_episodes"] == 0 else None
+                 for k in ("clean_utility", "attacked_utility", "attack_success_rate")}
+    estimates.update({"training_actor_calls": saved["train_usage"]["dispatched_calls"],
+                      "editor_calls": (saved["editor_usage"] or {}).get("dispatched_calls", 0),
+                      "probe_actor_calls": (saved["probe_usage"] or {}).get("dispatched_calls", 0),
+                      "test_actor_calls": provider.summary()["dispatched_calls"]})
+    common = {"root_id": root["root_id"], "method": root["system"], "arm": root["arm"], "seed": root["seed"]}
+    benchmark_name = "agentdojo/" + next(iter(backend.suites)) if len(backend.suites) == 1 else "agentdojo/selected-suites"
+    rows = [{**common, "benchmark": benchmark_name,
+             "final_source_sha256": digest(program), "metrics": metrics, "estimates": estimates,
+             "cases": [reporting.case_row(case, record) for case, record in
+                       zip(backend.cases("heldout"), observations, strict=True)],
+             "strata": reporting.strata(backend.cases("heldout"), observations),
+             "primary": reporting.primary(backend.cases("heldout"), observations, compiled["study"]),
+             "learning_curve": saved["learning_curve"], "train_usage": saved["train_usage"],
+             "editor_usage": saved["editor_usage"], "probe_usage": saved["probe_usage"],
+             "test_usage": provider.summary()}]
+    from rsi_lab.benchmarks.final_evaluation import evaluate
+    rows.extend(evaluate(program, directory, config, common,
+        provider_factory=lambda path, phase, *args: _provider(path, config, phase, *args),
+        runtime_factory=lambda path, provider, phase: _runtime(path, provider, config, phase)))
+    save_record(score_path, {"rows": rows})
 
 
 def inspect(output):
@@ -319,6 +363,17 @@ def _report(output, summary):
               "Training and reserved public probes are separate from those final scores.",
               "Exact cases: agentdojo-cases.csv. Per-root task/attack strata: agentdojo-strata.csv.",
               "Provider calls/tokens: costs.csv. Primary and stratified root bootstrap: summary.json."]
+    measured = summary["performance"]
+    execution = measured["execution"]
+    lines += ["", "## Execution performance", "",
+        f"Scheduling: {execution['scheduling']}; root workers: {execution['root_workers']}; "
+        f"HTTP in flight <= {execution['max_in_flight']}; requests/minute: {execution['requests_per_minute']}.",
+        "Per-root slots and actor steps remain sequential; every root finishes search before final evaluation.",
+        "Generation + evaluation wall seconds (including recorded attempts): "
+        + str(sum(p["elapsed_seconds"] for p in measured["coordinator_phases"])) + ".",
+        "Mean transport seconds (excluding quota wait): " + str(measured["transport_seconds"]["mean"]) + ".",
+        "Detailed timing and process-tree CPU: performance.json and performance-{episodes,api,roots}.csv.",
+        measured["scope"]]
     (output / "report.md").write_text("\n".join(lines) + "\n")
     reporting.write_details(output, summary["rows"])
     columns = ["root_id", "method", "arm", "seed", "step", "public_utility", "activated", "policy_changed",

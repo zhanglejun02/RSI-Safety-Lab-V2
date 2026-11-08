@@ -28,7 +28,23 @@ Public editor feedback now includes a bounded final-answer summary. Two optional
 scripted configs isolate reflection guidance from common-founder self-checking;
 neither is an established prompt improvement. The safety gate and external
 XSTest/AgentHarm evaluations are not enabled in the current main allocation.
-The complete current suite has 237 passing tests, including native isolation.
+Bounded local root parallelism is available through optional `execution` settings;
+serial remains the default. `configs/agentdojo-main-parallel.json` is the same
+four-root scientific control with two spawn workers. Slots, actor steps, final
+episodes and probes inside a root remain sequential, and the generation barrier
+is unchanged. HTTP concurrency/request pacing is shared across workers; 429/5xx
+cool down future requests without retrying unknown calls. Global caps must cover
+the complete provider allocation before dispatch. No shared SQLite writer or
+distributed scheduling was introduced.
+
+`performance.json` and performance CSVs add episode/transport/queue timing and
+process-tree CPU. Timing does not enter optimization feedback. Local HTTP controls
+measured a roughly 1.5× speedup for two roots, with unchanged calls and scientific
+results; this is not a DeepSeek throughput measurement. See `docs/validation.md`
+for the acceptance results and replay evidence. Existing completed runs stay read-only.
+Final validation passed 246 tests, the four-method native parallel control and
+the installed wheel's four-root control; frozen-source reviews passed with zero
+paid API calls.
 
 Default configurations are zero API controls. Natural runs require explicit HTTP
 settings, a frozen allocation and a new output directory. No paid experiment is

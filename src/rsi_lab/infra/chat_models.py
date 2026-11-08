@@ -7,7 +7,7 @@ response is never silently resent. Credentials remain in transport headers only.
 
 from __future__ import annotations
 
-from contextlib import closing, contextmanager
+from contextlib import closing, contextmanager, nullcontext
 from dataclasses import dataclass, field
 import hashlib
 import math
@@ -15,8 +15,10 @@ import os
 from pathlib import Path
 import re
 import sqlite3
+import time
 from typing import Callable, Protocol
 from urllib.parse import urlsplit
+from urllib.error import HTTPError
 from urllib.request import HTTPRedirectHandler, Request, build_opener
 
 from rsi_lab.contracts import CandidateOrigin, StrictRecord, require_count, require_id
@@ -164,13 +166,14 @@ class DurableChatProvider:
 
     origin = CandidateOrigin.NATURAL
 
-    def __init__(self, path: Path, config: ChatConfig, *, transport=None):
+    def __init__(self, path: Path, config: ChatConfig, *, transport=None, limiter=None):
         if type(config) is not ChatConfig:
             raise ValidationError("A typed ChatConfig is required")
         self.path = _checked_path(Path(path))
         self.path.parent.mkdir(parents=True, exist_ok=True)
         self.config = config
         self.transport = transport or http_transport
+        self.limiter = limiter
         self.provider_id = "http_json_chat_" + digest({"url": config.base_url, "model": config.model})[:16]
         self._initialize({"config": config, "provider_id": self.provider_id, "origin": self.origin.value})
 
@@ -193,6 +196,9 @@ class DurableChatProvider:
                     status TEXT NOT NULL, reserved_tokens INTEGER NOT NULL, actual_tokens INTEGER,
                     response_bytes BLOB, response_sha TEXT, result_json BLOB, error_code TEXT,
                     budget_overrun INTEGER NOT NULL DEFAULT 0);
+                CREATE TABLE IF NOT EXISTS chat_timings(
+                    request_id TEXT PRIMARY KEY, started_at REAL NOT NULL,
+                    elapsed_seconds REAL NOT NULL, queue_seconds REAL NOT NULL, http_status INTEGER);
             """)
             value = canonical_bytes(metadata)
             db.execute("BEGIN IMMEDIATE")
@@ -312,7 +318,7 @@ class DurableChatProvider:
         if saved is not None:
             return saved
         try:
-            raw = self.transport(self.config.endpoint, headers, body, self.config.timeout_seconds)
+            raw = self._dispatch(request_id, headers, body)
             if type(raw) is not bytes or len(raw) > 4 * 1024 * 1024:
                 raise ValidationError("Invalid transport response")
             bearer = headers.get("Authorization", "").removeprefix("Bearer ")
@@ -352,6 +358,25 @@ class DurableChatProvider:
         if result is None:
             raise ModelResponseValidationError("Model response is not a complete JSON object; attempt recorded")
         return result
+
+    def _dispatch(self, request_id, headers, body):
+        limiter = getattr(self, "limiter", None)
+        with limiter.admit() if limiter else nullcontext(0.0) as queued:
+            started, timestamp, status = time.monotonic(), time.time(), None
+            try:
+                raw = self.transport(self.config.endpoint, headers, body, self.config.timeout_seconds)
+                status = 200 if self.origin == CandidateOrigin.NATURAL else None
+                return raw
+            except HTTPError as exc:
+                status = exc.code
+                if limiter:
+                    limiter.backoff(status, exc.headers.get("Retry-After") if exc.headers else None)
+                raise
+            finally:
+                # Side-channel telemetry is excluded from receipts and optimizer feedback.
+                with self._db() as db:
+                    db.execute("INSERT INTO chat_timings VALUES(?,?,?,?,?)",
+                               (request_id, timestamp, time.monotonic() - started, queued, status))
 
     @staticmethod
     def _budget_usage(db):

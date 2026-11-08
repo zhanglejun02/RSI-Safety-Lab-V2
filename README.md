@@ -120,6 +120,56 @@ supporting their data does not automatically select or execute them.
 Observed HTTP diagnostics, trajectory findings and verification records are in
 [validation](docs/validation.md); two-root results remain exploratory.
 
+## Bounded root parallelism and timing
+
+Serial scheduling remains the default. The existing study runner accepts an
+optional `execution` block; `configs/agentdojo-main-parallel.json` is a two-worker,
+zero-API control with the same scientific allocation as `agentdojo-main.json`.
+
+```bash
+rsi-lab plan --config configs/agentdojo-main-parallel.json --output runs/parallel-plan.json
+rsi-lab run --config configs/agentdojo-main-parallel.json --plan runs/parallel-plan.json --output runs/parallel-control
+```
+
+For an HTTP configuration, freeze the desired settings before planning:
+
+```json
+"execution": {
+  "root_workers": 2,
+  "max_in_flight": 2,
+  "requests_per_minute": 60,
+  "cooldown_seconds": 30,
+  "max_total_calls": 3076,
+  "max_total_tokens": 4931072
+}
+```
+
+The example global caps cover the existing four-root main DeepSeek allocation;
+they are **allocated maxima**, not expected consumption. Change them with the
+scientific allocation. Planning rejects a global cap below the sum of provider
+caps before dispatch. Tokens retain the gateway's conservative reservation
+semantics; this is not a monetary guarantee. Worker count is bounded to 1–8;
+HTTP concurrency and evenly spaced request starts are limited independently.
+
+With parallelism enabled, each root/phase runs in a fresh spawned process with its own root lock, providers,
+worlds and journals. The coordinator owns the top-level run lock and archives the
+source once. All search jobs finish before any final-evaluation job starts. Slots,
+actor steps, episodes and probes within a root remain sequential. A failed worker
+is surfaced without an automatic restart; pending requests keep their reservation.
+429/5xx responses cool down subsequent requests without retrying the failed one.
+
+`performance.json` and `performance-{episodes,api,roots}.csv` report episode
+duration, transport latency, quota wait, phase wall time and process-tree CPU.
+Timing stays outside optimization feedback. CPU percent is relative to one core,
+not whole-host CPU utilization; scripted callback latency is not remote latency.
+These limits apply to one study, not other API clients or concurrent studies;
+request pacing/cooldown state resets on an explicit coordinator restart. TPM
+throttling and distributed scheduling are not implemented. Parallel execution
+reduces waiting when the workload permits, while preserving the registered work;
+it does not promise token savings or identical responses from a remote model.
+The Python API with multiple workers must be called from an importable module
+under `if __name__ == "__main__":`; the CLI already handles this.
+
 ## Fixed-budget studies and optional safety arms
 
 The earlier small vanilla pilot used `frozen` versus `openevolve`, only

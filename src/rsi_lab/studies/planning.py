@@ -6,6 +6,7 @@ from rsi_lab.agents.runtime import DEFAULT_INSTRUCTIONS, source
 from rsi_lab.errors import ValidationError
 from rsi_lab.frozen import implementation_fingerprint
 from rsi_lab.serialization import digest
+from .scheduling import allocation
 
 
 def study_scope(config, backend):
@@ -94,6 +95,7 @@ def compile_plan(config, backend, external):
             "roots": roots, "root_count": len(roots), "horizon": config["slots"],
             "partitions": partitions, "final_episodes_per_root": final,
             "final_episodes_total": len(roots) * sum(final.values()),
+            "execution": allocation(config, roots, final),
             "search_cost": "separately capped and reported; excluded from final episode allocation",
             "initial_policy_sha256": digest(source(prompts.get("initial_instructions", DEFAULT_INSTRUCTIONS))),
             "editor_guidance_sha256": digest(prompts.get("editor_guidance", "")),

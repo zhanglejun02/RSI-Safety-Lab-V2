@@ -4,6 +4,73 @@ Engineering acceptance records and separately labeled pilot observations follow.
 All controls and tests use zero paid API calls. Scripted outcomes are not natural
 experiments or method rankings.
 
+## Root scheduling and performance acceptance (2026-11-08)
+
+This optimization adds operational measurements and bounded local spawn workers
+to the existing study runner. It preserves fixed H, sequential slots/actor steps,
+per-root journals and the all-roots-frozen final-evaluation barrier. HTTP providers
+share a concurrent-request limit and request-start pacing. Global budgets are
+validated against the complete provider allocation before dispatch, so roots do
+not compete for remaining budget. No paid model was called for this acceptance.
+
+Final validation passed **246 tests**, including serial/parallel scientific
+equivalence, three workers sharing a two-request HTTP limit, gateway timing,
+429/503 future-request cooldown, worker death retaining unknown-call reservations,
+root locks and read-only resume. The recovery checks include a cached root whose
+worker still holds its lock. Two upstream deprecation warnings remain.
+
+The four-method parallel native control used two workers, seven roots, H2, two
+fixed XSTest prompts and one paired AgentHarm behavior (`1-1`) in each native set.
+It completed **28 final rows / 84 final episodes**, with **1,062 scripted provider
+requests**, 14 recorded root phases, zero missing call timings and six prescribed
+probe-gate rejections. The safety arms and external backends are wiring controls,
+not additional natural-model experiments. Original control output:
+`runs/infra-parallel-native-control-20261108`; its completed resume preserved all
+**5,345 files**, and frozen review verified all 1,062 requests.
+
+A separate timing control ran **two frozen roots**, four development tasks and
+16 final cases per root against an actual localhost HTTP server. It returned
+prescribed native actions after a 200 ms delay; no remote model or billable model
+tokens were involved. Runs were executed sequentially without concurrent test
+jobs. Their final policy content, task/attack scores, learning curves and call
+counts matched; raw configuration, timing and artifact identities differ.
+
+| Measurement | Serial | Two root workers |
+|---|---:|---:|
+| End-to-end wall seconds | 33.794 | 22.723 |
+| HTTP calls | 134 | 134 |
+| Peak concurrent HTTP requests | 1 | 2 |
+| Mean saved episode seconds (40 episodes) | 0.7983 | 0.7995 |
+| Mean HTTP transport seconds | 0.2238 | 0.2207 |
+| Process-tree CPU seconds | 5.767 | 14.225 |
+| CPU percent relative to one core | 17.1% | 62.6% |
+
+The observed speedup was **1.487×**, or 32.8% less wall time. It includes process
+startup/import and coordination costs, explaining why this small run did not
+reach 2×. CPU measurements also include the localhost fixture server, so they
+are not production host-utilization estimates. This demonstrates overlapping
+network waits, not a DeepSeek speed guarantee or token-cost reduction. Only one
+timing pair was run at this source revision; there is no timing confidence claim.
+
+Timing output: `runs/infra-local-http-20261108/{serial,parallel}`. Each completed
+resume preserved **670 files**; both frozen reviews verified 134 requests. The
+comparison record SHA-256 is
+`d10a55b7749c0c2ae4365631772602730667425fa51d9f10732eddfd4ba03c3f`.
+The earlier 64-episode real DeepSeek run also resumed with all **2,488 original
+files** unchanged after this refactor; its API/CPU timing was not backfilled.
+
+After the final recovery guard, the native control was rerun at
+`runs/infra-parallel-final-native-control-20261108`. Its 28 final rows retained
+the same policy content, metrics, learning curves and provider counts. Frozen
+review verified **1,062 requests / 5,345 unchanged files**. The rebuilt wheel
+was installed in the constrained validation environment outside the checkout;
+`pip check` and its four-root parallel control passed (**64 final episodes**).
+Completed resume and frozen review preserved **2,360 files / 472 requests**.
+Both final controls use implementation fingerprint
+`8d3937a009febe8a08a906cb0cfd47483a36ebe1404d96807a9295691ba0c3e9`.
+The timing comparison above belongs to the preceding revision; no completed
+artifact was rewritten after adding the recovery guard.
+
 ## Selected-allocation framework acceptance (2026-11-08)
 
 - Full macOS/Python 3.12 suite: **237 passed**, including actual HyperAgents
@@ -363,8 +430,9 @@ does not gain an unsandboxed fallback.
 ## Limits
 
 Linux CI is configured but has not been observed on a remote GitHub runner in
-this local release. HyperAgents is macOS-only. Windows and distributed/parallel
-experiment scheduling are not validated. A selected new machine still needs the
+this local release. HyperAgents is macOS-only. Local root parallelism has the
+scripted/localhost validation above; Windows, distributed scheduling and remote
+model throughput under parallel load remain unvalidated. A new machine needs the
 declared Python/dependencies and, for HTTP runs, its own credentials.
 
 The constraints are a resolved Python 3.12 environment, not a wheel hash lock for

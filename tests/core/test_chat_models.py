@@ -6,6 +6,8 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 import sqlite3
 from threading import Thread
+import time
+from urllib.error import HTTPError
 
 import pytest
 
@@ -13,6 +15,7 @@ from rsi_lab.contracts import CandidateOrigin
 from rsi_lab.errors import (BudgetExceeded, ConflictError, IntegrityError,
                             ModelResponseValidationError, OutcomeUnknown, ValidationError)
 from rsi_lab.infra.chat_models import ChatConfig, ChatMessage, DurableChatProvider, ScriptedChatProvider
+from rsi_lab.infra.dispatch import DispatchLimiter
 from rsi_lab.serialization import canonical_bytes, decode_json
 
 
@@ -60,6 +63,46 @@ def local_server(raw):
 
 def config(**changes):
     return replace(ChatConfig("http://127.0.0.1:8000/v1", "local-model", max_output_tokens=64), **changes)
+
+
+def test_transport_timing_is_separate_and_replay_does_not_measure_again(tmp_path):
+    def transport(*args):
+        time.sleep(0.01)
+        return response()
+    path = tmp_path / "timed.sqlite"
+    provider = DurableChatProvider(path, config(), transport=transport)
+    original = provider.generate("r1", MESSAGES)
+    before = path.read_bytes()
+    assert provider.generate("r1", MESSAGES) == original
+    assert path.read_bytes() == before
+    assert "elapsed_seconds" not in original.to_dict()
+    with sqlite3.connect(path) as db:
+        elapsed, queued, status = db.execute("SELECT elapsed_seconds,queue_seconds,http_status FROM chat_timings").fetchone()
+    assert elapsed >= 0.01 and queued == 0 and status == 200
+
+
+@pytest.mark.parametrize("status", [429, 503])
+def test_rate_error_cools_future_dispatch_without_retrying_unknown(tmp_path, status):
+    limiter = DispatchLimiter(cooldown_seconds=0)
+    calls = []
+    def unavailable(*args):
+        calls.append("failed")
+        raise HTTPError("http://localhost", status, "untrusted private error", {"Retry-After": "0.03"}, None)
+    first = DurableChatProvider(tmp_path / "first.sqlite", config(), transport=unavailable, limiter=limiter)
+    with pytest.raises(OutcomeUnknown):
+        first.generate("lost", MESSAGES)
+    second = DurableChatProvider(tmp_path / "second.sqlite", config(),
+        transport=lambda *args: calls.append("next") or response(), limiter=limiter)
+    second.generate("next", MESSAGES)
+    with sqlite3.connect(second.path) as db:
+        assert db.execute("SELECT queue_seconds FROM chat_timings").fetchone()[0] > 0.01
+    with sqlite3.connect(first.path) as db:
+        assert db.execute("SELECT http_status FROM chat_timings").fetchone()[0] == status
+    with pytest.raises(OutcomeUnknown):
+        first.generate("lost", MESSAGES)
+    assert calls == ["failed", "next"]
+    assert first.summary()["reserved_tokens"] > 0
+    assert b"untrusted private error" not in first.path.read_bytes()
 
 
 def test_real_local_http_json_usage_and_replay_without_credentials(tmp_path, monkeypatch):

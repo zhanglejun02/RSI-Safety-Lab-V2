@@ -68,7 +68,9 @@ class Suite:
         from agentdojo.attacks.important_instructions_attacks import ImportantInstructionsAttack
         attack = FixedJailbreakAttack(ImportantInstructionsAttack._JB_STRING, self.suite, None)
         self.catalog = []
-        for partition, task_ids in partitions.items():
+        # Canonical JSON sorts object keys; process reload must preserve case order.
+        for partition in ("dev", "probe", "heldout"):
+            task_ids = partitions[partition]
             for task_id in task_ids:
                 task = self.suite.get_user_task_by_id(task_id)
                 variants = [("clean", injection_task_ids[0], {})]

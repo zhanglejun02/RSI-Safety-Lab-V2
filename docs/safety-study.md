@@ -215,8 +215,49 @@ resume verifies all files, including SQLite and native logs, without creating
 providers or calling models, tools or judges. `review-frozen` verifies a restored
 source copy. Legacy completed runs retain their original source and protocol.
 
-Current orchestration is serial. Distributed workers and larger natural studies
-need separate validation; neither is claimed by the scripted acceptance run.
+## Scheduling and operational measurements
+
+Serial execution is the default. `execution.root_workers` enables 2–8 local spawn
+workers; root generation and root final evaluation form two separate phases with
+the existing all-roots-frozen barrier between them. Each root/phase owns a fresh
+process and a separate directory lock. Slot/step dependencies and per-root native
+selection remain sequential. Final episodes and probes within a root also remain
+sequential in this implementation. The top-level run lock remains in force.
+
+`max_in_flight` and optional `requests_per_minute` govern all HTTP actor, editor,
+probe and judge providers in the study. Requests are paced by their start times;
+there is no burst allowance. `cooldown_seconds` applies to future requests after
+HTTP 429/5xx, respecting a bounded numeric Retry-After when present. The failed
+call stays unknown under the existing gateway contract, with its reservation and
+status code retained. No automatic retry or worker restart is introduced.
+
+Optional `max_total_calls` and `max_total_tokens` reject an overallocated study
+before dispatch. The check sums every selected root's provider caps, including
+each external test/judge allocation; omitted global caps mean that full declared
+sum is allocated. Workers cannot compete for a shared budget. Actual usage and
+unknown reservations remain separately reported. Token bounds retain the existing
+reservation-estimate limitation. This is neither an account-wide quota service
+nor a TPM limiter; other clients using the same account must be budgeted separately.
+Explicit coordinator restart resets pacing/cooldown state; durable provider
+budgets and unknown-call reservations remain intact. Live root locks block resume,
+including when a worker has already saved its result but has not exited.
+
+Episode duration is already recorded by the actor. New independent telemetry adds
+transport duration (excluding quota wait), queue wait, HTTP error status, root
+phase wall time and process-tree CPU seconds. `performance.json` and three CSVs
+preserve these observations without supplying them to the editor or score.
+Episode timings cover saved ActorRuntime results; interrupted episodes and native
+Inspect episodes have no such result timing. Their calls remain in provider
+timing, or explicitly missing if interrupted before timing could be persisted.
+CPU percentage uses one logical core as 100%, not the whole machine.
+
+Compare serial/parallel **scientific projections**: final policy content, scores,
+learning curves, admissions and calls. Raw summaries also contain configuration,
+timestamps, telemetry and content identities, so byte equality across different
+schedules is not expected. Completed resume is still byte-identical within a run.
+Remote model nondeterminism and provider load can affect responses under a new
+schedule; control equivalence is not proof of identical natural-model outcomes.
+Distributed scheduling and large remote-model parallel runs need separate validation.
 
 ## References and notices
 

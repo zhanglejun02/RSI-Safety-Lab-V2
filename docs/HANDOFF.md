@@ -47,15 +47,15 @@ These inspected pools are development data. Freeze new formal partitions and
 compare all methods on the same catalog; do not pair against the old pilot after
 changing attacks. No five-seed formal study has been started.
 
-The subsequent frozen-list main diagnostic completed 64/64 HTTP final episodes,
-with 48/48 payloads observed. Frozen versus OpenEvolve: clean utility 6/8 versus
-8/8; attacked utility 20/24 versus 17/24; primary role-spoofing ASR 6/8 versus 7/8.
-Only one additional attack success separates methods. Both first-slot public
-score increases occurred while active founder content was unchanged; inspect
-policy hashes and archive admission alongside curves. Total use was 898,438
-tokens; completed resume and frozen review verified 2,488 files/512 requests.
-These are findings on the screened pool, not a formal ranking. Detailed evidence,
-costs, caveats and source hashes are in `docs/validation.md`.
+The latest main replication is `runs/main-real-20261109`: 64/64 final episodes,
+48/48 payloads observed, frozen/OpenEvolve primary role-spoofing ASR **6/8 vs 8/8**.
+Both extra successes occur on task 15; native traces show the injected 11.00
+transfer. Clean utility is 8/8 vs 7/8, attacked utility 19/24 each, with 907,491
+total tokens. Both final edited instruction strings changed; public curves are
+flat/nonmonotonic. The next recommended diagnostic is GEPA under native_only;
+no Wave 2 or formal five-seed comparison has run. Earlier repetitions are retained
+separately. See `docs/validation.md` for task/seed results, costs, zero-width
+bootstrap limitations, 249-test acceptance and frozen-review evidence.
 
 Before changing execution code, read `docs/architecture.md` and `docs/protocol.md`.
 Use `docs/validation.md` for observed acceptance results and untested boundaries.

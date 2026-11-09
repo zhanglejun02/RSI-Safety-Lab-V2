@@ -217,7 +217,7 @@ source copy. Legacy completed runs retain their original source and protocol.
 
 ## Scheduling and operational measurements
 
-Use the same canonical JSON with `--execution configs/execution/parallel.json`
+Use the same canonical JSON with `--execution configs/execution/parallel-conservative.json`
 on both `plan` and `run`. In Python, use `load_config(path, execution=overlay)`
 before `plan_experiment`/`run_experiment`. The overlay replaces the **entire**
 execution block; it cannot change methods, seeds, models or tasks. Omitted fields
@@ -234,7 +234,7 @@ No inheritance tree or recursive config merge is involved.
 | `max_total_calls` | null | Optional ceiling on the full allocated provider call caps |
 | `max_total_tokens` | null | Optional ceiling on the full allocated token reservations |
 
-The shipped overlay uses 60 RPM conservatively; it is not tuned to any provider
+The explicitly named conservative overlay uses 60 RPM; it is not tuned to any provider
 quota or derived from a speed measurement. It can dominate short-response
 workloads. Choose pacing using measured latency and the account's limits, then
 freeze it. A null RPM limit still preserves concurrency and cooldown bounds.
@@ -247,8 +247,9 @@ selection remain sequential. Final episodes and probes within a root also remain
 sequential in this implementation. The top-level run lock remains in force.
 
 `max_in_flight` and optional `requests_per_minute` govern all HTTP actor, editor,
-probe and judge providers in the study. Requests are paced by their start times;
-there is no burst allowance. `cooldown_seconds` applies to future requests after
+probe and judge providers in the study. Pacing separates limiter admission times;
+OS/network scheduling can compress the intervals observed at the server. There
+is no accumulated burst allowance. `cooldown_seconds` applies to future requests after
 HTTP 429/5xx, respecting a bounded numeric Retry-After when present. The failed
 call stays unknown under the existing gateway contract, with its reservation and
 status code retained. No automatic retry or worker restart is introduced.

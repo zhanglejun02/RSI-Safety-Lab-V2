@@ -126,13 +126,14 @@ Serial is the default. Reuse the canonical study config with a small execution
 overlay; the resolved settings are frozen in the plan and manifest:
 
 ```bash
-rsi-lab plan --config configs/agentdojo-main.json --execution configs/execution/parallel.json --output runs/parallel-plan.json
-rsi-lab run --config configs/agentdojo-main.json --execution configs/execution/parallel.json --plan runs/parallel-plan.json --output runs/parallel-control
+rsi-lab plan --config configs/agentdojo-main.json --execution configs/execution/parallel-conservative.json --output runs/parallel-plan.json
+rsi-lab run --config configs/agentdojo-main.json --execution configs/execution/parallel-conservative.json --plan runs/parallel-plan.json --output runs/parallel-control
 ```
 
 Read `performance.json` and `performance-{episodes,api,roots}.csv` for timings.
-The overlay's 60 RPM is a conservative starting value, not the source of the
-reported 1.49× speedup. Use identical execution settings across scientific arms.
+`parallel-conservative.json` deliberately caps starts at 60 RPM; it is a conservative
+example, not an acceleration preset. Unpaced runs explicitly use null RPM.
+Use identical execution settings across scientific arms.
 See [scheduling and recovery](docs/safety-study.md#scheduling-and-operational-measurements)
 for limits and [validation](docs/validation.md) for measured regimes and results.
 

@@ -65,6 +65,40 @@ def config(**changes):
     return replace(ChatConfig("http://127.0.0.1:8000/v1", "local-model", max_output_tokens=64), **changes)
 
 
+@pytest.fixture
+def dispatch_clock(monkeypatch):
+    class Clock:
+        now = 0.0
+        wake_early = False
+
+        def monotonic(self):
+            return self.now
+
+        def sleep(self, seconds):
+            self.now += seconds / 2 if self.wake_early else seconds
+            self.wake_early = False
+
+    clock = Clock()
+    monkeypatch.setattr("rsi_lab.infra.dispatch.time", clock)
+    return clock
+
+
+def test_dispatch_pacing_survives_early_wakeup_and_does_not_accumulate_bursts(dispatch_clock):
+    interval = 60 / 1800
+    limiter = DispatchLimiter(requests_per_minute=1800)
+    dispatch_clock.wake_early = True
+    starts = []
+    for _ in range(3):
+        with limiter.admit():
+            starts.append(dispatch_clock.now)
+    assert starts == pytest.approx([0, interval, 2 * interval])
+    dispatch_clock.now += 10
+    with limiter.admit() as queued:
+        assert queued == 0
+    with limiter.admit() as queued:
+        assert queued == pytest.approx(interval)
+
+
 def test_transport_timing_is_separate_and_replay_does_not_measure_again(tmp_path):
     def transport(*args):
         time.sleep(0.01)
@@ -82,7 +116,7 @@ def test_transport_timing_is_separate_and_replay_does_not_measure_again(tmp_path
 
 
 @pytest.mark.parametrize("status", [429, 503])
-def test_rate_error_cools_future_dispatch_without_retrying_unknown(tmp_path, status):
+def test_rate_error_cools_future_dispatch_without_retrying_unknown(tmp_path, status, dispatch_clock):
     limiter = DispatchLimiter(cooldown_seconds=0)
     calls = []
     def unavailable(*args):
@@ -95,7 +129,7 @@ def test_rate_error_cools_future_dispatch_without_retrying_unknown(tmp_path, sta
         transport=lambda *args: calls.append("next") or response(), limiter=limiter)
     second.generate("next", MESSAGES)
     with sqlite3.connect(second.path) as db:
-        assert db.execute("SELECT queue_seconds FROM chat_timings").fetchone()[0] > 0.01
+        assert db.execute("SELECT queue_seconds FROM chat_timings").fetchone()[0] == pytest.approx(0.03)
     with sqlite3.connect(first.path) as db:
         assert db.execute("SELECT http_status FROM chat_timings").fetchone()[0] == status
     with pytest.raises(OutcomeUnknown):

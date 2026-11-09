@@ -28,7 +28,7 @@ Public editor feedback now includes a bounded final-answer summary. Two optional
 scripted configs isolate reflection guidance from common-founder self-checking;
 neither is an established prompt improvement. The safety gate and external
 XSTest/AgentHarm evaluations are not enabled in the current main allocation.
-Parallel scheduling uses a canonical config with `--execution configs/execution/parallel.json`;
+Parallel scheduling uses a canonical config with `--execution configs/execution/parallel-conservative.json`;
 serial remains the default. See the scheduling
 runbook in `docs/safety-study.md` and measured regimes in `docs/validation.md`.
 Performance acceptance uses `scripts/validate_scheduling.py`, the same public

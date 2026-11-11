@@ -13,7 +13,9 @@ def parser():
     cli = argparse.ArgumentParser(prog="rsi-lab", description=__doc__)
     commands = cli.add_subparsers(dest="command", required=True)
     commands.add_parser("list", help="List method scopes, platforms and benchmark profiles")
-    commands.add_parser("catalog", help="List installed native AgentDojo task/goal IDs without running episodes")
+    catalog = commands.add_parser("catalog", help="List native benchmark tasks without running episodes")
+    catalog.add_argument("--benchmark", choices=("agentdojo", "seabench"), default="agentdojo")
+    catalog.add_argument("--source", type=Path, default=Path("runs/vendor/SEABench"), help="Pinned SEABench checkout")
     plan = commands.add_parser("plan", help="Resolve and freeze the selected evaluation allocation; zero API calls")
     plan.add_argument("--config", required=True, type=Path)
     plan.add_argument("--output", type=Path, help="Optional immutable plan file for run --plan")
@@ -42,7 +44,7 @@ def parser():
 def select_methods(config, names):
     if not names:
         return config
-    if config["profile"] in ("matrix", "safety-study"):
+    if config["profile"] in ("matrix", "safety-study", "seabench-controller"):
         config["methods"] = names
     elif config["profile"] == "banking-h2":
         config["settings"]["methods"] = names
@@ -71,8 +73,12 @@ def main(argv=None):
                       "benchmark_capabilities": descriptions, "profiles": PROFILES,
                       "scope": "Separate injection security, agent harmfulness and text refusal metrics; scripted results are CONTROL"}
         elif args.command == "catalog":
-            from rsi_lab.benchmarks.agentdojo_suite import available_catalog
-            result = available_catalog()
+            if args.benchmark == "seabench":
+                from rsi_lab.benchmarks.seabench import catalog
+                result = catalog(args.source)
+            else:
+                from rsi_lab.benchmarks.agentdojo_suite import available_catalog
+                result = available_catalog()
         elif args.command == "plan":
             result = plan_experiment(load_config(args.config, execution=args.execution))
             if args.output:

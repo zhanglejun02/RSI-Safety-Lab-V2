@@ -4,7 +4,8 @@ import math
 from rsi_lab.errors import ValidationError
 
 FAMILIES = {"text_safety": {"harmfulness", "refusal", "over_refusal"},
-            "agent_harm": {"harmful_task_completion", "benign_task_completion", "refusal"}}
+            "agent_harm": {"harmful_task_completion", "benign_task_completion", "refusal"},
+            "endogenous_safety": {"task_completion", "safety_violation"}}
 
 
 def validate_safety_metrics(metrics):

@@ -2,6 +2,7 @@
 
 | Component | Source / revision | Integration |
 |---|---|---|
+| SEABench | [SEABench-Endogenous-Misalignment/SEABench](https://github.com/SEABench-Endogenous-Misalignment/SEABench), `21828194aa709da6c18cddaeb718b309db71d22f` | External checkout; 148 files source-locked; native controller tasks, read-only file tools and direct rubric judges |
 | AgentDojo | [ethz-spylab/agentdojo](https://github.com/ethz-spylab/agentdojo), package 0.1.35 | Installed dependency; native task suites, tools and graders |
 | XSTest | [paul-rottger/xstest](https://github.com/paul-rottger/xstest), `d7bb5bd738c1fcbc36edd83d5e7d1b71a3e2d84d` | 450 prompts normalized from CSV to JSON, preserving all columns; raw source SHA-256 is recorded in the data |
 | AgentHarm | [official Inspect implementation](https://github.com/UKGovernmentBEIS/inspect_evals/tree/main/src/inspect_evals/agentharm), Inspect Evals 0.27.0 / Inspect AI 0.3.288 | Optional installed native tools and graders; 175 source files checked against `agentharm_source_lock.json` |

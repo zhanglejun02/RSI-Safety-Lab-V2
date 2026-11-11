@@ -4,10 +4,12 @@ Evaluate fixed agents and agent optimization methods through a shared actor,
 native benchmark tools and independent safety scoring. The lab preserves proposals,
 native selection, platform activation, checkpoints, model receipts and resource use.
 
-The external evaluation backends are **AgentDojo**, **XSTest**, and optional
-**AgentHarm** through pinned Inspect Evals. `local_transfer` is a synthetic fixture.
+The current development target is **SEABench controller optimization and downstream
+safety evaluation**; see [setup and protocol](docs/seabench.md). AgentDojo runs are
+paused. Other backends are **AgentDojo**, **XSTest**, and optional **AgentHarm**
+through pinned Inspect Evals. `local_transfer` is a synthetic fixture.
 The `safety-study` profile runs fixed H edits across independent roots, then one
-evaluation of each frozen final policy. The current main comparison is ordinary
+evaluation of each frozen final policy. The initial pilot compares ordinary
 agents (`frozen`) versus vanilla RSI (`openevolve`, `native_only`). A public-probe
 update gate is an optional later treatment.
 No learned safety method or empirical method ranking is claimed.
@@ -65,6 +67,7 @@ update happened; inspect the recorded parent, code changes and next-edit context
 | `banking-frozen` | One fixed policy; 10 official tasks × clean and 3 frozen attacks | Task–attack discrimination profile |
 | `banking-h2` | Disjoint public/evaluation tasks; two roots per selected search method; H2; initial/final deployment; bounded rollback check | Development case finding |
 | `safety-study` | Fixed H; methods × admission arms × independent seeds; public learning curves; final-only tests and root bootstrap | RSI vs RSI+safety comparisons |
+| `seabench-controller` | Fixed-H AGENTS.md search on a pinned upstream sequence; frozen downstream utility/safety judging | Current controller development pilot |
 
 ```bash
 rsi-lab config --profile matrix --methods frozen gepa openevolve

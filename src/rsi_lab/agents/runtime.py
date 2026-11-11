@@ -221,15 +221,21 @@ class ActorRuntime:
         save_record(directory / "intent.json", identity)
         started = time.monotonic()
         trace, messages, answer, reason = [], [], "", "step_limit"
+        episode = None
         try:
             episode = backend.new_episode(case)
             if type(episode.initial_request) is not str or not episode.initial_request:
                 raise ValidationError("Backend initial request must be nonempty text")
+            instructions = config["instructions"]
+            if hasattr(episode, "prepare_instructions"):
+                instructions = episode.prepare_instructions(instructions, directory)
+                if type(instructions) is not str or not instructions.strip():
+                    raise ValidationError("Backend instructions must be nonempty text")
             tools = _tools(episode)
             case_id = case.get("case_id", case.get("id", digest(case)))
             if type(case_id) is not str:
                 raise ValidationError("Public case identity must be text")
-            messages = [ChatMessage("system", _TRANSPORT + "\n\n" + config["instructions"]),
+            messages = [ChatMessage("system", _TRANSPORT + "\n\n" + instructions),
                         ChatMessage("user", json_text({"case_id": digest(case_id), "request": episode.initial_request, "tools": tools}))]
             for step in range(1, self.max_steps + 1):
                 request_id = "actor-" + digest(identity) + f"-{step:04d}"
@@ -307,3 +313,6 @@ class ActorRuntime:
             save_record(directory / "fatal.json", {"identity": identity, "trace": trace,
                         "error_type": type(exc).__name__})
             raise
+        finally:
+            if episode is not None and hasattr(episode, "close"):
+                episode.close()

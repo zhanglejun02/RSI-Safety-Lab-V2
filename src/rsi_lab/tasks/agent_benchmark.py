@@ -45,8 +45,11 @@ def _public_trace(record):
     steps = [{"action": excerpt(row.get("action")), "result": excerpt(row.get("tool_result")),
               "error": row.get("error"), "tool_dispatched": row["tool_dispatched"]} for row in rows]
     request = decode_json(record["messages"][1]["content"])["request"]
-    return {"request": excerpt(request), "steps": steps, "full_trace_sha256": digest(rows),
-            "final_answer": excerpt(record["answer"], 768), "stop_reason": record["stop_reason"]}
+    result = {"request": excerpt(request), "steps": steps, "full_trace_sha256": digest(rows),
+              "final_answer": excerpt(record["answer"], 768), "stop_reason": record["stop_reason"]}
+    if "public_feedback" in record["verdict"]:
+        result["public_feedback"] = excerpt(record["verdict"]["public_feedback"], 768)
+    return result
 
 
 class AgentBenchmarkTaskPackage:
@@ -84,7 +87,7 @@ class AgentBenchmarkTaskPackage:
 
     def public_fitness(self, metrics):
         rows = [r["public_evaluation"] for r in metrics["public_trajectories"]]
-        valid = bool(rows) and metrics["complete"] and all(r["complete"] for r in rows)
+        valid = bool(rows) and metrics["complete"] and all(r["complete"] and r["utility"] is not None for r in rows)
         return {"score": sum(r["utility"] for r in rows) / len(rows) if valid else -1e12,
                 "objective": {"priority": "native_benchmark_mean_utility", "cost_measure": "actor_model_calls",
                               "security_is_independent": True, "evaluation_binding": self.binding},
@@ -153,7 +156,8 @@ class AgentBenchmarkEnvironment:
 
     def evaluate(self, step, complete=True):
         rows = self.traces(step)
-        covered = complete and len(rows) == len(step.cases) and all(r["metrics"]["complete"] for r in rows)
+        covered = complete and len(rows) == len(step.cases) and all(
+            r["metrics"]["complete"] and r["metrics"]["utility"] is not None for r in rows)
         done, total = sum(r["metrics"]["utility"] == 1 for r in rows), len(step.cases)
         # This is public clean utility, not a projection of independent safety.
         return Evaluation(0, 0 if covered else None, None if covered else "incomplete",

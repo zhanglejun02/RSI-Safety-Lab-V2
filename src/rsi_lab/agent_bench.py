@@ -6,7 +6,7 @@ from pathlib import Path
 from rsi_lab.errors import ConflictError, ValidationError
 from rsi_lab.methods import check_available
 
-PROFILES = ("matrix", "banking-frozen", "banking-h2", "safety-study")
+PROFILES = ("matrix", "banking-frozen", "banking-h2", "safety-study", "seabench-controller")
 
 
 def load_config(path, *, execution=None):
@@ -15,8 +15,8 @@ def load_config(path, *, execution=None):
     if not isinstance(config, dict):
         raise ValidationError("Configuration must be a JSON object")
     if execution is not None:
-        if config.get("profile") != "safety-study":
-            raise ValidationError("Execution overlays require the safety-study profile")
+        if config.get("profile") not in ("safety-study", "seabench-controller"):
+            raise ValidationError("Execution overlays require safety-study or seabench-controller")
         from rsi_lab.studies.scheduling import settings
         config["execution"] = json.loads(Path(execution).read_text())
         settings(config)
@@ -25,7 +25,7 @@ def load_config(path, *, execution=None):
 
 def default_config(profile="matrix"):
     """Return a fresh, serializable profile; freeze it before starting a run."""
-    if profile == "safety-study":
+    if profile in ("safety-study", "seabench-controller"):
         return _runner(profile).default_config()
     if profile == "matrix":
         return {"profile": profile, "protocol": "agent-benchmark-matrix-v2", "mode": "scripted",
@@ -43,7 +43,7 @@ def _runner(profile):
     from importlib import import_module
 
     modules = {"matrix": "agent_bench", "banking-frozen": "frozen_profile", "banking-h2": "paired_search",
-               "safety-study": "safety_study"}
+               "safety-study": "safety_study", "seabench-controller": "seabench_study"}
     if profile not in modules:
         raise ValidationError(f"Unknown profile {profile!r}; choose {', '.join(PROFILES)}")
     return import_module("rsi_lab.studies." + modules[profile])
@@ -51,10 +51,10 @@ def _runner(profile):
 
 def plan_experiment(config):
     """Resolve a selected study allocation without creating providers or dispatching calls."""
-    if not isinstance(config, dict) or config.get("profile") != "safety-study":
-        raise ValidationError("Frozen allocation planning currently supports the safety-study profile")
+    if not isinstance(config, dict) or config.get("profile") not in ("safety-study", "seabench-controller"):
+        raise ValidationError("Frozen allocation planning requires a planned study profile")
     check_available(config.get("methods", []))
-    return _runner("safety-study").plan(deepcopy(config))
+    return _runner(config["profile"]).plan(deepcopy(config))
 
 
 def run_experiment(config=None, output="runs/agent-bench", *, resume=False, expected_plan=None):
@@ -68,11 +68,11 @@ def run_experiment(config=None, output="runs/agent-bench", *, resume=False, expe
         raise ValidationError("Configuration must be a JSON object")
     profile = config.get("profile")
     runner = _runner(profile)
-    if expected_plan is not None and profile != "safety-study":
-        raise ValidationError("Expected plans apply to safety-study allocations")
-    if profile in ("matrix", "safety-study"):
+    if expected_plan is not None and profile not in ("safety-study", "seabench-controller"):
+        raise ValidationError("Expected plans apply to planned study allocations")
+    if profile in ("matrix", "safety-study", "seabench-controller"):
         check_available(config.get("methods", []))
-        options = {"expected_plan": expected_plan} if profile == "safety-study" else {}
+        options = {"expected_plan": expected_plan} if profile != "matrix" else {}
         return runner.run(config, output, resume=resume, **options)
     if set(config) != {"profile", "mode", "settings"} or config["mode"] not in ("scripted", "http"):
         raise ValidationError("Use default_config(profile) and its declared fields")

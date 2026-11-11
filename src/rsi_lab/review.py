@@ -17,6 +17,7 @@ import sys
 import zipfile
 
 INSPECTORS = {
+    "seabench-controller-study-v1": "seabench_study",
     "rsi-safety-study-v1": "safety_study",
     "agent-benchmark-matrix-v1": "agent_bench",
     "agent-benchmark-matrix-v2": "agent_bench",

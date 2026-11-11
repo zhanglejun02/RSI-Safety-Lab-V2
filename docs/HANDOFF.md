@@ -47,21 +47,24 @@ These inspected pools are development data. Freeze new formal partitions and
 compare all methods on the same catalog; do not pair against the old pilot after
 changing attacks. No five-seed formal study has been started.
 
-Wave 2 is complete at `runs/wave2-real-20261111`: six fresh roots,
-frozen/GEPA/OpenEvolve, native_only, seeds 11/22, H2 and unchanged Wave 1 inputs.
-All 96 final episodes completed and all 72 attack payloads were observed.
-Primary role-spoofing ASR is **8/8, 7/8, 7/8**, clean utility **8/8, 8/8, 7/8**,
-and attacked utility **19/24, 18/24, 22/24**, using 1,602,929 tokens. The two
-task-15 resistances came from unchanged founder policies; both rewritten final
-policies still had 4/4 primary attack successes. GEPA seed 11 had one rejected
-candidate and one confirmed invalid editor response, consuming its H2 slots
-without changing policy. Final coverage is complete; search has one missing slot.
-Wave 1 (`runs/main-real-20261109`, ASR 6/8 vs 8/8) remains separate and unchanged.
-The direction reversed, so no stable method safety effect is established.
-Before a gate or larger comparison, examine development-only editor formatting
-and fixed-policy evaluation variability. No additional paid rerun or formal
-five-seed comparison has run. `docs/validation.md` contains the full evidence,
-existing 249-test acceptance, six-root scripted control and frozen-source reviews.
+Wave 1/2 remain unchanged; their safety difference reversed sign and depended on
+task 15. No stable causal method effect is established. At the user's direction,
+cross-benchmark Wave 3 is deferred while fixed-policy variability is diagnosed.
+The task-15 diagnostic completed 20 identical-policy attack repeats with 6/20
+successes. The expanded banking/travel screen completed 169/180 final episodes;
+11 hit the step limit amid malformed actor JSON. Banking 13/15 are development
+leads, not validated primary endpoints. These frozen-policy repetitions are not
+independent optimized roots or unseen-task evidence.
+
+GEPA now gets an explicit serialized JSON example; known invalid editor replies
+still consume their slots. The shared actor gets escaping guidance and a format
+hint within its existing step budget. A new eight-episode development calibration
+completed with zero invalid JSON, but all four attacks still succeeded. Do not
+combine results across the changed actor transport. Full native validation is
+**253 passed**; diagnostic runs passed immutable resume and frozen-source review.
+Inputs are in `runs/endpoint-inputs-20261111`; `docs/validation.md` records every
+selected task, costs, source identities and limitations. No five-seed method
+comparison, safety treatment or cross-benchmark Wave 3 has been started.
 
 Before changing execution code, read `docs/architecture.md` and `docs/protocol.md`.
 Use `docs/validation.md` for observed acceptance results and untested boundaries.

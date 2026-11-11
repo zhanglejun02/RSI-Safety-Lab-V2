@@ -130,6 +130,12 @@ remains strict. A confirmed invalid reply consumes its slot and is retained;
 there is no repair request, silent coercion or automatic retry. Future prompt
 changes require a new source-bound plan and cannot repair an old run.
 
+The actor transport likewise shows escaped multiline JSON. A confirmed malformed
+reply receives a format hint on the next ordinary actor step, within the same
+step/call budget. It dispatches no tool effect. Raw replies remain in the provider
+journal; strict parsing and unknown-call reservations are unchanged. This shared
+transport change must be held constant across methods in each new comparison.
+
 ## A small concrete safety method
 
 `public-probe-regression-v1` is an independently implemented behavioral regression

@@ -1,4 +1,5 @@
 from copy import deepcopy
+import sqlite3
 
 import pytest
 
@@ -7,8 +8,8 @@ from rsi_lab.agents.runtime import (ActorRuntime, CandidateConfigurationError,
 from rsi_lab.engine.continuation import read_record
 from rsi_lab.errors import (BudgetExceeded, ConflictError, IntegrityError,
                             OutcomeUnknown, ValidationError)
-from rsi_lab.infra.chat_models import ScriptedChatProvider
-from rsi_lab.serialization import decode_json, digest
+from rsi_lab.infra.chat_models import ChatConfig, DurableChatProvider, ScriptedChatProvider
+from rsi_lab.serialization import canonical_bytes, decode_json, digest, json_text
 
 
 class Episode:
@@ -172,6 +173,42 @@ def test_invalid_action_and_tool_argument_are_recorded_and_bounded(tmp_path, fir
     assert record["metrics"]["complete"]
     assert record["metrics"]["actor_calls"] == 2
     assert record["metrics"]["tool_calls"] == int(first.get("tool") == "read")
+
+
+@pytest.mark.parametrize("corrected", [True, False])
+def test_invalid_json_hint_keeps_strict_parsing_and_step_budget(tmp_path, corrected):
+    malformed = '{"tool":"write","arguments":{"text":"first\nsecond"}}'
+    seen = []
+
+    def transport(url, headers, body, timeout):
+        messages = decode_json(body)["messages"]
+        if seen:
+            feedback = decode_json(messages[-1]["content"])
+            assert feedback["error"] == "invalid_model_response"
+            assert "escape newlines" in feedback["format_hint"]
+        seen.append(body)
+        content = json_text({"done": True, "answer": "task done"}) if corrected and len(seen) == 2 else malformed
+        return canonical_bytes({"model": "fixture", "choices": [{
+            "finish_reason": "stop", "message": {"content": content}}],
+            "usage": {"prompt_tokens": 10, "completion_tokens": 10, "total_tokens": 20}})
+
+    chat = DurableChatProvider(tmp_path / "provider.sqlite",
+        ChatConfig("http://localhost/control", "fixture", max_calls=2), transport=transport)
+    backend = Backend()
+    runtime = ActorRuntime(tmp_path / "actor", chat, max_steps=2)
+    case = {"case_id": "case", "attack_present": True}
+    record = runtime.execute(source(), case, backend, "invalid-json")
+    assert record["stop_reason"] == ("done" if corrected else "step_limit")
+    assert record["metrics"]["complete"] is corrected
+    assert record["metrics"]["security"] is True
+    assert record["metrics"]["actor_calls"] == 2 and record["metrics"]["tool_calls"] == 0
+    assert backend.episodes[0].actions == []
+    assert chat.summary()["invalid_responses"] == (1 if corrected else 2)
+    with sqlite3.connect(chat.path) as db:
+        raw = db.execute("SELECT response_bytes FROM chat_requests WHERE status='invalid'").fetchone()[0]
+        assert decode_json(raw)["choices"][0]["message"]["content"] == malformed
+    assert runtime.execute(source(), case, backend, "invalid-json") == record
+    assert len(seen) == 2 and len(backend.episodes) == 1
 
 
 @pytest.mark.parametrize("error", [ValidationError("host invariant"), KeyError("host invariant")])

@@ -3,7 +3,15 @@
 Current entry point: `rsi-lab` / `rsi_lab.agent_bench.run_experiment`.
 Version: 0.4.0. Canonical methods: frozen, gepa, openevolve, hyperagents.
 
-The repository contains four profiles, native source locks, controls and CI.
+Current priority: **SEABench upstream controller optimization and frozen downstream
+safety evaluation**. AgentDojo paid experiments are paused. Use
+`configs/seabench-controller.json` and `docs/seabench.md`; the pinned external
+checkout stays in `runs/vendor/SEABench`. The first bridge evolves AGENTS.md only,
+with native read-only file tools and direct rubric judges. It does not reproduce
+the full upstream agent loop or implement the HyperAgents frozen-meta contrast.
+Three-method fidelity and L1/L2 mechanism audits remain separate work.
+
+The repository contains five profiles, native source locks, controls and CI.
 `safety-study` adds independent seeds × admission arms, fixed-H search, public-only
 learning curves and final-only evaluation. Its `public-probe-regression-v1` gate
 checks newly retained policies before activation. This is a small heuristic
@@ -15,7 +23,7 @@ judge; AgentHarm uses optional pinned Inspect tools/scorers and local pinned dat
 The three metric families are not interchangeable. Preserve the legacy run files.
 
 Current workflow: `catalog` → `plan --config ... --output ...` →
-`run --config ... --plan ... --output ...`. `configs/agentdojo-main.json` and its
+`run --config ... --plan ... --output ...`. The earlier `configs/agentdojo-main.json` and its
 DeepSeek counterpart select frozen/OpenEvolve, native_only, two seeds and H2:
 four dev tasks, two unused probe tasks, four final tasks with three fixed attacks
 (64 final episodes). The declared primary endpoint is role-spoofing ASR; scope is

@@ -147,3 +147,15 @@ def test_seabench_missing_public_judge_invalidates_optimization(config, tmp_path
     package = AgentBenchmarkTaskPackage(backend, [case], runtime)
     fitness = package.public_fitness({"complete": True, "public_trajectories": [{"public_evaluation": record["metrics"]}]})
     assert fitness["score"] == -1e12 and fitness["feedback"]["mean_utility"] is None
+
+
+def test_seabench_no_final_answer_is_unscored_not_a_safety_violation(config, tmp_path):
+    backend = Controller(config["source"], config["sequence"], judge_provider=_judge_provider(tmp_path / "judge", config))
+    actor = ScriptedChatProvider(tmp_path / "actor.sqlite", lambda *_: {
+        "tool": "read_file", "arguments": {"path": "meta/user_profile.json"}})
+    runtime = ActorRuntime(tmp_path / "episodes", actor, max_steps=1)
+    result = runtime.execute(source(backend.initial_instructions()), backend.cases("heldout")[0], backend, "limited")
+    assert result["stop_reason"] == "step_limit" and result["answer"] == ""
+    assert result["metrics"]["safety_metrics"]["values"] == {"task_completion": None, "safety_violation": None}
+    assert all(v["error"] == "no_final_answer" for v in result["verdict"]["judgments"].values())
+    assert backend.judge.summary()["dispatched_calls"] == 0

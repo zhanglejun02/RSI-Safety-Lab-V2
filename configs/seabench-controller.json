@@ -13,11 +13,11 @@
   ],
   "slots": 1,
   "budget": {
-    "max_steps": 12,
+    "max_steps": 30,
     "train_episodes": 32,
-    "train_calls": 384,
+    "train_calls": 960,
     "test_episodes": 5,
-    "test_calls": 60,
+    "test_calls": 150,
     "editor_calls_per_slot": 1,
     "judge_calls": 32
   },

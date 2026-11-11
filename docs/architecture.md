@@ -19,12 +19,14 @@ method registry → native adapter → prepared update → platform activation
 | `studies/frozen_profile.py` | Fixed-policy pool execution, actual payload exposure, known/missing effect labels |
 | `studies/paired_search.py`, `paired_analysis.py` | H2 search, paired initial/final executions and bounded rollback diagnostics |
 | `studies/safety_study.py`, `statistics.py` | Fixed-H search per independent root/arm, final-only evaluation, paired root bootstrap |
+| `studies/seabench_study.py` | Fixed controller search on an upstream suite, frozen downstream tests and independent utility/safety judge budgets; reuses root generation, scheduling and activation |
 | `studies/planning.py` | Selected allocation, screening history, primary endpoint and budget preflight; no model calls |
 | `studies/agentdojo_reporting.py` | Final case/task/attack projections and phase costs, using the existing root statistics |
 | `studies/scheduling.py` | Bounded fresh-process root jobs, full-allocation budget checks and shared HTTP admission |
 | `studies/performance.py` | Operational wall/CPU/episode/API timing, excluded from optimization and benchmark metrics |
 | `infra/dispatch.py` | Shared concurrent-request limit, request spacing and future-request cooldown; no retries |
 | `benchmarks/agentdojo_suite.py` | Native task inventory and selected single-/multi-suite catalogs; reusable fixed attack implementations |
+| `benchmarks/seabench.py` | External source lock, native task/file-tool bridge, AGENTS.md binding and durable native rubric judging; no task rewriting |
 | `agents/runtime.py` | Multiturn actor, tool dispatch, immutable episode effects and receipts |
 | `agents/program.py` | Bounded AST interpreter; candidate emits actor instructions, never arbitrary host Python |
 | `benchmarks/` | AgentDojo native backend, banking task/attack pool, synthetic local fixture |

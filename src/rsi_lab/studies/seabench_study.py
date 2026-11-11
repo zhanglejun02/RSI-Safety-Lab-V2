@@ -24,8 +24,8 @@ def default_config():
     return {"profile": "seabench-controller", "protocol": PROTOCOL, "mode": "scripted",
             "source": "runs/vendor/SEABench", "sequence": "controller_update/personal_admin/privacy",
             "methods": ["frozen", "openevolve"], "seeds": [11], "slots": 1,
-            "budget": {"max_steps": 12, "train_episodes": 32, "train_calls": 384,
-                       "test_episodes": 5, "test_calls": 60, "editor_calls_per_slot": 1,
+            "budget": {"max_steps": 30, "train_episodes": 32, "train_calls": 960,
+                       "test_episodes": 5, "test_calls": 150, "editor_calls_per_slot": 1,
                        "judge_calls": 32},
             "models": {"actor": None, "editor": None, "judge": None}}
 

@@ -149,13 +149,26 @@ def test_seabench_missing_public_judge_invalidates_optimization(config, tmp_path
     assert fitness["score"] == -1e12 and fitness["feedback"]["mean_utility"] is None
 
 
-def test_seabench_no_final_answer_is_unscored_not_a_safety_violation(config, tmp_path):
+@pytest.mark.parametrize("limit", ["steps", "prompt"])
+def test_seabench_no_final_answer_is_unscored_not_a_safety_violation(config, tmp_path, limit):
     backend = Controller(config["source"], config["sequence"], judge_provider=_judge_provider(tmp_path / "judge", config))
-    actor = ScriptedChatProvider(tmp_path / "actor.sqlite", lambda *_: {
-        "tool": "read_file", "arguments": {"path": "meta/user_profile.json"}})
-    runtime = ActorRuntime(tmp_path / "episodes", actor, max_steps=1)
+    action = {"tool": "read_file", "arguments": {"path": "finance/income_tax/payroll_24m.json"}}
+    if limit == "prompt":
+        def transport(*_):
+            return canonical_bytes({"model": "fixture", "choices": [{"finish_reason": "stop",
+                "message": {"content": json_text(action)}}],
+                "usage": {"prompt_tokens": 10, "completion_tokens": 10, "total_tokens": 20}})
+        actor = DurableChatProvider(tmp_path / "actor.sqlite",
+            ChatConfig("http://localhost", "fixture", max_prompt_bytes=32768), transport=transport)
+    else:
+        actor = ScriptedChatProvider(tmp_path / "actor.sqlite", lambda *_: action)
+    runtime = ActorRuntime(tmp_path / "episodes", actor, max_steps=3 if limit == "prompt" else 1)
     result = runtime.execute(source(backend.initial_instructions()), backend.cases("heldout")[0], backend, "limited")
-    assert result["stop_reason"] == "step_limit" and result["answer"] == ""
+    assert result["stop_reason"] == ("budget_exhausted" if limit == "prompt" else "step_limit")
+    assert result["answer"] == "" and result["metrics"]["actor_calls"] == 1
     assert result["metrics"]["safety_metrics"]["values"] == {"task_completion": None, "safety_violation": None}
     assert all(v["error"] == "no_final_answer" for v in result["verdict"]["judgments"].values())
     assert backend.judge.summary()["dispatched_calls"] == 0
+    assert runtime.execute(source(backend.initial_instructions()), backend.cases("heldout")[0], backend, "limited") == result
+    assert actor.summary()["dispatched_calls"] == 1
+    assert not list((tmp_path / "episodes").rglob("fatal.json"))

@@ -148,14 +148,7 @@ def edit(directory, files, public, provider, operation, *, iterations_left=1):
                         system = editor_system_message(files, public)
                         messages = (ChatMessage("system", system), *(ChatMessage(**r) for r in rows))
                         if isinstance(provider, DurableChatProvider):
-                            try:
-                                provider._payload(messages)
-                            except ValidationError as exc:
-                                if str(exc) != "Model request exceeds max_prompt_bytes":
-                                    raise
-                                # Candidate-controlled history can outgrow the
-                                # frozen prompt allowance without being a host bug.
-                                raise BudgetExceeded("HyperAgents edit exceeded its prompt-byte budget") from exc
+                            provider._payload(messages)  # Enforce the prompt budget before recording an RPC.
                         request_id = operation + "/model-" + str(len(receipts) + 1)
                         requests.append({"request_id": request_id, "messages_sha256": digest(messages),
                                          "worker_messages": rows})

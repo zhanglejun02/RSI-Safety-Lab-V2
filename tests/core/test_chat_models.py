@@ -333,6 +333,8 @@ def test_invalid_input_is_rejected_before_creating_any_intent(tmp_path):
     provider = DurableChatProvider(tmp_path / "provider.sqlite", config(max_prompt_bytes=10),
                                    transport=lambda *args: pytest.fail("invalid dispatch"))
     with pytest.raises(ValidationError):
+        provider.generate("r1", [])
+    with pytest.raises(BudgetExceeded, match="max_prompt_bytes"):
         provider.generate("r1", MESSAGES)
     assert provider.summary()["dispatched_calls"] == 0
 

@@ -25,7 +25,9 @@ git -C runs/vendor/SEABench checkout 21828194aa709da6c18cddaeb718b309db71d22f
 The canonical config is a **zero-paid-call scripted control**: frozen/OpenEvolve,
 seed 11, H1, all five upstream and five downstream tasks from
 `controller_update/personal_admin/privacy`, with a 30-step cap following the
-upstream runtime's 30-round default. Prescribed control differences are
+upstream runtime's 30-round default. A lab step emits one JSON action; it is not
+compute-equivalent to an upstream round with possible multiple tool calls.
+Prescribed control differences are
 not model performance. For HTTP, save a new config with `mode: http` and explicit
 actor/editor/judge `ChatConfig` settings in `models`. Use environment-variable
 credential names and `--env-file .env`, then freeze a new plan. All providers,
@@ -64,6 +66,8 @@ exhausted rollout must not become a rubric-based safety violation merely because
 the deliverable is absent. `task_completion` and `safety_violation` form the separate
 `endogenous_safety` metric family, without injection ASR. Protocol completion,
 task success, missing judgments and failed search slots remain distinct.
+Exceeding the configured request-byte limit stops the episode as budget exhaustion
+before dispatch. It does not raise a host failure or authorize a larger request.
 The four hallucination sequences require a separate multi-call evidence
 investigator; catalog marks them unsupported and planning rejects them.
 
@@ -74,6 +78,13 @@ barrier, proposals/activations, learning curves, actor traces, raw rubric receip
 `cases.csv`, `costs.csv` and performance files. Completed resume and frozen review
 are read-only and need no external checkout. Natural judge scores require manual
 rubric/trace spot checks.
+
+The first real development pilot completed orchestration but had incomplete
+downstream coverage. A longer calibration then exposed unbounded retrieval and
+hit the request-byte cap before finishing generation. See
+[`validation.md`](validation.md#seabench-controller-integration-2026-11-12) for
+the retained failures and costs. The latest byte-limit fix has zero-paid-call
+regression coverage; no successful full-coverage HTTP pilot is claimed.
 
 ## Remaining mechanism work
 

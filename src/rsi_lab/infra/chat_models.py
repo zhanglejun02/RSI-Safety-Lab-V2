@@ -220,7 +220,7 @@ class DurableChatProvider:
             payload["thinking"] = {"type": self.config.thinking_mode}
         body = canonical_bytes(payload)
         if len(body) > self.config.max_prompt_bytes:
-            raise ValidationError("Model request exceeds max_prompt_bytes")
+            raise BudgetExceeded("Model request exceeds max_prompt_bytes")
         return body
 
     def _credentials(self):

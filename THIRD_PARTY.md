@@ -19,6 +19,10 @@ The adapters, worker transport, budget accounting and benchmark glue are separat
 integration code. The HyperAgents profile does not reproduce the upstream Docker
 runner, full ensemble or multi-domain harness. No upstream endorsement is implied.
 
+No license file was present in the pinned SEABench checkout. This repository
+stores source hashes and first-party integration code, not its task data or code;
+the checkout remains external. Public availability is not a blanket license grant.
+
 A project-wide first-party license has not been selected. This repository does not
 grant a blanket open-source license over all contents; preserve each component's
 notices when distributing source or wheels. No PyPI publication is configured.

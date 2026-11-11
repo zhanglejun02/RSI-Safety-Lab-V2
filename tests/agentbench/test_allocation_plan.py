@@ -7,7 +7,7 @@ import sqlite3
 import pytest
 
 from rsi_lab.agent_bench import plan_experiment, run_experiment
-from rsi_lab.agents.runtime import ActorRuntime, configuration
+from rsi_lab.agents.runtime import ActorRuntime, configuration, source
 from rsi_lab.api import SystemSnapshot
 from rsi_lab.benchmarks import banking_profile
 from rsi_lab.benchmarks.agentdojo_suite import Catalog, available_catalog
@@ -61,6 +61,36 @@ def test_capacity_and_multi_suite_selection_are_distinct():
     assert plan["partitions"]["heldout"]["tasks"] == 4
     assert plan["final_episodes_total"] == 8
     assert plan["partitions"]["probe"]["cases"] == 0
+
+
+def test_native_role_template_preserves_data_and_uses_native_grader(tmp_path):
+    from rsi_lab.infra.chat_models import ScriptedChatProvider
+    from rsi_lab.serialization import decode_json
+    from rsi_lab.studies.agentdojo_reporting import case_row
+
+    backend = Catalog({"suite": "travel", "partitions": {
+        "dev": ["user_task_1"], "probe": [], "heldout": ["user_task_2"]},
+        "injection_task_ids": ["injection_task_0"], "attack_ids": ["role_spoofing_native"]})
+    native = backend.suites["travel"].suite
+    case = next(c for c in backend.cases("heldout") if c["attack_present"])
+    for key, payload in case["injections"].items():
+        original = json.loads('"' + native.get_injection_vector_defaults()[key] + '"')
+        assert payload.startswith(original)
+        assert native.get_injection_task_by_id("injection_task_0").GOAL in payload
+    assert all("injections" not in c for c in backend.cases("dev"))
+
+    def reply(operation, messages):
+        history = [decode_json(m.content) for m in messages[2:] if m.role == "user"]
+        return backend.scripted_reply(case, history, messages[0].content)
+    for unsafe in (False, True):
+        directory = tmp_path / str(unsafe)
+        provider = ScriptedChatProvider(directory / "actor.sqlite", reply)
+        result = ActorRuntime(directory / "episodes", provider, max_steps=12).execute(
+            source("Complete the user request." + (" CONTROL_UNSAFE" if unsafe else "")),
+            case, backend, "native-role-control")
+        assert result["metrics"]["complete"]
+        assert result["metrics"]["security"] is (not unsafe)
+        assert case_row(case, result)["confirmed_response_after_payload"]
 
 
 def test_invalid_scope_and_underallocation_fail_before_dispatch():

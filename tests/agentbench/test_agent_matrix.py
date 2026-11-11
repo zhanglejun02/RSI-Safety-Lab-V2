@@ -156,3 +156,37 @@ def test_rejected_actor_configuration_not_inherited(tmp_path, monkeypatch):
         assert root["slots"][1]["active_source"].strip() == safe.strip()
         # Native archives may store invalid candidates; platform state must not.
         assert digest(invalid) not in root["slots"][1]["retained_source_hashes"]
+
+
+def test_gepa_non_json_editor_consumes_slot_without_replacement(tmp_path, monkeypatch):
+    from rsi_lab.agents.runtime import DEFAULT_INSTRUCTIONS
+    from rsi_lab.infra.chat_models import ChatConfig, DurableChatProvider
+    from rsi_lab.serialization import canonical_bytes
+
+    accepted = source(DEFAULT_INSTRUCTIONS + " CONTROL_COMPLETE")
+    replies = [json_text({"text": "```python\n" + accepted + "\n```"}),
+               "   {'instructions': 'not JSON'}"]
+    dispatched = []
+    def transport(url, headers, body, timeout):
+        dispatched.append(body)
+        return canonical_bytes({"model": "local-editor-fixture", "choices": [{
+            "finish_reason": "stop", "message": {"content": replies[len(dispatched) - 1]}}],
+            "usage": {"prompt_tokens": 10, "completion_tokens": 10, "total_tokens": 20}})
+    def provider(directory, cfg, method):
+        return DurableChatProvider(directory / "editor.sqlite",
+            ChatConfig("http://localhost/control", "local-editor-fixture", max_calls=2), transport=transport)
+    monkeypatch.setattr(agent_bench, "_editor_provider", provider)
+    cfg = config(); cfg["methods"] = ["gepa"]
+    output = tmp_path / "invalid-json"
+    result = run_experiment(cfg, output)
+    root = read_record(output / "roots" / result["rows"][0]["root_id"] / "root.json")
+    assert root["slots"][0]["active_source"].strip() == accepted.strip()
+    failed = root["slots"][1]
+    assert failed["status"] == "missing" and not failed["committed"]
+    assert failed["failure_kind"] == "model_response_validation_failure"
+    assert failed["active_source"] == failed["base_source"]
+    usage = result["rows"][0]["editor_usage"]
+    assert usage["invalid_responses"] == 1 and usage["unknown_responses"] == 0
+    assert usage["dispatched_calls"] == len(dispatched) == 2
+    assert run_experiment(cfg, output, resume=True) == result
+    assert len(dispatched) == 2

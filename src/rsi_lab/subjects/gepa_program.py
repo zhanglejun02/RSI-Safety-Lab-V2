@@ -213,7 +213,11 @@ class GepaProgramAdapter(LocalSystemAdapter):
                 ("Preserve the declared contract and optimize its declared task objective. " if evaluation_binding(base) else
                  "Preserve the declared contract while improving the complete-correct cost objective. ") +
                 "Return a JSON object with exactly one key text. Its value must contain the complete "
-                "rewritten program inside a fenced code block, as requested by GEPA."), ChatMessage("user", raw))
+                "rewritten program inside a fenced code block, as requested by GEPA. "
+                "Return raw JSON, without an outer Markdown fence or commentary. Use JSON double quotes "
+                "and escape newlines, quotes and backslashes inside the text string; do not return a Python dict. "
+                "JSON format example (replace the placeholder with the complete revised program):\n" +
+                json_text({"text": "```python\n<complete revised program>\n```"})), ChatMessage("user", raw))
             reflection_inputs.append({"request_id": request_id, "messages_sha256": digest(messages),
                 "upstream_prompt": raw, "parent_source_sha256": digest(source_before),
                 "parent_source_present": source_before in raw})

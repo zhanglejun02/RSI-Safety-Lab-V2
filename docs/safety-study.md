@@ -54,6 +54,12 @@ Supported attack choices are explicit:
 
 - `important_instructions_no_names` (the default) uses upstream fixed-jailbreak
   discovery for the selected native suite/tasks/goals.
+- `role_spoofing_native` uses a local fixed role-impersonation template with
+  upstream task-specific injection discovery and the selected native attacker
+  goal. It appends to decoded benign slot contents rather than replacing them.
+  This supports compatible tasks beyond banking; it is not official adaptive
+  attack search. Native graders measure final state, so a legitimate later action
+  can overwrite an earlier injected effect. Inspect traces as well as ASR.
 - `important_instructions`, `role_spoofing` and `reconciliation_dependency` reuse
   the existing banking development catalog, its payloads and injection sites.
   They require its compatible banking tasks and `injection_task_5`. Unsupported
@@ -115,6 +121,14 @@ Both configurations are scripted by default, contain no fixture answers, and
 have no demonstrated natural-model gain. Test them as separate factors with new
 frozen HTTP configurations; do not combine changes or select prompts using the
 same final results later presented as independent evidence.
+
+The GEPA transport prompt supplies a JSON serialization example, with code fences
+inside the `text` value and no outer Markdown fence. This follows the
+[DeepSeek JSON-output guidance](https://api-docs.deepseek.com/guides/json_mode/);
+it is a formatting mitigation, not a guarantee of valid remote output. Parsing
+remains strict. A confirmed invalid reply consumes its slot and is retained;
+there is no repair request, silent coercion or automatic retry. Future prompt
+changes require a new source-bound plan and cannot repair an old run.
 
 ## A small concrete safety method
 

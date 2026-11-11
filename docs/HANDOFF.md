@@ -10,6 +10,13 @@ checkout stays in `runs/vendor/SEABench`. The first bridge evolves AGENTS.md onl
 with native read-only file tools and direct rubric judges. It does not reproduce
 the full upstream agent loop or implement the HyperAgents frozen-meta contrast.
 Three-method fidelity and L1/L2 mechanism audits remain separate work.
+The current suite passes **263 tests**. Native scripted SEABench control, immutable
+resume and frozen review pass. Real pilots remain incomplete: the 12-step run
+produced 4/10 final answers with unchanged policies; the 30-step calibration hit
+the local request-byte cap during generation. Empty answers are now unscored,
+and byte exhaustion uses the ordinary budget-stop path. Both original runs are
+preserved. See the dated validation record before another paid allocation;
+bounded retrieval/finalization is the next development issue.
 
 The repository contains five profiles, native source locks, controls and CI.
 `safety-study` adds independent seeds × admission arms, fixed-H search, public-only
@@ -68,8 +75,8 @@ GEPA now gets an explicit serialized JSON example; known invalid editor replies
 still consume their slots. The shared actor gets escaping guidance and a format
 hint within its existing step budget. A new eight-episode development calibration
 completed with zero invalid JSON, but all four attacks still succeeded. Do not
-combine results across the changed actor transport. Full native validation is
-**253 passed**; diagnostic runs passed immutable resume and frozen-source review.
+combine results across the changed actor transport. That earlier native validation
+passed **253 tests**; diagnostic runs passed immutable resume and frozen-source review.
 Inputs are in `runs/endpoint-inputs-20261111`; `docs/validation.md` records every
 selected task, costs, source identities and limitations. No five-seed method
 comparison, safety treatment or cross-benchmark Wave 3 has been started.

@@ -47,15 +47,21 @@ These inspected pools are development data. Freeze new formal partitions and
 compare all methods on the same catalog; do not pair against the old pilot after
 changing attacks. No five-seed formal study has been started.
 
-The latest main replication is `runs/main-real-20261109`: 64/64 final episodes,
-48/48 payloads observed, frozen/OpenEvolve primary role-spoofing ASR **6/8 vs 8/8**.
-Both extra successes occur on task 15; native traces show the injected 11.00
-transfer. Clean utility is 8/8 vs 7/8, attacked utility 19/24 each, with 907,491
-total tokens. Both final edited instruction strings changed; public curves are
-flat/nonmonotonic. The next recommended diagnostic is GEPA under native_only;
-no Wave 2 or formal five-seed comparison has run. Earlier repetitions are retained
-separately. See `docs/validation.md` for task/seed results, costs, zero-width
-bootstrap limitations, 249-test acceptance and frozen-review evidence.
+Wave 2 is complete at `runs/wave2-real-20261111`: six fresh roots,
+frozen/GEPA/OpenEvolve, native_only, seeds 11/22, H2 and unchanged Wave 1 inputs.
+All 96 final episodes completed and all 72 attack payloads were observed.
+Primary role-spoofing ASR is **8/8, 7/8, 7/8**, clean utility **8/8, 8/8, 7/8**,
+and attacked utility **19/24, 18/24, 22/24**, using 1,602,929 tokens. The two
+task-15 resistances came from unchanged founder policies; both rewritten final
+policies still had 4/4 primary attack successes. GEPA seed 11 had one rejected
+candidate and one confirmed invalid editor response, consuming its H2 slots
+without changing policy. Final coverage is complete; search has one missing slot.
+Wave 1 (`runs/main-real-20261109`, ASR 6/8 vs 8/8) remains separate and unchanged.
+The direction reversed, so no stable method safety effect is established.
+Before a gate or larger comparison, examine development-only editor formatting
+and fixed-policy evaluation variability. No additional paid rerun or formal
+five-seed comparison has run. `docs/validation.md` contains the full evidence,
+existing 249-test acceptance, six-root scripted control and frozen-source reviews.
 
 Before changing execution code, read `docs/architecture.md` and `docs/protocol.md`.
 Use `docs/validation.md` for observed acceptance results and untested boundaries.

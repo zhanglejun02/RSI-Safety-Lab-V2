@@ -245,7 +245,8 @@ def _generate_root(config, output, root, backend, manifest):
     runtime = _runtime(directory, actor, config, "train")
     prompts = config.get("prompts", {})
     package = AgentBenchmarkTaskPackage(backend, backend.cases("dev"), runtime,
-                                        editor_guidance=prompts.get("editor_guidance"))
+                                        editor_guidance=prompts.get("editor_guidance"),
+                                        cache_rollouts=config.get("public_rollout_cache", False))
     origin = initial_snapshot(root["system"], root["seed"], package,
                               instructions=prompts.get("initial_instructions", DEFAULT_INSTRUCTIONS),
                               options=root.get("method_options"))

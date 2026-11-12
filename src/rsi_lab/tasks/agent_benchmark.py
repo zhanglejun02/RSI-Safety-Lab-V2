@@ -59,14 +59,17 @@ def _public_trace(record):
 class AgentBenchmarkTaskPackage:
     tool_protocol = PROTOCOL
 
-    def __init__(self, backend, cases, runtime, *, editor_guidance=None):
+    def __init__(self, backend, cases, runtime, *, editor_guidance=None, cache_rollouts=False):
         if not cases or any(c.get("partition") != "dev" or c.get("attack_present") for c in cases):
             raise ValidationError("Optimizer feedback requires nonempty clean development cases")
         self.backend, self.cases, self.runtime = backend, deepcopy(cases), runtime
+        self.cache_rollouts = cache_rollouts
         self.contract = (CONTRACT + "\nBenchmark: " + json_text(backend.describe())
                          + "\nFrozen clean development cases: " + json_text(self.cases))
         if editor_guidance:
             self.contract += "\nRegistered editor guidance:\n" + editor_guidance
+        if cache_rollouts:
+            self.contract += "\nPublic evaluation: one durable rollout per exact policy source and case within this root; repeated requests reuse it. Final evaluation is fresh."
         self.binding = {"protocol": EVALUATION_PROTOCOL, "kind": "agent_utility", "phase": 1,
                         "task_version": PROTOCOL + ":" + backend.describe()["version"],
                         "contract_sha256": digest(self.contract)}
@@ -106,7 +109,7 @@ class AgentBenchmarkTaskPackage:
                               "security_is_independent": True, "evaluation_binding": self.binding},
                 "feedback": {"agent_evaluation_valid": bool(valid),
                              "mean_utility": sum(r["utility"] for r in rows) / len(rows) if valid else None,
-                             "actor_calls": sum(r["actor_calls"] for r in rows),
+                             "actor_calls": sum(r.get("charged_actor_calls", r["actor_calls"]) for r in rows),
                              "tool_calls": sum(r["tool_calls"] for r in rows)}}
 
 
@@ -134,7 +137,8 @@ class AgentBenchmarkEnvironment:
                 else:
                     raise IntegrityError("Valid agent configuration recorded as invalid")
                 continue
-            path = self.package.runtime.directory / digest(row["operation_id"]) / "result.json"
+            runtime_operation = row.get("runtime_operation_id", row["operation_id"])
+            path = self.package.runtime.directory / digest(runtime_operation) / "result.json"
             try:
                 execution = verify(read_record(path))
             except FileNotFoundError as exc:
@@ -145,6 +149,11 @@ class AgentBenchmarkEnvironment:
                     or _public_trace(execution) != row["public_trace"]
                     or {k: execution["metrics"][k] for k in row["metrics"]} != row["metrics"]):
                 raise IntegrityError("Public projection differs from actor execution evidence")
+            if "runtime_operation_id" in row:
+                owner = read_record(self.package.runtime.directory / "cache-owners" / (digest(runtime_operation) + ".json"))
+                charged = execution["metrics"]["actor_calls"] if owner["operation_id"] == row["operation_id"] else 0
+                if row["charged_actor_calls"] != charged:
+                    raise IntegrityError("Cached rollout cost differs from its original owner")
         return rows
 
     def snapshot(self):
@@ -181,14 +190,15 @@ class AgentBenchmarkEnvironment:
 
     def synthetic_cost(self, step):
         # Legacy port name; these units are explicitly actor requests, not return.
-        return float(sum(r["metrics"]["actor_calls"] for r in self.traces(step)))
+        return float(sum(r.get("charged_actor_calls", r["metrics"]["actor_calls"]) for r in self.traces(step)))
 
     def public_actor_calls(self, step):
-        return sum(r["metrics"]["actor_calls"] for r in self.traces(step))
+        return sum(r.get("charged_actor_calls", r["metrics"]["actor_calls"]) for r in self.traces(step))
 
     def public_trajectories(self, step):
         return tuple({"task_id": r["case_id"], "execution_complete": r["metrics"]["complete"],
-                      "public_evaluation": r["metrics"], "execution": r["public_trace"]} for r in self.traces(step))
+                      "public_evaluation": {**r["metrics"], "charged_actor_calls": r.get("charged_actor_calls", r["metrics"]["actor_calls"])},
+                      "execution": r["public_trace"]} for r in self.traces(step))
 
 
 class AgentBenchmarkTools:
@@ -202,9 +212,17 @@ class AgentBenchmarkTools:
         from rsi_lab.agents.runtime import CandidateConfigurationError
         if name != "execute_program" or set(arguments) != {"source"}:
             raise ValidationError("Expected an agent configuration program")
+        runtime_operation, cache = operation_id, {}
+        if self.env.package.cache_rollouts:
+            runtime_operation = "public-rollout/" + digest({"source": arguments["source"], "case": self.case})
+            owner_path = self.env.package.runtime.directory / "cache-owners" / (digest(runtime_operation) + ".json")
+            if not owner_path.exists():
+                save_record(owner_path, {"operation_id": operation_id})
+            owner = read_record(owner_path)["operation_id"]
+            cache = {"runtime_operation_id": runtime_operation}
         try:
             record = self.env.package.runtime.execute(arguments["source"], self.case,
-                                                       self.env.package.backend, operation_id)
+                                                       self.env.package.backend, runtime_operation)
             raw = record["metrics"]
             public = {k: raw[k] for k in ("complete", "utility", "actor_calls", "tool_calls")}
             # Runtime's public messages contain only the actor's actual observations.
@@ -213,9 +231,11 @@ class AgentBenchmarkTools:
         except CandidateConfigurationError as exc:
             public = {"complete": False, "utility": 0.0, "actor_calls": 0, "tool_calls": 0}
             trace, execution_hash = {"configuration_error": str(exc)}, None
+        if cache:
+            cache["charged_actor_calls"] = public["actor_calls"] if owner == operation_id else 0
         projection = {"case_id": self.case["case_id"], "metrics": public, "public_trace": trace,
                       "source": arguments["source"], "operation_id": operation_id,
-                      "source_sha256": digest(arguments["source"]), "execution_sha256": execution_hash}
+                      "source_sha256": digest(arguments["source"]), "execution_sha256": execution_hash, **cache}
         save_record(self.env.directory / "operations" / (digest(operation_id) + ".json"), projection)
         return {"complete": public["complete"], "source_sha256": digest(arguments["source"]),
                 "execution_sha256": execution_hash, "actor_calls": public["actor_calls"]}

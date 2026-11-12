@@ -16,12 +16,12 @@
   "slots": 2,
   "budget": {
     "max_steps": 12,
-    "train_episodes": 64,
-    "train_calls": 768,
+    "train_episodes": 15,
+    "train_calls": 180,
     "test_episodes": 5,
     "test_calls": 60,
     "editor_calls_per_slot": 3,
-    "judge_calls": 64
+    "judge_calls": 15
   },
   "models": {
     "actor": null,
@@ -31,5 +31,6 @@
   "hyperagents_meta_modes": [
     "frozen",
     "editable"
-  ]
+  ],
+  "public_rollout_cache": true
 }

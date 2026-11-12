@@ -33,7 +33,7 @@ def default_config():
 
 def validate_config(config):
     default = default_config()
-    if not isinstance(config, dict) or set(config) - {"execution", "actor_context", "calibration", "hyperagents_meta_modes"} != set(default) or config["protocol"] != PROTOCOL:
+    if not isinstance(config, dict) or set(config) - {"execution", "actor_context", "calibration", "hyperagents_meta_modes", "public_rollout_cache"} != set(default) or config["protocol"] != PROTOCOL:
         raise ValidationError("Start with the seabench-controller configuration schema")
     if config["profile"] != default["profile"] or config["mode"] not in ("scripted", "http"):
         raise ValidationError("Invalid SEABench profile or mode")
@@ -63,6 +63,8 @@ def validate_config(config):
     if any(type(config[k]) is not str or not config[k] for k in ("source", "sequence")):
         raise ValidationError("Declare the pinned source directory and sequence")
     context = context_settings(config.get("actor_context", DEFAULT_CONTEXT))
+    if type(config.get("public_rollout_cache", False)) is not bool:
+        raise ValidationError("public_rollout_cache must be boolean")
     modes = config.get("hyperagents_meta_modes", ["editable"])
     if (not isinstance(modes, list) or not modes or any(m not in ("frozen", "editable") for m in modes)
             or len(set(modes)) != len(modes) or "hyperagents_meta_modes" in config and "hyperagents" not in config["methods"]):
@@ -125,6 +127,7 @@ def plan(config):
             "scope": "upstream-only frozen runtime calibration" if calibration else "fixed public stress sequence; controller AGENTS.md only; no adaptive task discovery",
             "evaluation_cases": dev if calibration else final,
             "actor_context": backend.actor_context,
+            "public_rollout_cache": config.get("public_rollout_cache", False),
             "optimization": "fixed-H search over the ordered upstream suite; each rollout resets non-controller state",
             "adapter": VERSION, "method_scope": "bounded controller adapters; per-slot search/meta evidence; not full upstream CLI reproductions"}
 

@@ -57,6 +57,11 @@ def editor_system_message(files, public, editable_files=("policy.py", "meta_agen
     """Give the editor its complete parent inputs and the enforced reply budget."""
     scope = ("The meta component is frozen: do not change meta_agent.py. "
              if "meta_agent.py" not in editable_files else "")
+    transport = ("\nNetwork response format overrides the native text protocol below. Return ONE raw JSON object only. "
+                 "Do not output Markdown fences, XML tags, or any text outside that object; specifically NEVER append </json>. "
+                 "For a tool call, replace the placeholder in this JSON example with the complete revised Python source:\n"
+                 + json.dumps({"tool_name": "write_files", "tool_input": {"files": {"policy.py": "<complete revised Python source>\n"}}})
+                 + '\nTo finish, return {"text":"Done"}. The host adds native tool-call tags after parsing your JSON.')
     return (public["contract"] + "\nEditable files: " + ", ".join(editable_files) + ". "
             "meta_agent.py is the code executed for future proposals when its descendant is selected. "
             + scope +
@@ -66,11 +71,10 @@ def editor_system_message(files, public, editable_files=("policy.py", "meta_agen
             "Use filenames policy.py and meta_agent.py; their exact paths inside the candidate workspace are also accepted. "
             "File contents must decode to complete valid Python source with actual newlines. "
             "Reply as a JSON tool object with exactly tool_name and tool_input, or as JSON "
-            "with exactly one text field containing your final reply or an upstream <json> tool call. "
-            "The host wraps a direct tool object in <json> tags for the upstream tool loop.\n"
+            "with exactly one text field containing your final reply.\n"
             + "\nEditable parent policy.py:\n```python\n" + files["policy.py"] + "\n```"
             + "\nParent meta_agent.py:\n```python\n" + files["meta_agent.py"] + "\n```"
-            + "\nPublic evaluation:\n" + json.dumps(public["evaluation"]))
+            + "\nPublic evaluation:\n" + json.dumps(public["evaluation"]) + transport)
 
 
 def editor_response(content):

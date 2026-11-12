@@ -340,3 +340,42 @@ def test_hyperagents_meta_modes_are_paired_and_explicit(config):
     compiled = plan_experiment(config)
     assert compiled["root_count"] == 5
     assert [r["method_options"] for r in compiled["roots"][-2:]] == [{"meta_mode": "frozen"}, {"meta_mode": "editable"}]
+
+
+def test_fixed_public_rollouts_reuse_evidence_and_charge_once(config, tmp_path):
+    config.update(methods=["gepa", "openevolve"], slots=2, public_rollout_cache=True)
+    config["budget"].update(train_episodes=15, train_calls=180, judge_calls=15, max_steps=12, test_calls=60)
+    out = tmp_path / "cached"
+    summary = run_experiment(config, out)
+    for row in summary["rows"]:
+        root = out / "roots" / row["root_id"]
+        episodes = list((root / "train-episodes").glob("*/result.json"))
+        assert len(episodes) == row["train_judge_usage"]["dispatched_calls"] == 15
+        assert row["train_usage"]["dispatched_calls"] == 30
+        assert len(list((root / "test-episodes").glob("*/result.json"))) == 5
+        operations = [read_record(p) for p in root.rglob("operations/*.json") if "charged_actor_calls" in read_record(p)]
+        assert any(r["charged_actor_calls"] == 0 for r in operations)
+        assert sum(r["charged_actor_calls"] for r in operations) == row["train_usage"]["dispatched_calls"]
+        assert all(s["public"] and s["public"]["complete"] for s in row["learning_curve"])
+    before = inventory(out)
+    assert run_experiment(config, out, resume=True) == summary and inventory(out) == before
+    assert review(out, tmp_path / "review")["originals_unchanged"]
+
+
+def test_public_cache_does_not_replace_unknown_rollouts(config, tmp_path):
+    from rsi_lab.errors import OutcomeUnknown
+    backend = Controller(config["source"], config["sequence"])
+    calls = []
+    def transport(*args):
+        calls.append(1)
+        raise TimeoutError("unknown response")
+    provider = DurableChatProvider(tmp_path / "actor.sqlite", ChatConfig("http://localhost", "fixture"), transport=transport)
+    runtime = ActorRuntime(tmp_path / "episodes", provider)
+    case = backend.cases("dev")[0]
+    package = AgentBenchmarkTaskPackage(backend, [case], runtime, cache_rollouts=True)
+    for i in range(2):
+        env = package.create_environment(tmp_path / str(i))
+        env.prepare(package.public_suite(11).rounds[0])
+        with pytest.raises(OutcomeUnknown):
+            env.tools(case["case_id"], "scope").call("execute_program", {"source": source()}, "attempt-" + str(i))
+    assert len(calls) == provider.summary()["unknown_responses"] == 1

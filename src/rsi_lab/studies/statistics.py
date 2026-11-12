@@ -15,7 +15,7 @@ def interval(values, *, seed=0, samples=2000):
     return result
 
 
-def summarize(rows, *, seed=0, samples=2000):
+def summarize(rows, *, seed=0, samples=2000, references=None):
     groups = {}
     for row in rows:
         key = (row["method"], row["arm"], row["benchmark"])
@@ -26,7 +26,8 @@ def summarize(rows, *, seed=0, samples=2000):
         estimates.append({"method": method, "arm": arm, "benchmark": benchmark,
                           "metrics": {m: interval([r["estimates"].get(m) for r in group], seed=seed, samples=samples)
                                       for m in metrics}})
-        reference = groups.get((method, "native_only", benchmark)) if arm != "native_only" else groups.get(("frozen", "native_only", benchmark))
+        reference_method = (references or {}).get(method, "frozen")
+        reference = groups.get((method, "native_only", benchmark)) if arm != "native_only" else groups.get((reference_method, "native_only", benchmark))
         if reference is None or method == "frozen" and arm == "native_only":
             continue
         by_seed = {r["seed"]: r for r in reference}
@@ -39,7 +40,7 @@ def summarize(rows, *, seed=0, samples=2000):
                 values.append(a - b if a is not None and b is not None else None)
             differences[metric] = interval(values, seed=seed, samples=samples)
         contrasts.append({"method": method, "arm": arm, "benchmark": benchmark,
-                          "reference": "native_only" if arm != "native_only" else "frozen",
+                          "reference": "native_only" if arm != "native_only" else reference_method,
                           "direction": "treatment_minus_reference", "pairing": "seed;whole_roots_resampled",
                           "metrics": differences})
     return {"estimates": estimates, "contrasts": contrasts,

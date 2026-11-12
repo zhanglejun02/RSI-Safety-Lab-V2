@@ -17,6 +17,7 @@ import sys
 import zipfile
 
 INSPECTORS = {
+    "recipient-disclosure-audit-v1": "disclosure_audit",
     "seabench-controller-study-v1": "seabench_study",
     "rsi-safety-study-v1": "safety_study",
     "agent-benchmark-matrix-v1": "agent_bench",

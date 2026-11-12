@@ -136,7 +136,7 @@ class ChatProvider(Protocol):
     origin: CandidateOrigin
     provider_id: str
 
-    def generate(self, request_id: str, messages: tuple[ChatMessage, ...]) -> ChatResult: ...
+    def generate(self, request_id: str, messages: tuple[ChatMessage, ...], *, response_format=None) -> ChatResult: ...
     def summary(self) -> dict: ...
 
 
@@ -213,7 +213,10 @@ class DurableChatProvider:
             if not old:
                 db.execute("INSERT INTO provider_metadata VALUES(1,?)", (value,))
 
-    def _payload(self, messages):
+    def _payload(self, messages, response_format=None):
+        response_format = self.response_format if response_format is None else response_format
+        if response_format not in ("json_object", "text"):
+            raise ValidationError("Unsupported chat response format")
         if type(messages) is not tuple or not messages or not all(type(m) is ChatMessage for m in messages):
             raise ValidationError("messages must be a nonempty tuple of ChatMessage")
         payload = {"model": self.config.model,
@@ -221,7 +224,7 @@ class DurableChatProvider:
                    "temperature": self.config.temperature,
                    "max_tokens": self.config.max_output_tokens,
                    "stream": False}
-        if self.response_format == "json_object":
+        if response_format == "json_object":
             payload["response_format"] = {"type": "json_object"}
         if self.config.thinking_mode is not None:
             payload["thinking"] = {"type": self.config.thinking_mode}
@@ -267,7 +270,8 @@ class DurableChatProvider:
                 or result.origin != self.origin or result.total_tokens != row["actual_tokens"]):
             raise IntegrityError("Persisted chat result binding mismatch")
         # Re-parse source response so a separately modified result cannot substitute content.
-        expected = self._parse(row["request_id"], row["request_sha"], row["response_bytes"], bool(row["budget_overrun"]))
+        mode = decode_json(row["request_json"]).get("response_format", {}).get("type", "text")
+        expected = self._parse(row["request_id"], row["request_sha"], row["response_bytes"], bool(row["budget_overrun"]), mode)
         if result != expected:
             raise IntegrityError("Persisted result differs from its source response")
         return result
@@ -282,7 +286,8 @@ class DurableChatProvider:
             return None, None, None
         return values
 
-    def _parse(self, request_id, request_hash, raw, overrun=False):
+    def _parse(self, request_id, request_hash, raw, overrun=False, response_format=None):
+        response_format = self.response_format if response_format is None else response_format
         def response_object(value):
             try:
                 return decode_json(value)
@@ -304,7 +309,7 @@ class DurableChatProvider:
             raise ModelResponseValidationError("Model content must be nonempty text")
         # Text adapters receive the exact native protocol, without JSON repair or
         # stripping. Both modes retain identical reservation/replay semantics.
-        content = {"text": raw_content} if self.response_format == "text" else response_object(raw_content)
+        content = {"text": raw_content} if response_format == "text" else response_object(raw_content)
         response_model = envelope.get("model")
         if type(response_model) is not str or not response_model:
             raise ModelResponseValidationError("Response must identify its actual model")
@@ -323,9 +328,9 @@ class DurableChatProvider:
                           prompt, completion, total, total is not None, overrun,
                           usage_details=usage if type(usage) is dict else {}, **metadata)
 
-    def generate(self, request_id: str, messages: tuple[ChatMessage, ...]) -> ChatResult:
+    def generate(self, request_id: str, messages: tuple[ChatMessage, ...], *, response_format=None) -> ChatResult:
         require_id(request_id, "request_id")
-        body = self._payload(messages)
+        body = self._payload(messages, response_format)
         saved, headers = self._reserve(request_id, body)
         if saved is not None:
             return saved
@@ -355,7 +360,7 @@ class DurableChatProvider:
             overrun = actual_tokens is not None and (
                 actual_tokens > reservation or completion_tokens > self.config.max_output_tokens)
             try:
-                result = self._parse(request_id, request_hash, raw, overrun)
+                result = self._parse(request_id, request_hash, raw, overrun, response_format)
             except ModelResponseValidationError:
                 result = None
             if result is not None:
@@ -454,16 +459,17 @@ class ScriptedChatProvider(DurableChatProvider):
         self.callback = callback
         self._initialize({"config": self.config, "provider_id": provider_id, "origin": self.origin.value})
 
-    def generate(self, request_id, messages):
+    def generate(self, request_id, messages, *, response_format=None):
         # Transport closure is used only synchronously; providers are not shared across threads.
         def dispatch(url, headers, body, timeout):
             content = self.callback(request_id, messages)
             if type(content) is not dict:
                 raise ValidationError("Scripted callback must return JSON object data")
+            text = content["text"] if response_format == "text" else canonical_bytes(content).decode("utf-8")
             return canonical_bytes({"model": self.provider_id, "choices": [{"finish_reason": "stop",
-                "message": {"content": canonical_bytes(content).decode("utf-8")}}]})
+                "message": {"content": text}}]})
         self.transport = dispatch
-        return super().generate(request_id, messages)
+        return super().generate(request_id, messages, response_format=response_format)
 
     def summary(self):
         result = super().summary()

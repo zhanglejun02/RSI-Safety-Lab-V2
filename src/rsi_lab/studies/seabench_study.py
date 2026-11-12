@@ -33,7 +33,7 @@ def default_config():
 
 def validate_config(config):
     default = default_config()
-    if not isinstance(config, dict) or set(config) - {"execution", "actor_context", "calibration", "hyperagents_meta_modes", "public_rollout_cache"} != set(default) or config["protocol"] != PROTOCOL:
+    if not isinstance(config, dict) or set(config) - {"execution", "actor_context", "calibration", "hyperagents_meta_modes", "public_rollout_cache", "final_text_steps", "final_repeats"} != set(default) or config["protocol"] != PROTOCOL:
         raise ValidationError("Start with the seabench-controller configuration schema")
     if config["profile"] != default["profile"] or config["mode"] not in ("scripted", "http"):
         raise ValidationError("Invalid SEABench profile or mode")
@@ -71,6 +71,12 @@ def validate_config(config):
         raise ValidationError("HyperAgents meta modes must be frozen and/or editable")
     if context["final_response_steps"] > budget["max_steps"]:
         raise ValidationError("Finalization notice must fit inside the actor step budget")
+    if type(config.get("final_text_steps", 0)) is not int or not 0 <= config.get("final_text_steps", 0) <= context["final_response_steps"]:
+        raise ValidationError("Final text calls must fit inside the declared finalization phase")
+    if type(config.get("final_repeats", 1)) is not int or not 1 <= config.get("final_repeats", 1) <= 20:
+        raise ValidationError("Declare final_repeats in [1,20]")
+    if "calibration" in config and config.get("final_repeats", 1) != 1:
+        raise ValidationError("Upstream calibration has no final repeats")
     if "calibration" in config and (config["methods"] != ["frozen"] or not config["calibration"]):
         raise ValidationError("Upstream runtime calibration requires frozen only and explicit task IDs")
     if config["mode"] == "http" and config["models"]["actor"].get("max_prompt_bytes", 65536) < context["max_bytes"] + 1024:
@@ -91,10 +97,13 @@ def plan(config):
     calibration = "calibration" in config
     dev, final = backend.cases("dev"), [] if calibration else backend.cases("heldout")
     budget = config["budget"]
+    repeats = config.get("final_repeats", 1)
     for phase, cases in (("train", dev), ("test", final)):
-        if budget[phase + "_episodes"] < len(cases) or budget[phase + "_calls"] < len(cases) * budget["max_steps"]:
+        count = len(cases) * (repeats if phase == "test" else
+            config["slots"] + 1 if config.get("public_rollout_cache") and any(m != "frozen" for m in config["methods"]) else 1)
+        if budget[phase + "_episodes"] < count or budget[phase + "_calls"] < count * budget["max_steps"]:
             raise ValidationError("Budget cannot cover the selected " + phase + " allocation")
-    if budget["judge_calls"] < max(budget["train_episodes"], 2 * len(final)):
+    if budget["judge_calls"] < max(budget["train_episodes"], 2 * len(final) * repeats):
         raise ValidationError("Judge caps must cover training episodes and both final rubrics")
     roots = []
     for method in config["methods"]:
@@ -121,12 +130,13 @@ def plan(config):
             "source": backend.source, "sequence": config["sequence"], "case_manifest": backend.catalog,
             "initial_policy_sha256": digest(source(backend.initial_instructions())), "roots": roots,
             "upstream_tasks": len(dev), "downstream_tasks": len(final), "root_count": len(roots),
-            "final_episodes_total": len(roots) * len(final), "api_calls": 0,
+            "final_episodes_total": len(roots) * len(final) * repeats, "final_repeats": repeats, "api_calls": 0,
             "execution": {**options, "allocated_calls": calls, "allocated_tokens": tokens,
                           "scheduling": "serial" if options["root_workers"] == 1 else "spawn_process_per_root_phase"},
             "scope": "upstream-only frozen runtime calibration" if calibration else "fixed public stress sequence; controller AGENTS.md only; no adaptive task discovery",
             "evaluation_cases": dev if calibration else final,
             "actor_context": backend.actor_context,
+            "final_text_steps": config.get("final_text_steps", 0),
             "public_rollout_cache": config.get("public_rollout_cache", False),
             "editor_transports": {m: METHODS[m].editor_response_format for m in config["methods"] if m != "frozen"},
             "optimization": "fixed-H search over the ordered upstream suite; each rollout resets non-controller state",
@@ -188,7 +198,8 @@ def run(config, output, *, resume=False, expected_plan=None):
         summary = {"protocol": PROTOCOL, "origin": manifest["origin"], "confirmatory": False,
                    "not_a_system_ranking": True, "rows": rows, "allocation": compiled,
                    "statistics": ({"scope": "fixed-policy development diagnostic; no method comparison"} if "calibration" in config else
-                                  summarize(rows, seed=1729, samples=2000)), "performance": measured,
+                                  summarize(rows, seed=1729, samples=2000,
+                                            references={"hyperagents_editable_meta": "hyperagents_frozen_meta"})), "performance": measured,
                    "paid_calls": 0 if config["mode"] == "scripted" else None,
                    "manifest_sha256": digest(manifest)}
         _report(output, summary)
@@ -241,8 +252,10 @@ def _root_job(output, root, phase):
                     raise IntegrityError("Calibration changed the frozen controller")
                 observed[digest(record["case"])] = record
         cases = []
-        for case in compiled["evaluation_cases"]:
-            path = directory / "final" / (digest(case) + ".json")
+        evaluations = [(case, repeat) for repeat in range(compiled["final_repeats"]) for case in compiled["evaluation_cases"]]
+        for case, repeat in evaluations:
+            key = digest(case if repeat == 0 else {"case": case, "repeat": repeat})
+            path = directory / "final" / (key + ".json")
             if path.exists():
                 record = read_record(path)
             elif calibration:
@@ -250,12 +263,12 @@ def _root_job(output, root, phase):
                 save_record(path, record)
             else:
                 try:
-                    record = runtime.execute(program, case, backend, root["root_id"] + "/final/" + digest(case))
+                    record = runtime.execute(program, case, backend, root["root_id"] + "/final/" + key)
                 except (BudgetExceeded, OutcomeUnknown) as exc:
                     record = {"error": type(exc).__name__, "metrics": {"complete": False}}
                 save_record(path, record)
             values = record["metrics"].get("safety_metrics", {}).get("values", {})
-            cases.append({"task_id": case["task_id"], "complete": record["metrics"]["complete"],
+            cases.append({"task_id": case["task_id"], "repeat": repeat + 1, "complete": record["metrics"]["complete"],
                           "task_completion": values.get("task_completion"), "safety_violation": values.get("safety_violation"),
                           "record": str(path.relative_to(output)), "error": record.get("error")})
         estimates = {k: sum(c[k] for c in cases) / len(cases) if all(c["complete"] and c[k] is not None for c in cases) else None

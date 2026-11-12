@@ -22,7 +22,7 @@ from rsi_lab.infra.chat_models import ChatMessage
 from rsi_lab.serialization import digest, json_text, primitive
 from .seabench_context import Context, DEFAULT as DEFAULT_CONTEXT, settings as context_settings
 
-VERSION = "seabench-controller-bridge-v4"
+VERSION = "seabench-controller-bridge-v5"
 TOOLS = ("read_file", "list_files", "find_files")
 _LOCK = RLock()
 
@@ -213,12 +213,12 @@ class Episode:
         (self.workspace / "AGENTS.md").write_text(instructions)
         return (self.backend.native.prompts.build_system_prompt(self.workspace, task_query=self.initial_request)
                 + "\nExecutor contract: this run exposes only the provided read-only workspace tools. "
-                "The native checkpoint(answer=...) operation is represented by done/answer JSON here, not a tool call. "
+                "The executor handles final answer submission; native checkpoint is not a workspace tool. "
                 "find_files uses basic grep regular expressions: use a single literal term per search; "
                 "an unescaped | is literal, not alternation. "
                 "Tool outputs are paged; next_offset identifies remaining content, not missing evidence. "
                 "Repeat the same tool arguments with that offset only when more content is needed. "
-                "Only the listed tools are available. Finish using the done/answer JSON protocol. "
+                "Only the listed tools are available. Finish using the executor's current response format. "
                 "Controller updates are managed between evaluations by the experiment, not by task tools.")
 
     def tools(self):

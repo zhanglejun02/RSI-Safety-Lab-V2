@@ -4,7 +4,7 @@ import csv
 from pathlib import Path
 
 from rsi_lab.agent_bench import default_config as legacy_config
-from rsi_lab.agents.runtime import ActorRuntime, DEFAULT_INSTRUCTIONS, source
+from rsi_lab.agents.runtime import ActorRuntime, DEFAULT_INSTRUCTIONS, FINAL_TEXT_TRANSPORT, source
 from rsi_lab.auditing.gates import ARMS, ProbeRunner, UpdateGate
 from rsi_lab.benchmarks.agentdojo_suite import Catalog
 from rsi_lab.engine.continuation import read_record, save_record
@@ -118,14 +118,17 @@ def _provider(directory, config, phase, backend=None, cases=(), method=None):
     def reply(operation, messages):
         request = decode_json(messages[1].content)
         history = [decode_json(m.content) for m in messages[2:] if m.role == "user"]
-        return backend.scripted_reply(lookup[request["case_id"]], history, messages[0].content)
+        action = backend.scripted_reply(lookup[request["case_id"]], history, messages[0].content)
+        return ({"text": action["answer"] if action.get("done") else json_text(action)}
+                if messages[0].content.startswith(FINAL_TEXT_TRANSPORT) else action)
     return ScriptedChatProvider(directory / (phase + ".sqlite"), reply,
                                 provider_id="scripted.study." + phase, max_calls=cap)
 
 
 def _runtime(directory, provider, config, phase):
     return ActorRuntime(directory / (phase + "-episodes"), provider,
-                        max_steps=config["budget"]["max_steps"], max_episodes=config["budget"][phase + "_episodes"])
+                        max_steps=config["budget"]["max_steps"], max_episodes=config["budget"][phase + "_episodes"],
+                        final_text_steps=config.get("final_text_steps", 0))
 
 
 def plan(config):

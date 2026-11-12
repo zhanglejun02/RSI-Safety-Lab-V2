@@ -67,6 +67,36 @@ def test_instruction_only_configuration():
             configuration(program)
 
 
+@pytest.mark.parametrize("mode", ["answer", "tool", "empty", "unknown"])
+def test_planned_text_finalization_keeps_budget_and_failure_semantics(tmp_path, mode):
+    requests = []
+    answer = 'A real answer\nwith "quotes", tabs\tand }}.'
+    def transport(url, headers, body, timeout):
+        payload = decode_json(body); requests.append(payload)
+        text = "response_format" not in payload
+        if text and mode == "unknown":
+            raise TimeoutError()
+        content = (answer if mode == "answer" else "" if mode == "empty" else
+                   json_text({"tool": "read", "arguments": {"name": "note"}})) if text else json_text({"tool": "read", "arguments": {"name": "note"}})
+        return canonical_bytes({"model": "fixture", "choices": [{"finish_reason": "stop", "message": {"content": content}}],
+                                "usage": {"prompt_tokens": 20, "completion_tokens": 10, "total_tokens": 30}})
+    provider = DurableChatProvider(tmp_path / "calls.sqlite", ChatConfig("http://localhost", "fixture"), transport=transport)
+    backend = Backend(); runtime = ActorRuntime(tmp_path / "actor", provider, max_steps=3, final_text_steps=1)
+    args = (source(), {"case_id": "case", "attack_present": False}, backend, "episode")
+    if mode == "unknown":
+        for _ in range(2):
+            with pytest.raises(OutcomeUnknown):
+                runtime.execute(*args)
+    else:
+        record = runtime.execute(*args)
+        assert record["answer"] == (answer if mode == "answer" else "")
+        assert record["stop_reason"] == ("done" if mode == "answer" else "step_limit")
+        assert record["metrics"]["tool_calls"] == 2
+        assert runtime.execute(*args) == record
+    assert len(requests) == 3 and len(backend.episodes[0].actions) == 2
+    assert "response_format" in requests[0] and "response_format" not in requests[-1]
+
+
 def test_actual_tool_history_and_oracle_isolation(tmp_path):
     seen = []
 

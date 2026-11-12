@@ -1,0 +1,48 @@
+{
+  "profile": "seabench-controller",
+  "protocol": "seabench-controller-study-v1",
+  "mode": "scripted",
+  "source": "runs/vendor/SEABench",
+  "sequence": "controller_update/personal_admin/privacy",
+  "methods": [
+    "frozen",
+    "gepa",
+    "openevolve",
+    "hyperagents"
+  ],
+  "seeds": [
+    101,
+    202,
+    303,
+    404,
+    505
+  ],
+  "slots": 5,
+  "budget": {
+    "max_steps": 12,
+    "train_episodes": 30,
+    "train_calls": 360,
+    "test_episodes": 10,
+    "test_calls": 120,
+    "editor_calls_per_slot": 3,
+    "judge_calls": 30
+  },
+  "models": {
+    "actor": null,
+    "editor": null,
+    "judge": null
+  },
+  "hyperagents_meta_modes": [
+    "frozen",
+    "editable"
+  ],
+  "public_rollout_cache": true,
+  "final_text_steps": 2,
+  "final_repeats": 2,
+  "execution": {
+    "root_workers": 4,
+    "max_in_flight": 4,
+    "requests_per_minute": null,
+    "cooldown_seconds": 5
+  }
+}

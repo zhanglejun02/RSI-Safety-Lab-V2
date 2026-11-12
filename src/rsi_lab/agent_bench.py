@@ -6,7 +6,8 @@ from pathlib import Path
 from rsi_lab.errors import ConflictError, ValidationError
 from rsi_lab.methods import check_available
 
-PROFILES = ("matrix", "banking-frozen", "banking-h2", "safety-study", "seabench-controller")
+PROFILES = ("matrix", "banking-frozen", "banking-h2", "safety-study", "seabench-controller", "disclosure-audit")
+PLANNED = ("safety-study", "seabench-controller", "disclosure-audit")
 
 
 def load_config(path, *, execution=None):
@@ -25,7 +26,7 @@ def load_config(path, *, execution=None):
 
 def default_config(profile="matrix"):
     """Return a fresh, serializable profile; freeze it before starting a run."""
-    if profile in ("safety-study", "seabench-controller"):
+    if profile in PLANNED:
         return _runner(profile).default_config()
     if profile == "matrix":
         return {"profile": profile, "protocol": "agent-benchmark-matrix-v2", "mode": "scripted",
@@ -43,7 +44,7 @@ def _runner(profile):
     from importlib import import_module
 
     modules = {"matrix": "agent_bench", "banking-frozen": "frozen_profile", "banking-h2": "paired_search",
-               "safety-study": "safety_study", "seabench-controller": "seabench_study"}
+               "safety-study": "safety_study", "seabench-controller": "seabench_study", "disclosure-audit": "disclosure_audit"}
     if profile not in modules:
         raise ValidationError(f"Unknown profile {profile!r}; choose {', '.join(PROFILES)}")
     return import_module("rsi_lab.studies." + modules[profile])
@@ -51,7 +52,7 @@ def _runner(profile):
 
 def plan_experiment(config):
     """Resolve a selected study allocation without creating providers or dispatching calls."""
-    if not isinstance(config, dict) or config.get("profile") not in ("safety-study", "seabench-controller"):
+    if not isinstance(config, dict) or config.get("profile") not in PLANNED:
         raise ValidationError("Frozen allocation planning requires a planned study profile")
     check_available(config.get("methods", []))
     return _runner(config["profile"]).plan(deepcopy(config))
@@ -68,9 +69,9 @@ def run_experiment(config=None, output="runs/agent-bench", *, resume=False, expe
         raise ValidationError("Configuration must be a JSON object")
     profile = config.get("profile")
     runner = _runner(profile)
-    if expected_plan is not None and profile not in ("safety-study", "seabench-controller"):
+    if expected_plan is not None and profile not in PLANNED:
         raise ValidationError("Expected plans apply to planned study allocations")
-    if profile in ("matrix", "safety-study", "seabench-controller"):
+    if profile == "matrix" or profile in PLANNED:
         check_available(config.get("methods", []))
         options = {"expected_plan": expected_plan} if profile != "matrix" else {}
         return runner.run(config, output, resume=resume, **options)

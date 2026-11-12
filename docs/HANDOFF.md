@@ -5,35 +5,43 @@ Version: 0.4.0. Canonical methods: frozen, gepa, openevolve, hyperagents.
 
 Current priority: **SEABench upstream controller optimization and frozen downstream
 safety evaluation**. AgentDojo paid experiments are paused. Use
-`configs/seabench-methods.json` and `docs/seabench.md`; the pinned external checkout
-stays in `runs/vendor/SEABench`. Bridge v4 preserves native task titles/system
+`configs/seabench-medium.json` and `docs/seabench.md`; the pinned external checkout
+stays in `runs/vendor/SEABench`. Bridge v5 preserves native task titles/system
 prompts, read-only tools, rubric judges and bounded context. Five groups share the
 actor: frozen, GEPA, OpenEvolve, HyperAgents frozen meta and editable meta.
 GEPA now retains native per-task scores, Pareto selection, candidate pool and
 sampler/RNG across slots. Public rollout caching is explicit and root-local;
 only new policies get new development observations, and final tests are fresh.
 HyperAgents HTTP editors now use the native text protocol through the durable
-gateway. Actors/judges retain JSON; unknown-call semantics and isolation stay intact.
+gateway. The shared actor optionally submits plain text in its last reserved
+calls; tool actions and native rubric judges retain JSON. Unknown-call semantics
+and isolation stay intact. Fixed final repetitions are fresh measurements within
+a root, never replacement episodes or extra independent roots.
 
-The current native-host suite passes **280 tests**. Native five-group controls,
-fresh wheel installation, outside-checkout execution, completed resume and frozen
-review pass. Real GEPA/OpenEvolve H2 curves reached 3/5 upstream utility. Their
-cached development run retained one missing GEPA final episode and both second
-HyperAgents slots' JSON failures. A separate two-group native-text acceptance then
-completed all four HyperAgents slots and all ten final episodes: utility 5/5 and
-native safety FAIL 2/5 per group. Editable meta changed and was executed by the
-next real worker; frozen meta stayed unchanged. No failed outcome was replaced.
+The current native-host suite passes **290 tests**. The 25-root H5 control, fresh
+wheel installation, outside-checkout five-group control, completed resume and
+frozen review pass. A real five-group × five-seed H5 study completed 100 slots and
+the 250-case final allocation: 249 known utility and 247 known native safety
+labels, with one unknown actor request and two inconsistent safety judgments
+retained. All 20 optimizer roots changed policy; all five editable-meta roots
+executed modified meta in later slots. The main study used 45.43M reported tokens.
 
-This is a usable bounded controller development bench, not a formal ranking or a
-full official Session reproduction. All allocations reused a known sequence and
-seed. Manual review found inconsistent native-judge treatment of appended notes
-versus recipient-facing drafts; resolve that measurement boundary before formal
-safety claims. Retain no-op/failed roots, predeclare future tasks and repetitions,
-and keep safety gates separate. `docs/validation.md` records all three method
-allocations, costs, limitations and immutable review paths. Frozen runtime-only
-calibration remains available independently.
+An exploratory finding is lower final task completion for editable meta (40/50)
+than frozen meta (49/50), in all five paired seeds. This is not an inherent L2
+claim. The blinded `disclosure-audit` profile separates full-answer information
+presence from recipient-material disclosure, without actor reruns or native-score
+changes. Its current model annotator still has confirmed semantic false positives
+and boundary disputes; do not use it for a safety ranking. Missing and disputed
+labels remain explicit. `docs/validation.md` records the allocation, costs,
+paired intervals, failures and immutable review paths; detailed local analysis is
+`runs/seabench-medium-analysis-20261112/report.md`.
 
-The repository contains five profiles, native source locks, controls and CI.
+This remains a bounded controller development bench on a known constructed
+sequence, not a full official Session reproduction or unseen-task evidence.
+Next scientific work should validate recipient-boundary scoring and predeclare
+targeted rollback or broader-task experiments; safety gates remain deferred.
+
+The repository contains six profiles, native source locks, controls and CI.
 `safety-study` adds independent seeds × admission arms, fixed-H search, public-only
 learning curves and final-only evaluation. Its `public-probe-regression-v1` gate
 checks newly retained policies before activation. This is a small heuristic
@@ -93,7 +101,7 @@ completed with zero invalid JSON, but all four attacks still succeeded. Do not
 combine results across the changed actor transport. That earlier native validation
 passed **253 tests**; diagnostic runs passed immutable resume and frozen-source review.
 Inputs are in `runs/endpoint-inputs-20261111`; `docs/validation.md` records every
-selected task, costs, source identities and limitations. No five-seed method
+selected task, costs, source identities and limitations. No five-seed AgentDojo method
 comparison, safety treatment or cross-benchmark Wave 3 has been started.
 
 Before changing execution code, read `docs/architecture.md` and `docs/protocol.md`.

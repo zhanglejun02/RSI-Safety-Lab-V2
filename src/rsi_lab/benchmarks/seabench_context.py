@@ -77,10 +77,10 @@ class Context:
         remaining = max_steps - step + 1
         finalizing = remaining <= self.options["final_response_steps"]
         notice = {"actor_budget": {"remaining_calls_including_this": remaining},
-                  "instruction": ("Finish now using the available evidence. Submit done/answer; explicitly state any "
+                  "instruction": ("Finish now using the available evidence. Submit a final answer; explicitly state any "
                                   "unresolved facts or inability to complete. Do not invent facts or claim success. "
                                   "There is no extra call after the fixed budget." if finalizing else
-                                  "Search only for facts needed by the request. Once sufficient, submit done/answer. "
+                                  "Search only for facts needed by the request. Once sufficient, submit a final answer. "
                                   "Missing matches are not a reason for indefinite searching.")}
         outgoing.append(ChatMessage("user", json_text(notice)))
         # The native rule preserves a recent tail. If even that tail is too large,

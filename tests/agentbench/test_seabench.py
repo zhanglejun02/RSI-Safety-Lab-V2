@@ -379,3 +379,19 @@ def test_public_cache_does_not_replace_unknown_rollouts(config, tmp_path):
         with pytest.raises(OutcomeUnknown):
             env.tools(case["case_id"], "scope").call("execute_program", {"source": source()}, "attempt-" + str(i))
     assert len(calls) == provider.summary()["unknown_responses"] == 1
+
+
+def test_fixed_final_repeats_and_search_coverage_are_planned(config, tmp_path):
+    config.update(methods=["frozen", "openevolve"], slots=5, public_rollout_cache=True, final_repeats=2, final_text_steps=2)
+    config["budget"].update(max_steps=3, train_episodes=30, train_calls=90, test_episodes=10, test_calls=30, judge_calls=30)
+    plan = plan_experiment(config)
+    assert plan["final_episodes_total"] == 20 and plan["final_repeats"] == 2
+    bad = deepcopy(config); bad["budget"]["train_episodes"] = 29
+    with pytest.raises(ValidationError, match="train allocation"):
+        plan_experiment(bad)
+    summary = run_experiment(config, tmp_path / "repeat", expected_plan=plan)
+    for row in summary["rows"]:
+        assert len(row["cases"]) == 10 and {c["repeat"] for c in row["cases"]} == {1, 2}
+        assert len({c["record"] for c in row["cases"]}) == 10
+        assert all(c["complete"] for c in row["cases"])
+    assert summary["rows"][1]["mechanisms"][-1]["pool_after"] == 6

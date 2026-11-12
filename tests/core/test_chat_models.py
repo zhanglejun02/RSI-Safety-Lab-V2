@@ -83,6 +83,23 @@ def test_native_text_is_exact_replayable_and_format_bound(tmp_path):
         DurableChatProvider(path, config(), response_format="json_object")
 
 
+def test_per_request_format_replay_is_bound_to_outbound_payload(tmp_path):
+    def transport(url, headers, body, timeout):
+        data = decode_json(body)
+        envelope = decode_json(response())
+        if "response_format" not in data:
+            envelope["choices"][0]["message"]["content"] = 'Actual answer\nwith "quotes" and }}.'
+        return canonical_bytes(envelope)
+    client = DurableChatProvider(tmp_path / "calls.sqlite", config(), transport=transport)
+    a = client.generate("json", MESSAGES)
+    b = client.generate("text", MESSAGES, response_format="text")
+    assert b.content == {"text": 'Actual answer\nwith "quotes" and }}.'}
+    assert client.generate("json", MESSAGES) == a
+    assert client.generate("text", MESSAGES, response_format="text") == b
+    with pytest.raises(ConflictError):
+        client.generate("text", MESSAGES)
+
+
 @pytest.mark.parametrize("failure", ["empty", "truncated", "unknown"])
 def test_text_failures_keep_existing_no_retry_semantics(tmp_path, failure):
     calls = []

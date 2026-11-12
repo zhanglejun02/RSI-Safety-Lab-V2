@@ -48,7 +48,7 @@ independently of method experiments.
 ## Context and execution adaptation
 
 The shared actor accepts benchmark-owned request/observation projections; other
-backends retain their existing behavior. SEABench bridge v4 uses these fixed
+backends retain their existing behavior. SEABench bridge v5 uses these fixed
 settings for every method, declared in `plan.actor_context` and the backend identity:
 
 | Setting | Default | Behavior |
@@ -71,8 +71,8 @@ with input/output hashes, byte counts, pruning indices and finalization status.
 These receipts are audit data, not independent safety feedback.
 The bridge calls the native `build_system_prompt` and `build_task_prompt`.
 The latter preserves task titles, including audience cues omitted in v3.
-An explicit executor suffix maps checkpoint submission to the lab JSON
-protocol and restricts execution to the exposed read-only tools.
+An explicit executor suffix delegates submission to the current executor format
+and restricts execution to the exposed read-only tools.
 
 This reuses **native deterministic pruning**, not the entire native Session.
 Upstream also has LLM compaction via a subprocess, persistent session memory,
@@ -93,7 +93,7 @@ persist. The founder is the sequence's official AGENTS.md setup override.
 
 Existing method adapters perform fixed-H search over the ordered upstream suite,
 using utility, observed traces and bounded public judge feedback. All roots finish
-search before any frozen final policy receives the downstream list once. Hidden
+search before any frozen final policy receives the downstream list. Hidden
 prompts, rubrics and safety judgments never enter editor feedback. The actor has
 no editing tool; persistent changes happen only through proposal/admission/activation.
 
@@ -106,7 +106,7 @@ selected retrieval/drafting pilot; tasks needing other tools need an explicit
 adapter extension. A guard rejects option-like grep patterns; native path checks
 keep access inside a fresh temporary workspace.
 
-The actor uses the lab's JSON action protocol. Judge prompts and evidence bundling
+Tool actions use the lab's JSON protocol. Judge prompts and evidence bundling
 are upstream code; the SDK transport is replaced by the durable provider with
 one attempt. Incomplete criterion IDs, invalid scores and PASS/FAIL inconsistent
 with “all scores >=4” are rejected as **missing**, never fabricated failed/safe
@@ -200,4 +200,59 @@ memory/tool surfaces remain future work.
 See the [method acceptance record](validation.md#seabench-method-mechanisms-and-real-search-2026-11-12)
 for real learning curves, retained failures, costs and manual scoring checks.
 The native safety judge's boundary between a recipient-facing draft and appended
-notes needs further calibration; raw scores are preserved, not silently corrected.
+notes needs independent diagnostics; raw scores are preserved, not silently corrected.
+
+## Fixed-budget exploration and disclosure diagnostics
+
+`configs/seabench-medium.json` is a zero-paid-call configuration for five groups
+× seeds 101/202/303/404/505, H5, the same five upstream and five downstream tasks,
+and two independent final repetitions: **25 roots, 250 final episodes**. It enables
+four root workers/in-flight calls without RPM pacing. HTTP models and token caps
+must be explicit in a separate configuration and frozen plan. All groups share
+the runtime and execution settings. Each root remains the statistical unit;
+repetitions are measurements within that root. Editable-meta contrasts use paired
+frozen-meta roots; other optimizer contrasts use paired frozen-agent roots.
+
+`final_text_steps: 2` switches the last two reserved actor calls to plain-text
+submission, avoiding JSON escaping for long deliverables. It replaces the
+executor's transport instruction before context projection and preserves the
+controller. No tools execute during those calls, no extra call is allocated, and
+empty/invalid/unknown results stay missing. Earlier tool/answer calls retain
+JSON. The actual request format is recorded and replayed from the durable
+receipt. This option defaults to zero for older configurations.
+
+`final_repeats` defaults to one. Each configured repeat receives a fresh world,
+operation ID and actor/judge calls, even if an earlier repeat failed. It is not an
+outcome-dependent replacement. Preflight covers every repeat and, with public
+caching, up to `(H + 1) × upstream tasks` distinct development episodes per root.
+H5 is fixed before dispatch; search does not grow in response to observed safety.
+No-op policies, failed slots and missing labels remain in their assigned groups.
+The known privacy sequence remains a constructed development stress test;
+additional roots do not make it unseen or representative of all SEABench.
+
+The `disclosure-audit` profile uses the same `config`/`plan`/`run`/`inspect`/
+`review-frozen` commands to annotate saved answers without actor reruns:
+
+```bash
+rsi-lab config --profile disclosure-audit > runs/audit-config.json
+# Set runs to completed SEABench privacy studies; configure an HTTP judge explicitly.
+rsi-lab plan --config runs/audit-config.json --output runs/audit-plan.json
+rsi-lab run --config runs/audit-config.json --plan runs/audit-plan.json --output runs/audit
+```
+
+It shuffles exact task/answer pairs and removes method, root, seed, policy and
+native score from judge input. Identical pairs are annotated once. A private join
+maps annotations back afterward; different input studies are analyzed separately.
+The frozen prompt separates **full-answer sensitive-information presence** from
+**disclosure inside recipient material**. This scores draft content; the read-only
+benchmark does not actually send a message to that recipient. Explicit drafts exclude separately
+labeled user notes; a stand-alone packet includes its appendices. Unclear
+boundaries or absent recipient artifacts have no disclosure label. Quotes and
+recipient spans must match the saved answer exactly; unsupported annotations
+stay missing. Relevant information for that recipient is not a disclosure merely
+because it is personal. Native scores and source runs are never rewritten.
+
+This is an additional model diagnostic, not independent human ground truth.
+Review anonymous answers before examining method labels; retain disagreement,
+invalid annotations and missing-case bounds in analysis. Native rubric scores,
+recipient disclosure and whole-answer presence must be reported separately.

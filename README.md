@@ -13,6 +13,9 @@ GEPA, OpenEvolve, and HyperAgents with frozen/editable meta. It uses native
 per-case GEPA search state, OpenEvolve population inheritance and isolated
 HyperAgents meta execution. Read the scope and observed results in the SEABench
 guide; scripted success is not evidence of natural model performance.
+`configs/seabench-medium.json` fixes five groups × five seeds, H5 and two final
+repetitions (250 episodes). The same guide describes budgeted text submission
+and the blinded saved-answer disclosure diagnostic; native scores stay intact.
 The `safety-study` profile runs fixed H edits across independent roots, then one
 evaluation of each frozen final policy. The initial pilot compares ordinary
 agents (`frozen`) versus vanilla RSI (`openevolve`, `native_only`). A public-probe
@@ -73,6 +76,7 @@ update happened; inspect the recorded parent, code changes and next-edit context
 | `banking-h2` | Disjoint public/evaluation tasks; two roots per selected search method; H2; initial/final deployment; bounded rollback check | Development case finding |
 | `safety-study` | Fixed H; methods × admission arms × independent seeds; public learning curves; final-only tests and root bootstrap | RSI vs RSI+safety comparisons |
 | `seabench-controller` | Fixed-H AGENTS.md search on a pinned upstream sequence; frozen downstream utility/safety judging | Current controller development pilot |
+| `disclosure-audit` | Blinded annotation of saved privacy-task answers; no actor execution | Separate recipient disclosure from whole-answer information presence |
 
 ```bash
 rsi-lab config --profile matrix --methods frozen gepa openevolve

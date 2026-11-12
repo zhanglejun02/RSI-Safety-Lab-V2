@@ -32,8 +32,9 @@ not model performance. For HTTP, save a new config with `mode: http` and explici
 actor/editor/judge `ChatConfig` settings in `models`. Use environment-variable
 credential names and `--env-file .env`, then freeze a new plan. All providers,
 including separate upstream/downstream judges, count toward allocation ceilings.
-The existing execution overlay supports process-per-root scheduling; pilots are
-serial. All methods in a comparison must share execution settings.
+The existing execution overlay supports process-per-root scheduling. All methods
+in a comparison must share execution settings; the five-group development run
+used two workers, two in-flight requests and no RPM pacing.
 
 For execution calibration, use `configs/seabench-runtime-calibration.json` with
 the same plan/run commands. Its `calibration` list selects official **upstream**
@@ -41,13 +42,13 @@ task IDs; only frozen is allowed. Each task runs once per repetition through the
 usual baseline evaluator. Reporting reuses those observations without another
 actor call. There is no editor, downstream actor or safety judge, and no bootstrap
 method comparison. Nonempty answers and valid utility judgments are execution
-checks; utility PASS is not required. This remains the current priority before
-resuming optimizer experiments.
+checks; utility PASS is not required. This diagnostic remains available
+independently of method experiments.
 
 ## Context and execution adaptation
 
 The shared actor accepts benchmark-owned request/observation projections; other
-backends retain their existing behavior. SEABench bridge v3 uses these fixed
+backends retain their existing behavior. SEABench bridge v4 uses these fixed
 settings for every method, declared in `plan.actor_context` and the backend identity:
 
 | Setting | Default | Behavior |
@@ -68,6 +69,10 @@ exhaustion. HTTP preflight reserves another 1,024 bytes for request framing.
 the page. Each request stores the actual outbound messages and a `context` receipt
 with input/output hashes, byte counts, pruning indices and finalization status.
 These receipts are audit data, not independent safety feedback.
+The bridge calls the native `build_system_prompt` and `build_task_prompt`.
+The latter preserves task titles, including audience cues omitted in v3.
+An explicit executor suffix maps checkpoint submission to the lab JSON
+protocol and restricts execution to the exposed read-only tools.
 
 This reuses **native deterministic pruning**, not the entire native Session.
 Upstream also has LLM compaction via a subprocess, persistent session memory,
@@ -131,12 +136,68 @@ the retained failures and costs, followed by the bounded-runtime calibration.
 Upstream execution calibration does not establish complete evolution/downstream
 evaluation or method fidelity.
 
-## Remaining mechanism work
+## Method comparisons and mechanism evidence
 
-Benchmark integration does not establish method fidelity or the L1/L2 hypothesis.
-GEPA persistent candidate-pool/per-task selection, OpenEvolve population
-inheritance and HyperAgents meta updates affecting descendants remain separate
-audits. HyperAgents frozen-meta versus editable-meta is not implemented here.
-Do not interpret cross-algorithm differences as an L1/L2 causal effect. Keep
-failed and unchanged-policy roots; freeze methods, sequences, budgets and
-repetitions before a larger comparison or independent safety gate.
+Use `configs/seabench-methods.json` through the same plan/run commands. It selects
+five groups, one root each, H2, all five upstream tasks and all five downstream
+tasks of the fixed personal-admin/privacy sequence. The actor cap is 12 calls
+for every group. This is a development control, not a formal sample size.
+`hyperagents_meta_modes: ["frozen", "editable"]` creates paired variants without
+new method IDs or a second runner.
+
+| Method | Preserved mechanism | Explicit limits |
+|---|---|---|
+| GEPA | Native reflection, per-task utility vectors, Pareto parent selection, candidate pool, sampler and RNG across activated slots | One reflective mutation per slot; no merge; aggregate-best deployment with latest ties |
+| OpenEvolve | Native population/archive, parent and inspiration selection, worker rewrite/evaluation, cross-slot inheritance | One island and one iteration per slot |
+| HyperAgents | Native meta-agent/tool loop and archive parent selection; selected meta source executes in the next worker | Bounded policy/meta files, three replies per edit, macOS isolation |
+
+GEPA uses native checkpoint save/load in a private temporary directory, generated
+from the immutable JSON snapshot; it never accepts an external pickle. Search
+state is committed only through activation. A valid native iteration can update
+search bookkeeping while retaining the same deployed policy; native child
+admission is recorded separately. The older non-agent GEPA cost profile keeps
+its original single-epoch contract. Actual actor/judge calls are charged
+independently of the native metric counter.
+
+The comparison config enables `public_rollout_cache`: each exact policy source
+and development case receives one durable rollout per root. Repeated archive,
+minibatch and learning-curve evaluations reference that record, with cost charged
+once. A changed policy gets fresh rollouts; the final evaluation is always fresh.
+This is a fixed sampled development objective, not a new stochastic observation
+on every optimizer request. Missing/unknown observations are retained, never
+replaced. The setting is bound into the plan and public task contract; it is off
+for older profiles. H2 with at most three distinct policies needs up to 15 training
+episodes here; changing H or candidate generation requires revisiting the caps.
+
+HTTP editor transport is declared by the method registry. HyperAgents uses its
+native text/tool-tag protocol; GEPA/OpenEvolve use their JSON envelopes. Forcing
+HyperAgents' text conversation through JSON mode produced invalid closing tags,
+even with an explicit format reminder. The native text transport preserves the
+original response verbatim and shares the same budget, unknown-call and replay
+rules. Actor and rubric-judge transport stays identical across methods.
+
+Long public traces retain the bounded task request, final answer and utility
+feedback before sampled tool steps. Shared editor projections fit the whole
+10 KB allowance across cases; a long first row cannot erase every task.
+Excerpts use only actor-observed tool pages. Full public records remain in the
+journals; independent safety feedback stays unavailable.
+
+`mechanisms.csv` reports pool sizes, parent IDs, activation, policy changes, meta
+permission, actual meta changes and whether a non-founder meta was executed.
+`learning-curves.csv` reports public utility independently of final scores.
+The frozen-meta worker rejects meta writes and verifies the frozen file afterward.
+Editable-meta roots remain in their group when they make no meta change; byte
+changes and descendant use do not by themselves establish useful meta improvement.
+
+The official refinement pipeline seeks initial baseline failures and useful
+evolving trajectories. Frozen utility need not be positive to permit search.
+These published sequences are constructed development stress tests; the lab does
+not run adaptive task refinement or reproduce the full native Session. Only the
+paired HyperAgents variants isolate meta permission; GEPA versus HyperAgents also
+changes the algorithm. Broader tasks, independent roots, native-runtime A/B and
+memory/tool surfaces remain future work.
+
+See the [method acceptance record](validation.md#seabench-method-mechanisms-and-real-search-2026-11-12)
+for real learning curves, retained failures, costs and manual scoring checks.
+The native safety judge's boundary between a recipient-facing draft and appended
+notes needs further calibration; raw scores are preserved, not silently corrected.

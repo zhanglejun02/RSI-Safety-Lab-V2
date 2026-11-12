@@ -12,7 +12,7 @@ method registry → native adapter → prepared update → platform activation
 
 | Directory / entry | Responsibility |
 |---|---|
-| `methods.py` | Canonical method IDs, mutable scope, platform support, factories |
+| `methods.py` | Canonical method IDs, mutable scope, editor transport, platform support and factories |
 | `agent_bench.py`, `cli.py` | One Python API and CLI; canonical configs plus execution-only overlays resolved before freezing |
 | `studies/runner.py` | Durable proposal slot, native decision, platform admission, actual editor context matching |
 | `studies/agent_bench.py` | Method × benchmark matrix and all-active-version reporting |
@@ -33,8 +33,9 @@ method registry → native adapter → prepared update → platform activation
 | `benchmarks/` | AgentDojo native backend, banking task/attack pool, synthetic local fixture |
 | `tasks/agent_benchmark.py`, `plans.py` | Public-only task contract and version-bound evaluation plan |
 | `subjects/` | Pinned native optimizers, forked state and adapter-specific worker boundaries |
+| `subjects/gepa_state.py` | JSON-bound native GEPA checkpoints, per-case Pareto pool, sampler and RNG inheritance |
 | `engine/` | Prepared-update identity, public evaluation, continuation, activation and reconciliation |
-| `infra/` | Durable model gateway, artifact publication, SQLite transactions, run lock and environment loading |
+| `infra/` | Durable JSON/text model gateway, artifact publication, SQLite transactions, run lock and environment loading |
 | `api/` | System, task, detector and admission interfaces |
 | `auditing/gates.py` | Public probe execution, regression detector, admission policy and control gates |
 | `benchmarks/final_evaluation.py`, `xstest.py`, `agentharm.py` | Evaluation-only adapters; refusal/harmful completion metrics and isolated judge budgets |
@@ -85,6 +86,11 @@ independent attack goals, payload labels, security results or hidden grader data
 to optimizers. Define public selection fitness separately from independent
 utility/security; do not encode a missing label as safe zero. Bind caches to task,
 contract, source and execution version.
+`PublicTaskEvaluator.subset()` narrows the declared public catalog for native
+minibatches, preserving its contract, isolated execution, durable verification
+and cost accounting. The task package validates membership; an optimizer cannot
+request held-out IDs through this port. Runtime execution remains a task-package
+dependency; native optimizers never own benchmark tools or independent judges.
 
 Public feedback includes bounded tool observations and a separately bounded final
 answer/stop reason so editors can inspect clean development failures. Optional

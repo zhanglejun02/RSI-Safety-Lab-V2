@@ -8,10 +8,11 @@ The current development target is **SEABench controller optimization and downstr
 safety evaluation**; see [setup and protocol](docs/seabench.md). AgentDojo runs are
 paused. Other backends are **AgentDojo**, **XSTest**, and optional **AgentHarm**
 through pinned Inspect Evals. `local_transfer` is a synthetic fixture.
-Current execution calibration uses `configs/seabench-runtime-calibration.json`:
-frozen only, selected upstream tasks, bounded context, no editor or downstream
-evaluation. It runs through the same `plan` / `run` commands. Method-fidelity and
-complete evolution/evaluation acceptance remain separate from this calibration.
+`configs/seabench-methods.json` runs a five-group H2 controller control: frozen,
+GEPA, OpenEvolve, and HyperAgents with frozen/editable meta. It uses native
+per-case GEPA search state, OpenEvolve population inheritance and isolated
+HyperAgents meta execution. Read the scope and observed results in the SEABench
+guide; scripted success is not evidence of natural model performance.
 The `safety-study` profile runs fixed H edits across independent roots, then one
 evaluation of each frozen final policy. The initial pilot compares ordinary
 agents (`frozen`) versus vanilla RSI (`openevolve`, `native_only`). A public-probe
@@ -58,7 +59,7 @@ inputs, never required just to install or run controls.
 | `frozen` | None; same initial actor instructions | macOS / Linux |
 | `gepa` | Actor instructions; fixed GEPA optimizer | macOS / Linux |
 | `openevolve` | Actor instructions; fixed native archive/search algorithm | macOS / Linux |
-| `hyperagents` | Actor instructions and bounded `meta_agent.py` | macOS with `sandbox-exec` |
+| `hyperagents` | Actor instructions; bounded `meta_agent.py` can be frozen or editable | macOS with `sandbox-exec` |
 
 GEPA and OpenEvolve perform iterative instruction search. HyperAgents is a bounded
 single-task integration of pinned upstream components, not a full multi-domain

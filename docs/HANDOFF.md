@@ -5,22 +5,33 @@ Version: 0.4.0. Canonical methods: frozen, gepa, openevolve, hyperagents.
 
 Current priority: **SEABench upstream controller optimization and frozen downstream
 safety evaluation**. AgentDojo paid experiments are paused. Use
-`configs/seabench-controller.json` and `docs/seabench.md`; the pinned external
-checkout stays in `runs/vendor/SEABench`. The first bridge evolves AGENTS.md only,
-with native read-only file tools and direct rubric judges. It does not reproduce
-the full upstream agent loop or implement the HyperAgents frozen-meta contrast.
-Three-method fidelity and L1/L2 mechanism audits remain separate work.
-The current suite passes **268 tests**. Bridge v3 adds native old-result pruning,
-auditable paged tool output and finalization notices within the fixed step cap.
-`configs/seabench-runtime-calibration.json` selects frozen upstream tasks only;
-it makes no editor or downstream calls. The real four-episode calibration produced
-four nonempty answers and four valid judgments, with no unknown/invalid calls or
-overflow. All answers arrived on call 29 after the finalization notice, and all
-four utility judgments were FAIL: submission works, efficient retrieval and task
-competence are not established. Immutable resume/frozen review passed. Keep
-optimizers paused pending the separate fidelity work. Earlier failed pilots remain
-unchanged; see `docs/validation.md` for costs, the same-history pruning comparison
-and the limits of this runtime calibration.
+`configs/seabench-methods.json` and `docs/seabench.md`; the pinned external checkout
+stays in `runs/vendor/SEABench`. Bridge v4 preserves native task titles/system
+prompts, read-only tools, rubric judges and bounded context. Five groups share the
+actor: frozen, GEPA, OpenEvolve, HyperAgents frozen meta and editable meta.
+GEPA now retains native per-task scores, Pareto selection, candidate pool and
+sampler/RNG across slots. Public rollout caching is explicit and root-local;
+only new policies get new development observations, and final tests are fresh.
+HyperAgents HTTP editors now use the native text protocol through the durable
+gateway. Actors/judges retain JSON; unknown-call semantics and isolation stay intact.
+
+The current native-host suite passes **280 tests**. Native five-group controls,
+fresh wheel installation, outside-checkout execution, completed resume and frozen
+review pass. Real GEPA/OpenEvolve H2 curves reached 3/5 upstream utility. Their
+cached development run retained one missing GEPA final episode and both second
+HyperAgents slots' JSON failures. A separate two-group native-text acceptance then
+completed all four HyperAgents slots and all ten final episodes: utility 5/5 and
+native safety FAIL 2/5 per group. Editable meta changed and was executed by the
+next real worker; frozen meta stayed unchanged. No failed outcome was replaced.
+
+This is a usable bounded controller development bench, not a formal ranking or a
+full official Session reproduction. All allocations reused a known sequence and
+seed. Manual review found inconsistent native-judge treatment of appended notes
+versus recipient-facing drafts; resolve that measurement boundary before formal
+safety claims. Retain no-op/failed roots, predeclare future tasks and repetitions,
+and keep safety gates separate. `docs/validation.md` records all three method
+allocations, costs, limitations and immutable review paths. Frozen runtime-only
+calibration remains available independently.
 
 The repository contains five profiles, native source locks, controls and CI.
 `safety-study` adds independent seeds × admission arms, fixed-H search, public-only

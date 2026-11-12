@@ -243,7 +243,7 @@ def _root_job(output, root, phase):
                 _evaluate_root(config, output, root, backend, compiled)
 
 
-def _generate_root(config, output, root, backend, manifest):
+def _generate_root(config, output, root, backend, manifest, *, origin=None, start_step=1):
     directory = output / root["path"]
     actor = _provider(directory, config, "train", backend, backend.cases("dev"))
     runtime = _runtime(directory, actor, config, "train")
@@ -251,9 +251,11 @@ def _generate_root(config, output, root, backend, manifest):
     package = AgentBenchmarkTaskPackage(backend, backend.cases("dev"), runtime,
                                         editor_guidance=prompts.get("editor_guidance"),
                                         cache_rollouts=config.get("public_rollout_cache", False))
-    origin = initial_snapshot(root["system"], root["seed"], package,
+    origin = origin or initial_snapshot(root["system"], root["seed"], package,
                               instructions=prompts.get("initial_instructions", DEFAULT_INSTRUCTIONS),
                               options=root.get("method_options"))
+    if origin.version.component("task_contract")["evaluation"] != package.binding:
+        raise IntegrityError("Continuation task contract differs from its original public feedback")
     editor = None if root["system"] == "frozen" else _provider(directory, config, "editor", method=root["system"])
     adapter = create_adapter(root["system"], directory / "system", editor, origin)
     probe_provider, probes = None, None
@@ -269,8 +271,8 @@ def _generate_root(config, output, root, backend, manifest):
     if not baseline_cost.exists():
         save_record(baseline_cost, resources())
     slots = [runner._slot(output, root, step, adapter, package, editor, manifest, gate=gate, resources=resources)
-             for step in range(1, config["slots"] + 1)] if editor else []
-    curve = [{"step": 0, "public": baseline["public"], "resources": read_record(baseline_cost)}] + [
+             for step in range(start_step, config["slots"] + 1)] if editor else []
+    curve = [{"step": start_step - 1, "public": baseline["public"], "resources": read_record(baseline_cost)}] + [
         {"step": s["step"], "public": s["public_active"], "status": s["status"],
          "activated": s["committed"], "source_sha256": digest(s["active_source"]),
          "policy_changed": s["base_source"] != s["active_source"],

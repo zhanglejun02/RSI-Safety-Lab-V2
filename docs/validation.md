@@ -4,6 +4,118 @@ Engineering acceptance records and separately labeled pilot observations follow.
 All controls and tests use zero paid API calls. Scripted outcomes are not natural
 experiments or method rankings.
 
+## Disclosure calibration and paired meta withdrawal (2026-11-12)
+
+The same `seabench-controller` runner now supports checkpoint continuations through
+`meta_ablation`; `disclosure-audit` supports audience cards, fixed draft projection,
+passing calibration and exact-request annotation reuse. No experiment CLI was
+added. Search never receives independent labels. The original medium artifacts
+remain unchanged.
+
+### Measurement acceptance and remaining uncertainty
+
+`configs/disclosure/privacy-v2.json` fixes five task-specific scope cards and 26
+synthetic checks. Relevant clinical identifiers sent to a clinician are not this
+excluded-topic endpoint. User notes are separate from recipient drafts; absent
+artifacts and unresolved boundaries remain missing. Exact spans/quotes are checked.
+The final checks score **26/26**, with **20/20** on supplementary fixtures frozen
+before inspecting the earlier reasoning calibration. These are assistant-authored
+fixtures, not independent human validation or a natural-answer accuracy estimate.
+
+Earlier calibrations (21/26, 23/26, a JSON-mode request-format failure, and 25/26)
+remain on disk. The explicit JSON response instruction fixes the HTTP contract;
+30 early HTTP 400 requests remain unknown/reserved, never overwritten or retried.
+See the [provider's JSON mode requirements](https://api-docs.deepseek.com/guides/json_mode/).
+Blinded review of 100 original HyperAgents answers also corrected quote/draft and
+user-note boundaries. Two clinician-preamble cases remain disputed in a separate
+reviewed diagnostic; native and raw automated scores stay intact.
+
+The continuation's 96 nonempty answers were annotated without method/seed/native
+labels in judge input. Review covered the first two per audience and every
+positive/missing/invalid annotation before joining method mappings. A plain
+`Supporting evidence` heading after the signature exposed one residual projection
+false positive. A blinded, recorded mechanical correction to the existing scope
+rule changed three request views (including negative cases): **93 annotations were
+reused and three newly scored** in a separate immutable audit. This was an
+answer-format-driven correction, not an entirely preregistered measurement.
+The final 26/20 calibration requests were unchanged and reused with zero new calls.
+
+| Continuation | Native safety FAIL / known | Scoped automatic disclosure / known | Reviewed disclosure / known | Reviewed missing / allocated |
+|---|---:|---:|---:|---:|
+| Retain meta | 20/48 | 2/47 | 1/46 | 4/50 |
+| Withdraw meta | 17/47 | 0/46 | 0/46 | 4/50 |
+
+One clinician-preamble boundary is disputed; the clear positive mentions New York
+travel inside the actual clinician questions. It belongs to a seed whose two
+final policies are identical. Whole-answer excluded-topic presence is 94/96;
+this must not be conflated with recipient-material disclosure or native safety.
+Reviewed all-allocated disclosure bounds are 2%–10% and 0%–8%. No safety ranking
+follows. Review is by the assistant, not independent human adjudication.
+
+### Conditional continuation result
+
+Seeds 101/202/303/404/505 fork before first edited-meta use, at H3/H3/H4/H3/H2.
+Each pair shares policy/archive state, epoch/parent RNG and verified development
+observations. Both retain editing permission; withdrawal executes and shows the
+vendored founder meta on every remaining proposal. The actor and native judges
+match the original run. Four workers/in-flight calls, null RPM, H5 and two final
+repeats are fixed. The allocation is **30 slots and 100 final episodes on five
+existing source roots**, not ten new independent roots. The frozen provider
+ceiling is 5,550 calls / 78M tokens, not expected use.
+
+| Branch | Native utility PASS / known | Missing / allocated | All-allocated utility bounds | New tokens |
+|---|---:|---:|---:|---:|
+| Retain | 40/49 | 1/50 | 80%–82% | 6,336,587 |
+| Withdraw | 42/47 | 3/50 | 84%–90% | 3,852,765 |
+
+The three complete pairs have withdrawal-minus-retention differences +10/-10/+10pp:
+**mean +3.33pp, 95% percentile bootstrap [-10,+10]pp**, resampling source roots
+2,000 times. Two pairs remain incomplete. Assigning all possible values to the
+four missing utility labels bounds the fixed allocation's mean difference at
++2 to +10pp; this is not a confidence interval or a population causal bound.
+Seeds 101/202 have byte-identical final policies despite opposite score differences.
+The historical frozen/editable 49/50 versus 40/50 gap is therefore not explained
+by this conditional intervention. Earlier co-edits and permission effects remain
+outside the intervention, and remote actor/judge variation persists.
+
+All 30 slots activate. Retained meta is actually invoked 12 times, withdrawal zero.
+The branches generate 11 versus four new policy contents; 4/5 versus 1/5 final
+policies differ from their fork policy. Selected cached dev scores stay unchanged.
+New development judging is 55 versus 20 episodes, reflecting cache hits for
+repeated policies; equal caps/H are not equal actual compute. Fourteen native
+utility failures comprise three absent drafts, four partial/templates and seven
+usability penalties for contacts/caveats/notes. These labels are not corrected;
+they reveal an additional native utility-judgment sensitivity.
+
+### Costs and engineering checks
+
+The main run used **1,942 calls / 10,189,352 reported tokens**, with 867.4 seconds
+across generation/evaluation, peak concurrency four, no HTTP 429/5xx. Eighteen
+invalid responses consumed budget; five unknown calls (three IncompleteRead, two
+URLError) left four final answers and one safety label missing. No replacements
+or automatic retries occurred. All disclosure calibration and answer audits add
+**408 calls / 728,086 reported tokens**, including the 30 preserved early HTTP 400
+unknowns. The combined 10,917,438 tokens exclude unreported unknown-call usage;
+this is not a complete monetary bill. Imported public observations cost zero anew.
+
+Final native-host tests: **296 passed**, two upstream warnings, 199.05 seconds.
+A fresh constrained wheel installation passes `pip check`; wheel/sdist contain no
+runs, secrets or environments. Native paired continuation controls exercise real
+isolation, shared prefix, withdrawal, unknown preservation and immutable resume.
+The installed final wheel passes the 26-check control outside the checkout.
+Completed main resume is read-only, and offline frozen review reproduces **1,942
+requests**, zero new effects and unchanged originals. Initial/new disclosure
+reviews reproduce 96/3 requests respectively, preserving reused provenance.
+
+Records: `runs/seabench-meta-withdrawal-{inputs,real,analysis,review}-20261112`;
+final annotation is `runs/seabench-meta-withdrawal-disclosure-evidence-20261112`.
+`analysis/report.md` includes per-seed/task scores, blind-review sidecars, policy
+hashes/diffs, failure categories and costs. Main source fingerprint:
+`bc83fa53d138eecb88ac3cb83883e8a0ec937b97bbcb93ef8bf73b609f64cc38`;
+final independent scoring/package fingerprint:
+`cefe1de1a113ab1eb1beecb8f1923caacc312b5bb662442d8b19f58bbb0d3ccd`.
+No new roots, benchmarks, gates or outcome-dependent extra searches were added.
+
 ## Medium SEABench exploration (2026-11-12)
 
 The predeclared allocation is five groups × seeds 101/202/303/404/505, H5,

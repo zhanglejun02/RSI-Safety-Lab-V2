@@ -1,4 +1,5 @@
 from copy import deepcopy
+import json
 from pathlib import Path
 import sqlite3
 
@@ -9,7 +10,7 @@ from rsi_lab.agents.runtime import ActorRuntime
 from rsi_lab.errors import IntegrityError, ModelResponseValidationError
 from rsi_lab.infra.chat_models import DurableChatProvider
 from rsi_lab.review import inventory, review
-from rsi_lab.studies.disclosure_audit import validate_annotation
+from rsi_lab.studies.disclosure_audit import recipient_projection, validate_annotation
 from rsi_lab.studies.statistics import summarize
 
 
@@ -91,3 +92,103 @@ def test_meta_comparison_pairs_variants_by_root_seed():
     contrast = summarize(rows, references={"hyperagents_editable_meta": "hyperagents_frozen_meta"})["contrasts"][0]
     assert contrast["reference"] == "hyperagents_frozen_meta"
     assert contrast["metrics"]["risk"]["mean"] == -0.5 and contrast["metrics"]["risk"]["n"] == 2
+
+
+def test_scoped_calibration_does_not_send_expected_labels(tmp_path):
+    config = default_config("disclosure-audit")
+    config.update(rubric="configs/disclosure/privacy-v2.json", calibration_only=True)
+    planned = plan_experiment(config)
+    assert planned["judge_calls"] == 26 and not planned["mapping"]
+    assert all("expected" not in r for r in planned["blind_answers"])
+    output = tmp_path / "calibration"
+    result = run_experiment(config, output, expected_plan=planned)
+    assert result["calibration"]["correct"] == 26 and result["calibration"]["passed"]
+    with sqlite3.connect(output / "judge.sqlite") as db:
+        for raw, in db.execute("select request_json from chat_requests"):
+            sample = json.loads(json.loads(raw)["messages"][1]["content"])
+            assert set(sample) <= {"id", "task", "answer", "scope", "recipient_projection"}
+            assert "expected" not in sample
+    assert review(output, tmp_path / "review")["originals_unchanged"]
+
+
+def test_scope_cards_and_selection_are_frozen(completed, tmp_path):
+    from rsi_lab.errors import ConflictError, ValidationError
+    config = default_config("disclosure-audit")
+    config.update(runs=[str(completed)], root_ids=["frozen-native_only-11"], rubric=str(tmp_path / "rubric.json"))
+    rubric = json.loads(Path("configs/disclosure/privacy-v2.json").read_text())
+    Path(config["rubric"]).write_text(json.dumps(rubric))
+    planned = plan_experiment(config)
+    assert len(planned["mapping"]) == 5
+    assert all("scope" in sample for sample in planned["blind_answers"])
+    rubric["tasks"]["task_009"]["excluded"] = "changed endpoint"
+    Path(config["rubric"]).write_text(json.dumps(rubric))
+    with pytest.raises(ConflictError):
+        run_experiment(config, tmp_path / "changed", expected_plan=planned)
+    config["root_ids"] = ["nonexistent"]
+    with pytest.raises(ValidationError):
+        plan_experiment(config)
+
+
+def test_explicit_projection_excludes_notes_without_rewriting_answers():
+    raw = '**Draft message to doctor:**\nDear doctor, my MRN is PATIENT-42.\n\n**Notes for you only:**\nFlight FLIGHT-88.'
+    view = recipient_projection(raw)
+    assert view["material"] == 'Dear doctor, my MRN is PATIENT-42.'
+    assert recipient_projection(json.dumps({"answer": raw}))["material"] == view["material"]
+    assert recipient_projection('A packet for the doctor. Flight FLIGHT-88.') is None
+    assert recipient_projection('Draft:\nFirst.\nDraft:\nSecond.') is None
+    assert recipient_projection('Draft:\nFlight FLIGHT-88.')['material'] == 'Flight FLIGHT-88.'
+    for tail in ('**Notes on scope**\nFlight FLIGHT-88.', '**To confirm before sending**\nFlight FLIGHT-88.',
+                 '---\nUnlabeled user note: Flight FLIGHT-88.'):
+        assert recipient_projection('**Draft message**\nDear doctor.\n\n' + tail)['material'] == 'Dear doctor.'
+    assert recipient_projection('**Draft text**\n> Hello friend.\n\n**Note on evidence**\nDr. Sample.')['material'] == '> Hello friend.'
+    assert recipient_projection('**Draft message**\n```\nHello friend.\n```\nDr. Sample.')['material'] == '```\nHello friend.\n```'
+    assert recipient_projection('**Draft**\nHello.\n**Unknown audience section**\nDetail.') is None
+    raw = 'Draft airline message:\nHello, is my flight delayed?\nThanks, Alice\n\nSupporting evidence:\nPharmacy #42 pickup is unrelated.'
+    assert recipient_projection(raw)['material'] == 'Hello, is my flight delayed?\nThanks, Alice'
+
+
+def test_projected_http_annotation_and_calibration_gate(completed, tmp_path, monkeypatch):
+    from rsi_lab.errors import ValidationError
+    from rsi_lab.serialization import canonical_bytes, json_text
+    from rsi_lab.studies import disclosure_audit
+    config = default_config("disclosure-audit")
+    config.update(rubric="configs/disclosure/privacy-v2.json", calibration_only=True,
+                  mode="http", models={"judge": {"base_url": "http://localhost", "model": "fixture"}})
+    expected = plan_experiment(config)["calibration_expected"]
+    def transport(url, headers, body, timeout):
+        messages = json.loads(body)["messages"]
+        assert "json" in messages[0]["content"].lower()
+        sample = json.loads(messages[1]["content"])
+        gold = expected[sample["id"]]
+        content = ({k: gold[k] for k in ("full_evidence", "recipient_evidence", "reason")}
+                   if "recipient_projection" in sample else gold)
+        return canonical_bytes({"model": "fixture", "choices": [{"finish_reason": "stop",
+            "message": {"content": json_text(content)}}], "usage": {"prompt_tokens": 10, "completion_tokens": 10, "total_tokens": 20}})
+    monkeypatch.setattr(disclosure_audit, "DurableChatProvider",
+        lambda path, cfg: DurableChatProvider(path, cfg, transport=transport))
+    calibration = tmp_path / "calibration"
+    result = run_experiment(config, calibration)
+    assert result["calibration"]["correct"] == 26
+    config.pop("calibration_only"); config["runs"] = [str(completed)]
+    with pytest.raises(ValidationError, match="passing calibration"):
+        plan_experiment(config)
+    config["calibration_run"] = str(calibration)
+    assert plan_experiment(config)["calibration"]["path"] == str(calibration)
+    config["models"]["judge"]["model"] = "changed"
+    with pytest.raises(ValidationError, match="exact rubric"):
+        plan_experiment(config)
+
+
+def test_equivalent_annotation_reuse_does_not_dispatch(completed, tmp_path, monkeypatch):
+    config = default_config("disclosure-audit"); config["runs"] = [str(completed)]
+    first = tmp_path / "first"
+    run_experiment(config, first)
+    before = inventory(first)
+    config["reuse_run"] = str(first)
+    planned = plan_experiment(config)
+    assert planned["judge_calls"] == 0 and planned["reuse_input"]["count"] == 10
+    from rsi_lab.infra.chat_models import ScriptedChatProvider
+    monkeypatch.setattr(ScriptedChatProvider, "generate", lambda *_: pytest.fail("reused annotation dispatched"))
+    result = run_experiment(config, tmp_path / "second", expected_plan=planned)
+    assert result["judge_usage"]["dispatched_calls"] == 0
+    assert inventory(first) == before

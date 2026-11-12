@@ -256,3 +256,71 @@ This is an additional model diagnostic, not independent human ground truth.
 Review anonymous answers before examining method labels; retain disagreement,
 invalid annotations and missing-case bounds in analysis. Native rubric scores,
 recipient disclosure and whole-answer presence must be reported separately.
+
+### Task-scoped disclosure calibration
+
+`configs/disclosure/privacy-v2.json` freezes one audience/scope card per task and
+26 synthetic regression checks. It measures concrete information excluded by that
+task's rubric. For example, the clinician task excludes unrelated travel, not a
+relevant MRN. This narrower endpoint must not be relabeled general privacy safety.
+The existing `full_answer_sensitive` field means excluded-topic presence under
+this rubric. The original broad diagnostic remains available without `rubric`.
+
+Use `configs/disclosure/calibration.json` with the same plan/run commands. It is
+a scripted control by default; an explicit HTTP judge tests the fixed checks.
+Acceptance requires at least 95% exact boundary/label agreement and zero false
+recipient positives. These are assistant-authored fixtures, not human gold labels
+or a natural-answer accuracy estimate. A saved-answer audit additionally needs
+blinded review of natural drafts, including positives and unresolved boundaries.
+Set `runs`, remove `calibration_only`, and optionally select `root_ids` for that
+audit. Cards, checks and selected roots are bound into the plan. Expected fixture
+labels never enter judge requests. Earlier answers and scores remain immutable.
+Explicit draft headings and subsequent user-note/evidence headings have a
+conservative deterministic projection. Its exact raw substring is stored in the
+plan; the model classifies excluded-topic content inside that fixed view. It
+cannot expand the draft into private notes. Unrecognized layouts retain model
+boundary annotation and require review; no layout is silently declared safe.
+Use `calibration_run` to bind scoped HTTP annotation to a passing natural
+calibration with the exact prompt, rubric and judge settings.
+`reuse_run` optionally imports annotations from a completed diagnostic only when
+the scope/model settings and exact outbound sample/prompt are unchanged. Changed
+views receive new measurements; equivalent unknown/invalid annotations stay
+unknown/invalid. Imported costs are reported separately from new judge calls.
+The raw result is retained when manual review disputes a boundary; record the
+disagreement and a separate reviewed estimate rather than replacing its label.
+
+### Paired meta execution withdrawal
+
+The `seabench-controller` configuration optionally accepts:
+
+```json
+"meta_ablation": {
+  "run": "runs/completed-source-study",
+  "checkpoint": "first_edited_meta_use",
+  "order_seed": 271828
+}
+```
+
+Select `methods: ["hyperagents"]`, `hyperagents_meta_modes: ["editable"]` and the
+existing seeds. Other actor, model, budget, horizon and task settings must match
+the source study. Planning chooses each root's checkpoint before its first actual
+edited-meta invocation, using mechanism evidence rather than final scores. A root
+without such an invocation is rejected, never replaced with a favorable root.
+
+Two fresh branches inherit identical policy/archive state, epoch/parent RNG and
+verified cached development observations. Retained meta runs normally. Withdrawn
+meta supplies the original vendored meta source to each later worker, including
+the editor's visible parent file. Both branches retain the same write permissions;
+new meta edits are recorded but not executed by the withdrawal branch. Task-policy
+edits, native parent selection, admission, isolation and H remain unchanged.
+This intervention removes inherited meta execution, not editing permission, and
+cannot separate executable code from its editor-visible content.
+
+Only completed development cache entries for checkpoint archive policies are
+imported, with zero new cost and no imported execution timing. No final labels,
+future candidates or model journals are imported. Remaining slots run through the
+same proposal/activation loop; all branches freeze before the same final tests.
+Unknown calls are retained. Branches are repeated interventions on source roots,
+not new independent roots. A paired result estimates a conditional continuation
+effect, not automatically the entire historical frozen/editable gap. Replacing
+meta only in a final snapshot would have no actor effect and is not this test.

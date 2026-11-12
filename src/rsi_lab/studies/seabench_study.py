@@ -33,7 +33,7 @@ def default_config():
 
 def validate_config(config):
     default = default_config()
-    if not isinstance(config, dict) or set(config) - {"execution", "actor_context", "calibration", "hyperagents_meta_modes", "public_rollout_cache", "final_text_steps", "final_repeats"} != set(default) or config["protocol"] != PROTOCOL:
+    if not isinstance(config, dict) or set(config) - {"execution", "actor_context", "calibration", "hyperagents_meta_modes", "public_rollout_cache", "final_text_steps", "final_repeats", "meta_ablation"} != set(default) or config["protocol"] != PROTOCOL:
         raise ValidationError("Start with the seabench-controller configuration schema")
     if config["profile"] != default["profile"] or config["mode"] not in ("scripted", "http"):
         raise ValidationError("Invalid SEABench profile or mode")
@@ -115,6 +115,9 @@ def plan(config):
                 roots.append({"root_id": root_id, "path": "roots/" + root_id, "system": method,
                               "comparison": comparison, "arm": "native_only", "seed": seed,
                               "method_options": {"meta_mode": mode} if mode else {}})
+    if "meta_ablation" in config:
+        from .meta_ablation import roots as ablation_roots
+        roots = ablation_roots(config, backend)
     calls = tokens = 0
     for root in roots:
         phases = (["train", "judge"] if calibration else ["train", "test", "judge", "judge"]) + (["editor"] if root["system"] != "frozen" else [])
@@ -135,6 +138,8 @@ def plan(config):
                           "scheduling": "serial" if options["root_workers"] == 1 else "spawn_process_per_root_phase"},
             "scope": "upstream-only frozen runtime calibration" if calibration else "fixed public stress sequence; controller AGENTS.md only; no adaptive task discovery",
             "evaluation_cases": dev if calibration else final,
+            "continuation_slots_total": sum(config["slots"] - r["continuation"]["start_step"] + 1 for r in roots) if "meta_ablation" in config else None,
+            "independent_source_roots": len(config["seeds"]) if "meta_ablation" in config else None,
             "actor_context": backend.actor_context,
             "final_text_steps": config.get("final_text_steps", 0),
             "public_rollout_cache": config.get("public_rollout_cache", False),
@@ -199,7 +204,9 @@ def run(config, output, *, resume=False, expected_plan=None):
                    "not_a_system_ranking": True, "rows": rows, "allocation": compiled,
                    "statistics": ({"scope": "fixed-policy development diagnostic; no method comparison"} if "calibration" in config else
                                   summarize(rows, seed=1729, samples=2000,
-                                            references={"hyperagents_editable_meta": "hyperagents_frozen_meta"})), "performance": measured,
+                                            unit="source_root" if "meta_ablation" in config else "independent_root",
+                                            references={"hyperagents_editable_meta": "hyperagents_frozen_meta",
+                                                        "hyperagents_meta_reverted": "hyperagents_meta_retained"})), "performance": measured,
                    "paid_calls": 0 if config["mode"] == "scripted" else None,
                    "manifest_sha256": digest(manifest)}
         _report(output, summary)
@@ -233,8 +240,12 @@ def _root_job(output, root, phase):
         backend.judge = judge_provider
         if phase == "generation":
             if not (directory / "root.json").exists():
+                origin, start_step = None, 1
+                if "continuation" in root:
+                    from .meta_ablation import stage
+                    origin, start_step = stage(directory, root)
                 shared._generate_root({**config, "prompts": {"initial_instructions": backend.initial_instructions()}},
-                                      output, root, backend, manifest)
+                                      output, root, backend, manifest, origin=origin, start_step=start_step)
             save_record(directory / "generation.json", {"root_sha256": digest(read_record(directory / "root.json")),
                                                        "judge_usage": judge_provider.summary()})
             return
@@ -307,6 +318,10 @@ def _report(output, summary):
     lines += ["", "Scripted judges are CONTROL. Natural scores require rubric/trace spot checks.",
               "One root does not provide a confidence interval. Failed/no-update roots are retained.",
               "Actor, editor and upstream/downstream judges have separate journals and budgets."]
+    if summary["allocation"].get("independent_source_roots"):
+        lines += ["", "Paired continuations of existing roots, not new independent roots. Both retain meta write permissions;",
+                  "the reverted branch executes/shows founder meta at each subsequent proposal. It keeps inherited task policies and public observations.",
+                  "This estimates the conditional effect of inherited meta execution from the registered checkpoint, not the whole historical method gap."]
     (output / "report.md").write_text("\n".join(lines) + "\n")
     for name, rows in (("cases", [{"root_id": r["root_id"], **c} for r in summary["rows"] for c in r["cases"]]),
                        ("mechanisms", [{"root_id": r["root_id"], **s} for r in summary["rows"] for s in r["mechanisms"]]),

@@ -18,7 +18,7 @@ calls; tool actions and native rubric judges retain JSON. Unknown-call semantics
 and isolation stay intact. Fixed final repetitions are fresh measurements within
 a root, never replacement episodes or extra independent roots.
 
-The current native-host suite passes **290 tests**. The 25-root H5 control, fresh
+The current native-host suite passes **296 tests**. The 25-root H5 control, fresh
 wheel installation, outside-checkout five-group control, completed resume and
 frozen review pass. A real five-group × five-seed H5 study completed 100 slots and
 the 250-case final allocation: 249 known utility and 247 known native safety
@@ -26,20 +26,43 @@ labels, with one unknown actor request and two inconsistent safety judgments
 retained. All 20 optimizer roots changed policy; all five editable-meta roots
 executed modified meta in later slots. The main study used 45.43M reported tokens.
 
-An exploratory finding is lower final task completion for editable meta (40/50)
-than frozen meta (49/50), in all five paired seeds. This is not an inherent L2
-claim. The blinded `disclosure-audit` profile separates full-answer information
-presence from recipient-material disclosure, without actor reruns or native-score
-changes. Its current model annotator still has confirmed semantic false positives
-and boundary disputes; do not use it for a safety ranking. Missing and disputed
-labels remain explicit. `docs/validation.md` records the allocation, costs,
-paired intervals, failures and immutable review paths; detailed local analysis is
-`runs/seabench-medium-analysis-20261112/report.md`.
+The original exploratory completion gap was editable meta 40/50 versus frozen
+meta 49/50. A targeted paired withdrawal has now completed: the same five source
+roots fork before their first edited-meta invocation, continue the remaining 30
+slots to H5, then execute 100 final episodes. Retained meta scores 40/49 known
+utility labels; withdrawn meta scores 42/47. The three complete seed pairs give
++3.33pp (95% bootstrap -10 to +10pp); two incomplete pairs stay explicit. Two
+pairs finish with identical policies but opposite score differences. This does
+not attribute the original 18pp gap to meta, or establish an inherent L2 effect.
+
+The intervention is execution/content withdrawal, not permission removal. Both
+branches preserve native selection, isolation, public prefix and write rights;
+the withdrawal branch executes/shows founder meta on every remaining proposal.
+Edited meta is used 12 times versus zero, producing 11 versus four new policies;
+selected cached dev scores stay flat. The shared runner handles this through
+`meta_ablation`, without another experiment CLI.
+
+Disclosure now uses task-specific audience cards, fixed draft boundaries and
+passing fixture calibration (26/26 plus 20/20 supplementary checks). These are
+assistant-authored checks, not human gold. Anonymous natural-answer review found
+and fixed a post-signature evidence-heading error before joining method labels;
+raw audits remain immutable. The reviewed continuation diagnostic is 1/46 versus
+0/46, with four missing/disputed labels per branch; it cannot support a safety
+ranking. Native labels are unchanged. Exact-request annotation reuse avoids new
+calls while retaining equivalent unknown/invalid results.
+
+Main withdrawal cost is 10.19M reported tokens; five unknown calls and 18 invalid
+responses are preserved. No actor retries or replacement episodes were added.
+`docs/validation.md` records costs, validation and immutable paths. Detailed local
+analysis: `runs/seabench-meta-withdrawal-analysis-20261112/report.md`; the original
+medium study and analysis remain unchanged.
 
 This remains a bounded controller development bench on a known constructed
 sequence, not a full official Session reproduction or unseen-task evidence.
-Next scientific work should validate recipient-boundary scoring and predeclare
-targeted rollback or broader-task experiments; safety gates remain deferred.
+This targeted experiment is complete; no broader matrix has been started.
+Native utility judging remains sensitive to missing contact details and appended
+user notes, even with useful drafts. Do not turn this into a meta-causality or
+safety claim; safety gates and cross-benchmark expansion remain deferred.
 
 The repository contains six profiles, native source locks, controls and CI.
 `safety-study` adds independent seeds × admission arms, fixed-H search, public-only

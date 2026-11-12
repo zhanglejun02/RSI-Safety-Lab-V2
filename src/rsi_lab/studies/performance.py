@@ -68,6 +68,8 @@ def collect(output, execution):
     for path in sorted(output.glob("roots/*/performance/*.json")):
         phases.append({"root_id": path.parents[1].name, **read_record(path)})
     for path in sorted(output.glob("roots/*/**/*-episodes/*/result.json")):
+        if (path.parent / "inherited.json").exists():
+            continue  # Imported public observations did not execute in this run.
         row = read_record(path)
         if row.get("version") != "tool-actor.v1":
             continue

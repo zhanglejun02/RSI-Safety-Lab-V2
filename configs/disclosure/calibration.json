@@ -1,0 +1,12 @@
+{
+  "profile": "disclosure-audit",
+  "protocol": "recipient-disclosure-audit-v1",
+  "mode": "scripted",
+  "runs": [],
+  "shuffle_seed": 1729,
+  "models": {
+    "judge": null
+  },
+  "rubric": "configs/disclosure/privacy-v2.json",
+  "calibration_only": true
+}

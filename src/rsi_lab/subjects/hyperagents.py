@@ -88,6 +88,8 @@ class HyperAgentsAdapter(LocalSystemAdapter):
                 "protocol": PROTOCOL, "condition": "bound_public_evaluation"}:
             raise ValidationError("HyperAgents requires a versioned public evaluation")
         state = decode_json(snapshot.state_json)
+        if snapshot.version.component("task_contract").get("meta_execution", "inherited") not in ("inherited", "founder"):
+            raise ValidationError("Invalid HyperAgents meta execution intervention")
         if set(state) != {"seed", "epoch", "active_id", "archive"}:
             raise ValidationError("Invalid HyperAgents inherited state")
         require_count(state["seed"], "seed"); require_count(state["epoch"], "epoch")
@@ -166,7 +168,11 @@ class HyperAgentsAdapter(LocalSystemAdapter):
         mode = base.version.component("task_contract").get("meta_mode", "editable")
         feedback = {k: v for k, v in public_rows[parent].items() if k != "execution_receipts"}
         feedback["public_trajectories"] = compact_public_rows(public_rows[parent])
-        execution = runtime.edit(directory / "worker", archive[parent]["files"],
+        execution_files = deepcopy(archive[parent]["files"])
+        meta_execution = base.version.component("task_contract").get("meta_execution", "inherited")
+        if meta_execution == "founder":
+            execution_files["meta_agent.py"] = (runtime.VENDOR / "meta_agent.py").read_text()
+        execution = runtime.edit(directory / "worker", execution_files,
             {"contract": base.version.component("task_contract")["text"], "evaluation": feedback},
             self.provider, operation_id, iterations_left=getattr(evaluator, "remaining_slots", 1),
             editable_files=("policy.py",) if mode == "frozen" else ("policy.py", "meta_agent.py"))
@@ -195,8 +201,9 @@ class HyperAgentsAdapter(LocalSystemAdapter):
             state.update(epoch=state["epoch"] + 1, active_id=selected)
             candidate = with_files(archive[selected]["files"], state)
         evidence = {"optimizer": "HyperAgents.MetaAgent+native_tool_loop+select_next_parent",
-            "meta_mode": mode, "executed_meta_sha256": digest(archive[parent]["files"]["meta_agent.py"]),
-            "edited_meta_used": archive[parent]["files"]["meta_agent.py"] != (runtime.VENDOR / "meta_agent.py").read_text(),
+            "meta_mode": mode, "meta_execution": meta_execution, "execution_files": execution_files,
+            "executed_meta_sha256": digest(execution_files["meta_agent.py"]),
+            "edited_meta_used": execution_files["meta_agent.py"] != (runtime.VENDOR / "meta_agent.py").read_text(),
             "upstream_revision": REVISION, "profile": "bounded_single_task_self_modifying_meta",
             "parent_id": parent, "inspiration_ids": [], "archive_before": before_archive,
             "archive_after": decode_json(candidate.state_json)["archive"],
@@ -205,7 +212,7 @@ class HyperAgentsAdapter(LocalSystemAdapter):
             "native_admitted": native_valid, "platform_accepted": accepted,
             "extra_gate": "bound_public_evaluation", "public_valid": accepted,
             "selected_id": selected, "candidate_error": error,
-            "meta_changed_from_parent": files["meta_agent.py"] != before_archive[parent]["files"]["meta_agent.py"],
+            "meta_changed_from_parent": files["meta_agent.py"] != execution_files["meta_agent.py"],
             "model_receipts": execution["model_receipts"], "worker_requests": execution["requests"],
             "worker_wall_ms": execution["wall_ms"], "worker_exit_code": execution["worker_exit_code"],
             "active_source_changed": candidate.version.component("policy") != base.version.component("policy"),

@@ -21,6 +21,7 @@ method registry → native adapter → prepared update → platform activation
 | `studies/safety_study.py`, `statistics.py` | Fixed-H search per independent root/arm, final-only evaluation, paired root bootstrap |
 | `studies/seabench_study.py` | Fixed controller search on an upstream suite, frozen downstream tests and independent utility/safety judge budgets; reuses root generation, scheduling and activation |
 | `studies/disclosure_audit.py` | Identity-blinded saved-answer annotation with exact recipient spans/evidence; joins results only after annotation, never changes native labels |
+| `studies/meta_ablation.py` | Paired continuations from pre-meta-use checkpoints, verified public-cache import and immutable intervention provenance; uses the existing SEABench runner |
 | `studies/planning.py` | Selected allocation, screening history, primary endpoint and budget preflight; no model calls |
 | `studies/agentdojo_reporting.py` | Final case/task/attack projections and phase costs, using the existing root statistics |
 | `studies/scheduling.py` | Bounded fresh-process root jobs, full-allocation budget checks and shared HTTP admission |

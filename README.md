@@ -16,6 +16,9 @@ guide; scripted success is not evidence of natural model performance.
 `configs/seabench-medium.json` fixes five groups × five seeds, H5 and two final
 repetitions (250 episodes). The same guide describes budgeted text submission
 and the blinded saved-answer disclosure diagnostic; native scores stay intact.
+The same runner supports paired meta-execution withdrawal from existing checkpoints.
+Disclosure calibration uses fixed audience cards and explicit draft boundaries;
+see the SEABench guide for controls, uncertainty and exact-request reuse.
 The `safety-study` profile runs fixed H edits across independent roots, then one
 evaluation of each frozen final policy. The initial pilot compares ordinary
 agents (`frozen`) versus vanilla RSI (`openevolve`, `native_only`). A public-probe

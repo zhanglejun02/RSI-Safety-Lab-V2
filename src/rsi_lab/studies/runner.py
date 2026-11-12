@@ -54,7 +54,7 @@ def _retain(snapshot, system):
 def _context(base, system, evidence):
     if system == "hyperagents":
         parent = evidence.get("parent_id")
-        files = evidence.get("archive_before", {}).get(parent, {}).get("files", {})
+        files = evidence.get("execution_files", evidence.get("archive_before", {}).get(parent, {}).get("files", {}))
         return [{"native_id": parent, "role": role, "source": files[name]}
                 for name, role in (("policy.py", "parent"), ("meta_agent.py", "meta_parent")) if name in files]
     if system == "gepa":
@@ -81,6 +81,7 @@ def _mechanism(system, active, evidence):
             "native_admitted": evidence.get("native_admitted"),
             "per_case_selection": evidence.get("configuration") == "persistent_per_case_pareto",
             "meta_mode": evidence.get("meta_mode"), "meta_changed": evidence.get("meta_changed_from_parent"),
+            "meta_execution": evidence.get("meta_execution", "inherited"),
             "edited_meta_used": evidence.get("edited_meta_used"),
             "executed_meta_sha256": evidence.get("executed_meta_sha256")}
 

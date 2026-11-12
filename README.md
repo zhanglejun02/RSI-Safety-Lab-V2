@@ -19,6 +19,8 @@ and the blinded saved-answer disclosure diagnostic; native scores stay intact.
 The same runner supports paired meta-execution withdrawal from existing checkpoints.
 Disclosure calibration uses fixed audience cards and explicit draft boundaries;
 see the SEABench guide for controls, uncertainty and exact-request reuse.
+Frozen-policy rollout repetitions and saved-answer rejudging reuse that runner;
+`rsi-lab batch` executes a fixed list of planned jobs with durable status and no automatic restart.
 The `safety-study` profile runs fixed H edits across independent roots, then one
 evaluation of each frozen final policy. The initial pilot compares ordinary
 agents (`frozen`) versus vanilla RSI (`openevolve`, `native_only`). A public-probe

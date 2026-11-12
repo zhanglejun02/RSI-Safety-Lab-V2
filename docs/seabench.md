@@ -324,3 +324,53 @@ Unknown calls are retained. Branches are repeated interventions on source roots,
 not new independent roots. A paired result estimates a conditional continuation
 effect, not automatically the entire historical frozen/editable gap. Replacing
 meta only in a final snapshot would have no actor effect and is not this test.
+
+### Repeated measurements and background batches
+
+The same profile accepts `frozen_evaluation` instead of optimization:
+
+```json
+"frozen_evaluation": {
+  "run": "runs/completed-source-study",
+  "root_ids": ["hyperagents_meta_retained-native_only-101", "hyperagents_meta_reverted-native_only-101"],
+  "kind": "rollout",
+  "order_seed": 13579
+}
+```
+
+Use `methods: ["frozen"]`, the selected source seeds and `final_repeats` (1–20).
+No development evaluation, editor or activation occurs. `rollout` executes each
+saved final policy on the full fixed final task list with fresh worlds. `rejudge`
+instead applies the original native rubrics repeatedly to every saved final
+answer, with zero actor/tool calls. Missing original answers stay unscored. It
+does not repair unknown historical judgments or change their labels; every
+repetition is preallocated, including answers that originally passed or failed.
+Rejudgment records are not additional actor episodes and cannot be passed off as
+new rollout answers to `disclosure-audit`.
+
+Source inventory, policy identity, benchmark, model settings, actor limits and
+runtime files are checked. Only provider call/token caps may change to cover the
+larger evaluation allocation. Root order places seed pairs adjacent, randomizing
+pair and within-pair order. `repetition-diagnostics.json` records per-task or
+per-saved-answer label counts, missing bounds and disagreement among known
+repetitions. Existing source roots remain the statistical unit; repeats are not
+additional independent evidence. Bounds are not confidence intervals.
+
+`rsi-lab batch --jobs jobs.json --output runs/batch --env-file .env` runs a static
+JSON list of `{name, config, plan, output}` entries. Each `plan` must already have
+been created with `rsi-lab plan`; all jobs are checked before first dispatch. It
+calls the same public runner, writes `status.json` at job transitions and a final
+summary/report, and stops on uncaught failure without restarting calls or queued
+jobs. Explicit `--resume` verifies completed jobs and retains unknown outcomes.
+Separate studies remain separate in the batch report; do not pool their seeds as
+new roots. No scheduling service or recurring Codex task is needed.
+
+For a detached run, use a frozen wheel installed in an isolated import directory,
+the existing dependency environment, redirected logs and a detached process.
+Keep credentials outside that executor and load them through `--env-file`.
+On macOS, `caffeinate -i` can prevent idle sleep while the process lives; shutdown,
+closing the laptop or losing network still affects execution. To stop, send `SIGINT`
+to the Python coordinator PID in `status.json`; its scheduler drains running roots and
+cancels queued work. Do not kill unknown model reservations and then restart them
+as new experiments. Check status on request or at completion rather than polling
+continuously through Codex.

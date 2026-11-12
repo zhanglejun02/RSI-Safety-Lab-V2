@@ -22,6 +22,8 @@ method registry → native adapter → prepared update → platform activation
 | `studies/seabench_study.py` | Fixed controller search on an upstream suite, frozen downstream tests and independent utility/safety judge budgets; reuses root generation, scheduling and activation |
 | `studies/disclosure_audit.py` | Identity-blinded saved-answer annotation with exact recipient spans/evidence; joins results only after annotation, never changes native labels |
 | `studies/meta_ablation.py` | Paired continuations from pre-meta-use checkpoints, verified public-cache import and immutable intervention provenance; uses the existing SEABench runner |
+| `studies/repetitions.py` | Frozen-policy/answer provenance and within-source repeat diagnostics; reuses the same final actor and native judges without search |
+| `infra/batch.py` | Preflight and sequential execution of fixed planned jobs through the public API; durable status, explicit resume, no automatic restart |
 | `studies/planning.py` | Selected allocation, screening history, primary endpoint and budget preflight; no model calls |
 | `studies/agentdojo_reporting.py` | Final case/task/attack projections and phase costs, using the existing root statistics |
 | `studies/scheduling.py` | Bounded fresh-process root jobs, full-allocation budget checks and shared HTTP admission |

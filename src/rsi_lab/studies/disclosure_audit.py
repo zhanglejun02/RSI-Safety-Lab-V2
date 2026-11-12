@@ -226,6 +226,7 @@ def plan(config):
         root = _checked_path(Path(directory))
         manifest, summary = read_record(root / "manifest.json"), safety_study.inspect(root)
         if (manifest["protocol"] != "seabench-controller-study-v1" or not manifest["config"]["sequence"].endswith("/privacy")
+                or manifest["config"].get("frozen_evaluation", {}).get("kind") == "rejudge"
                 or not summary["allocation"]["downstream_tasks"]):
             raise ValidationError("Disclosure audit requires completed SEABench privacy studies")
         inputs.append({"path": str(root), "summary_sha256": digest(summary)})

@@ -4,6 +4,47 @@ Engineering acceptance records and separately labeled pilot observations follow.
 All controls and tests use zero paid API calls. Scripted outcomes are not natural
 experiments or method rankings.
 
+## Frozen-policy repetitions and background batches (2026-11-13)
+
+`frozen_evaluation` reuses the SEABench runner for fresh frozen-policy rollouts or
+native rejudging of saved answers. It checks source inventories, policy identity,
+benchmark/runtime files and model settings, and disables development/editor calls.
+Saved-answer judgments use a separate record schema and never invoke the actor.
+Missing original answers stay missing; no historical outcomes are overwritten.
+`rsi-lab batch` preflights a fixed list of plans, runs them sequentially, records
+durable status and stops on failure. Repetition diagnostics retain missing labels
+and report within-policy/task or within-answer disagreement; the original source
+root remains the statistical unit.
+
+The final native-host suite passes **302 tests** (258.17s, two upstream deprecation
+warnings), including failed-batch stopping, all-job preflight, missing usage,
+completed resume and source-preserving rollout/rejudgment coverage.
+
+The first installed-wheel control exposed an unhandled absent token total in batch
+aggregation. The correction preserves missing usage explicitly and has regression
+coverage. Both wheel/sdist exclude credentials and generated runs. A fresh wheel,
+imported outside the checkout, completed two zero-paid-call jobs: 20 rollout
+episodes and 40 saved-answer judgment records, with no editor/development calls.
+Completed batch resume and network-disabled frozen-source review passed with
+original artifacts unchanged. The first failed control remains on disk.
+
+The fixed natural batch is registered in
+`runs/seabench-repeat-inputs-v2-20261113/protocol.json`: 250 fresh fixed-policy
+episodes, 300 saved-answer judgment records, and one paired 30-slot continuation
+with 100 final episodes. These reuse five existing source seeds, not new
+independent roots. Expected reported usage is 20M–30M tokens based on prior use;
+the conservative full-provider allocation ceiling is 9,650 calls / 103.5M tokens,
+not a predicted bill or universal tokenizer bound. No outcome-dependent extension,
+automatic restart or replacement of unknown calls is scheduled.
+
+The detached process uses installed source
+`ef60bdc8d6af2b6ec05a307201b8d637683d0c20da2b38a425532752f2044925`,
+with four root workers/in-flight calls and null RPM. Startup reached `judge-repeat`
+with coordinator PID 9529 and no logged exception. Consult
+`runs/seabench-repeat-batch-20261113/status.json` for execution state and its final
+report for costs/results. Launching the batch does not establish completion,
+stability of the historical 18pp gap, or a meta-causality finding.
+
 ## Disclosure calibration and paired meta withdrawal (2026-11-12)
 
 The same `seabench-controller` runner now supports checkpoint continuations through

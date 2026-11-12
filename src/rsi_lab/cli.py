@@ -38,6 +38,11 @@ def parser():
     review = commands.add_parser("review-frozen", help="Inspect an archived source/run in an isolated copy")
     review.add_argument("--run", required=True, type=Path)
     review.add_argument("--output", required=True, type=Path)
+    batch = commands.add_parser("batch", help="Run a fixed list of planned jobs; stop on failure, never restart calls")
+    batch.add_argument("--jobs", required=True, type=Path)
+    batch.add_argument("--output", required=True, type=Path)
+    batch.add_argument("--env-file", type=Path)
+    batch.add_argument("--resume", action="store_true")
     return cli
 
 
@@ -102,6 +107,9 @@ def main(argv=None):
             result = {"output": str(args.output.resolve()), "protocol": summary["protocol"],
                       "origin": summary.get("origin", summary.get("mode", config["mode"])),
                       "report": str(args.output.resolve() / "report.md")}
+        elif args.command == "batch":
+            from rsi_lab.infra.batch import run
+            result = run(args.jobs, args.output, resume=args.resume, env_file=args.env_file)
         elif args.command == "inspect":
             summary = inspect_run(args.output)
             result = {"protocol": summary["protocol"], "verified": True, "api_calls": 0}

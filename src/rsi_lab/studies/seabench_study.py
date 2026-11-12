@@ -15,7 +15,7 @@ from rsi_lab.infra.runlock import run_lock
 from rsi_lab.methods import METHODS, check_available
 from rsi_lab.review import inventory
 from rsi_lab.serialization import digest
-from . import agent_bench as matrix, safety_study as shared, scheduling, performance
+from . import agent_bench as matrix, safety_study as shared, scheduling, performance, repetitions
 from .statistics import summarize
 
 PROTOCOL = "seabench-controller-study-v1"
@@ -33,7 +33,7 @@ def default_config():
 
 def validate_config(config):
     default = default_config()
-    if not isinstance(config, dict) or set(config) - {"execution", "actor_context", "calibration", "hyperagents_meta_modes", "public_rollout_cache", "final_text_steps", "final_repeats", "meta_ablation"} != set(default) or config["protocol"] != PROTOCOL:
+    if not isinstance(config, dict) or set(config) - {"execution", "actor_context", "calibration", "hyperagents_meta_modes", "public_rollout_cache", "final_text_steps", "final_repeats", "meta_ablation", "frozen_evaluation"} != set(default) or config["protocol"] != PROTOCOL:
         raise ValidationError("Start with the seabench-controller configuration schema")
     if config["profile"] != default["profile"] or config["mode"] not in ("scripted", "http"):
         raise ValidationError("Invalid SEABench profile or mode")
@@ -98,13 +98,6 @@ def plan(config):
     dev, final = backend.cases("dev"), [] if calibration else backend.cases("heldout")
     budget = config["budget"]
     repeats = config.get("final_repeats", 1)
-    for phase, cases in (("train", dev), ("test", final)):
-        count = len(cases) * (repeats if phase == "test" else
-            config["slots"] + 1 if config.get("public_rollout_cache") and any(m != "frozen" for m in config["methods"]) else 1)
-        if budget[phase + "_episodes"] < count or budget[phase + "_calls"] < count * budget["max_steps"]:
-            raise ValidationError("Budget cannot cover the selected " + phase + " allocation")
-    if budget["judge_calls"] < max(budget["train_episodes"], 2 * len(final) * repeats):
-        raise ValidationError("Judge caps must cover training episodes and both final rubrics")
     roots = []
     for method in config["methods"]:
         modes = config.get("hyperagents_meta_modes", [None]) if method == "hyperagents" else [None]
@@ -118,9 +111,23 @@ def plan(config):
     if "meta_ablation" in config:
         from .meta_ablation import roots as ablation_roots
         roots = ablation_roots(config, backend)
+    frozen_evaluation = "frozen_evaluation" in config
+    if frozen_evaluation:
+        roots = repetitions.roots(config, backend)
+    rejudge = frozen_evaluation and config["frozen_evaluation"]["kind"] == "rejudge"
+    test_count = max(len(r["frozen_evaluation"]["samples"]) for r in roots) * repeats if frozen_evaluation else len(final) * repeats
+    for phase, count in (("train", 0 if frozen_evaluation else len(dev) *
+            (config["slots"] + 1 if config.get("public_rollout_cache") and any(m != "frozen" for m in config["methods"]) else 1)),
+            ("test", 0 if rejudge else test_count)):
+        if budget[phase + "_episodes"] < count or budget[phase + "_calls"] < count * budget["max_steps"]:
+            raise ValidationError("Budget cannot cover the selected " + phase + " allocation")
+    if budget["judge_calls"] < max(0 if frozen_evaluation else budget["train_episodes"], 2 * test_count):
+        raise ValidationError("Judge caps must cover training episodes and both final rubrics")
     calls = tokens = 0
     for root in roots:
         phases = (["train", "judge"] if calibration else ["train", "test", "judge", "judge"]) + (["editor"] if root["system"] != "frozen" else [])
+        if frozen_evaluation:
+            phases = ["judge"] if rejudge else ["test", "judge"]
         for phase in phases:
             calls += config["slots"] * budget["editor_calls_per_slot"] if phase == "editor" else budget[phase + "_calls"]
             if config["mode"] == "http":
@@ -132,19 +139,21 @@ def plan(config):
     return {"protocol": PROTOCOL, "config_sha256": digest(config), "implementation": implementation_fingerprint(),
             "source": backend.source, "sequence": config["sequence"], "case_manifest": backend.catalog,
             "initial_policy_sha256": digest(source(backend.initial_instructions())), "roots": roots,
-            "upstream_tasks": len(dev), "downstream_tasks": len(final), "root_count": len(roots),
-            "final_episodes_total": len(roots) * len(final) * repeats, "final_repeats": repeats, "api_calls": 0,
+            "upstream_tasks": 0 if frozen_evaluation else len(dev), "downstream_tasks": len(final), "root_count": len(roots),
+            "final_episodes_total": 0 if rejudge else len(roots) * len(final) * repeats,
+            "evaluation_records_total": sum(len(r["frozen_evaluation"]["samples"]) * repeats for r in roots) if frozen_evaluation else len(roots) * len(final) * repeats,
+            "evaluation_kind": config["frozen_evaluation"]["kind"] if frozen_evaluation else "search_then_test", "final_repeats": repeats, "api_calls": 0,
             "execution": {**options, "allocated_calls": calls, "allocated_tokens": tokens,
                           "scheduling": "serial" if options["root_workers"] == 1 else "spawn_process_per_root_phase"},
             "scope": "upstream-only frozen runtime calibration" if calibration else "fixed public stress sequence; controller AGENTS.md only; no adaptive task discovery",
             "evaluation_cases": dev if calibration else final,
             "continuation_slots_total": sum(config["slots"] - r["continuation"]["start_step"] + 1 for r in roots) if "meta_ablation" in config else None,
-            "independent_source_roots": len(config["seeds"]) if "meta_ablation" in config else None,
+            "independent_source_roots": len(config["seeds"]) if "meta_ablation" in config or frozen_evaluation else None,
             "actor_context": backend.actor_context,
             "final_text_steps": config.get("final_text_steps", 0),
             "public_rollout_cache": config.get("public_rollout_cache", False),
             "editor_transports": {m: METHODS[m].editor_response_format for m in config["methods"] if m != "frozen"},
-            "optimization": "fixed-H search over the ordered upstream suite; each rollout resets non-controller state",
+            "optimization": "disabled; frozen policy/answer measurements only" if frozen_evaluation else "fixed-H search over the ordered upstream suite; each rollout resets non-controller state",
             "adapter": VERSION, "method_scope": "bounded controller adapters; per-slot search/meta evidence; not full upstream CLI reproductions"}
 
 
@@ -179,7 +188,7 @@ def run(config, output, *, resume=False, expected_plan=None):
         compiled = plan(config)
         if expected_plan is not None and expected_plan != compiled:
             raise ConflictError("SEABench source, configuration or allocation changed after planning")
-        manifest = {"protocol": PROTOCOL, "config": config, "horizon": config["slots"],
+        manifest = {"protocol": PROTOCOL, "config": config, "horizon": 0 if "frozen_evaluation" in config else config["slots"],
                     "implementation": implementation_fingerprint(), "roots": compiled["roots"],
                     "plan_sha256": digest(compiled), "origin": "control" if config["mode"] == "scripted" else "natural",
                     "selection_feedback": "upstream_task_utility_only", "safety_method": None}
@@ -204,11 +213,13 @@ def run(config, output, *, resume=False, expected_plan=None):
                    "not_a_system_ranking": True, "rows": rows, "allocation": compiled,
                    "statistics": ({"scope": "fixed-policy development diagnostic; no method comparison"} if "calibration" in config else
                                   summarize(rows, seed=1729, samples=2000,
-                                            unit="source_root" if "meta_ablation" in config else "independent_root",
+                                            unit="source_root" if compiled["independent_source_roots"] else "independent_root",
                                             references={"hyperagents_editable_meta": "hyperagents_frozen_meta",
                                                         "hyperagents_meta_reverted": "hyperagents_meta_retained"})), "performance": measured,
                    "paid_calls": 0 if config["mode"] == "scripted" else None,
                    "manifest_sha256": digest(manifest)}
+        if "frozen_evaluation" in config:
+            summary["repetition_diagnostics"] = repetitions.diagnostics(rows)
         _report(output, summary)
         summary["verified_records"] = {str(p.relative_to(output)): digest(read_record(p)) for p in sorted(output.rglob("*.json"))}
         summary["file_inventory"] = inventory(output)
@@ -235,11 +246,15 @@ def _root_job(output, root, phase):
         if phase == "evaluation" and read_record(output / "generation_complete.json") != _barrier(output, manifest):
             raise IntegrityError("Final evaluation requires all roots frozen")
         calibration = "calibration" in config
+        frozen_evaluation = root.get("frozen_evaluation")
+        rejudge = frozen_evaluation and frozen_evaluation["kind"] == "rejudge"
         judge_provider = (_judge_provider(directory / ("train-judge" if phase == "generation" else "test-judge"), config)
-                          if phase == "generation" or not calibration else None)
+                          if (phase == "generation" or not calibration) and not (phase == "generation" and frozen_evaluation) else None)
         backend.judge = judge_provider
         if phase == "generation":
-            if not (directory / "root.json").exists():
+            if not (directory / "root.json").exists() and frozen_evaluation:
+                repetitions.stage(directory, root)
+            elif not (directory / "root.json").exists():
                 origin, start_step = None, 1
                 if "continuation" in root:
                     from .meta_ablation import stage
@@ -247,14 +262,14 @@ def _root_job(output, root, phase):
                 shared._generate_root({**config, "prompts": {"initial_instructions": backend.initial_instructions()}},
                                       output, root, backend, manifest, origin=origin, start_step=start_step)
             save_record(directory / "generation.json", {"root_sha256": digest(read_record(directory / "root.json")),
-                                                       "judge_usage": judge_provider.summary()})
+                                                       "judge_usage": judge_provider.summary() if judge_provider else None})
             return
         saved = read_record(directory / "root.json")
         if digest(saved) != read_record(directory / "generation.json")["root_sha256"]:
             raise IntegrityError("Frozen controller changed before evaluation")
-        program = SystemSnapshot.from_dict(saved["final_snapshot"]).version.component("policy")["source"]
-        provider = None if calibration else shared._provider(directory, config, "test", backend, backend.cases("heldout"))
-        runtime = None if calibration else shared._runtime(directory, provider, config, "test")
+        program = saved.get("program") or SystemSnapshot.from_dict(saved["final_snapshot"]).version.component("policy")["source"]
+        provider = None if calibration or rejudge else shared._provider(directory, config, "test", backend, backend.cases("heldout"))
+        runtime = None if calibration or rejudge else shared._runtime(directory, provider, config, "test")
         observed = {}
         if calibration:
             for path in (directory / "train-episodes").glob("*/result.json"):
@@ -263,14 +278,18 @@ def _root_job(output, root, phase):
                     raise IntegrityError("Calibration changed the frozen controller")
                 observed[digest(record["case"])] = record
         cases = []
-        evaluations = [(case, repeat) for repeat in range(compiled["final_repeats"]) for case in compiled["evaluation_cases"]]
-        for case, repeat in evaluations:
-            key = digest(case if repeat == 0 else {"case": case, "repeat": repeat})
+        samples = frozen_evaluation["samples"] if frozen_evaluation else [{"case": c, "source_case": None} for c in compiled["evaluation_cases"]]
+        for sample, repeat in [(sample, repeat) for repeat in range(compiled["final_repeats"]) for sample in samples]:
+            case = sample["case"]
+            key = digest({"sample": sample, "repeat": repeat}) if rejudge else digest(case if repeat == 0 else {"case": case, "repeat": repeat})
             path = directory / "final" / (key + ".json")
             if path.exists():
                 record = read_record(path)
             elif calibration:
                 record = observed.get(digest(case), {"error": "unobserved_upstream_episode", "metrics": {"complete": False}})
+                save_record(path, record)
+            elif rejudge:
+                record = repetitions.rejudge(backend, sample, root["root_id"] + "/rejudge/" + key)
                 save_record(path, record)
             else:
                 try:
@@ -281,7 +300,7 @@ def _root_job(output, root, phase):
             values = record["metrics"].get("safety_metrics", {}).get("values", {})
             cases.append({"task_id": case["task_id"], "repeat": repeat + 1, "complete": record["metrics"]["complete"],
                           "task_completion": values.get("task_completion"), "safety_violation": values.get("safety_violation"),
-                          "record": str(path.relative_to(output)), "error": record.get("error")})
+                          "record": str(path.relative_to(output)), "error": record.get("error"), "source_case": sample["source_case"]})
         estimates = {k: sum(c[k] for c in cases) / len(cases) if all(c["complete"] and c[k] is not None for c in cases) else None
                      for k in (("task_completion",) if calibration else ("task_completion", "safety_violation"))}
         save_record(directory / "scores.json", {"root_id": root["root_id"], "method": root["comparison"],
@@ -318,10 +337,17 @@ def _report(output, summary):
     lines += ["", "Scripted judges are CONTROL. Natural scores require rubric/trace spot checks.",
               "One root does not provide a confidence interval. Failed/no-update roots are retained.",
               "Actor, editor and upstream/downstream judges have separate journals and budgets."]
-    if summary["allocation"].get("independent_source_roots"):
+    if summary["allocation"].get("continuation_slots_total"):
         lines += ["", "Paired continuations of existing roots, not new independent roots. Both retain meta write permissions;",
                   "the reverted branch executes/shows founder meta at each subsequent proposal. It keeps inherited task policies and public observations.",
                   "This estimates the conditional effect of inherited meta execution from the registered checkpoint, not the whole historical method gap."]
+    if "repetition_diagnostics" in summary:
+        lines += ["", "Frozen evaluation only: no development actor or editor calls. Repetitions are measurements within existing source roots.",
+                  "Kind: " + summary["allocation"]["evaluation_kind"], "", "| Endpoint | Groups with both outcomes / groups with ≥2 known repeats | Missing / allocated |", "|---|---:|---:|"]
+        for metric in ("task_completion", "safety_violation"):
+            values = [r["metrics"][metric] for r in summary["repetition_diagnostics"]["rows"]]
+            lines.append(f"| {metric} | {sum(v['both_outcomes_observed'] for v in values)}/{sum(v['known'] >= 2 for v in values)} | {sum(v['missing'] for v in values)}/{sum(v['allocated'] for v in values)} |")
+        save_record(output / "repetition-diagnostics.json", summary["repetition_diagnostics"])
     (output / "report.md").write_text("\n".join(lines) + "\n")
     for name, rows in (("cases", [{"root_id": r["root_id"], **c} for r in summary["rows"] for c in r["cases"]]),
                        ("mechanisms", [{"root_id": r["root_id"], **s} for r in summary["rows"] for s in r["mechanisms"]]),

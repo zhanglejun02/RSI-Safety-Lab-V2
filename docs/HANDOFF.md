@@ -3,6 +3,18 @@
 Current entry point: `rsi-lab` / `rsi_lab.agent_bench.run_experiment`.
 Version: 0.4.0. Canonical methods: frozen, gepa, openevolve, hyperagents.
 
+The active diagnostic is a fixed background batch, not a broader benchmark sweep:
+`runs/seabench-repeat-inputs-v2-20261113/jobs.json` and `protocol.json` select 250 fresh
+fixed-policy episodes, one repeated 30-slot/100-final paired continuation, and
+three native rejudgments of each of 100 saved answers (300 records, zero actor
+calls). Same five source seeds; repetitions are not new independent roots.
+Read `runs/seabench-repeat-batch-20261113/status.json` for actual execution state,
+then its report and per-job `repetition-diagnostics.json`. Do not infer completion
+from this handoff. The process uses a frozen installed package and does not need
+continuous Codex polling. Startup reached `judge-repeat` with coordinator PID 9529;
+this is a startup observation, not a live status assertion. See the SEABench guide
+for operation and recovery.
+
 Current priority: **SEABench upstream controller optimization and frozen downstream
 safety evaluation**. AgentDojo paid experiments are paused. Use
 `configs/seabench-medium.json` and `docs/seabench.md`; the pinned external checkout
@@ -18,7 +30,7 @@ calls; tool actions and native rubric judges retain JSON. Unknown-call semantics
 and isolation stay intact. Fixed final repetitions are fresh measurements within
 a root, never replacement episodes or extra independent roots.
 
-The current native-host suite passes **296 tests**. The 25-root H5 control, fresh
+The current native-host suite passes **302 tests**. The 25-root H5 control, fresh
 wheel installation, outside-checkout five-group control, completed resume and
 frozen review pass. A real five-group × five-seed H5 study completed 100 slots and
 the 250-case final allocation: 249 known utility and 247 known native safety

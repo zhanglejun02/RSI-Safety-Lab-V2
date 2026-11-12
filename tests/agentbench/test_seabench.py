@@ -137,6 +137,54 @@ def test_seabench_control_full_pipeline_and_read_only_review(config, tmp_path):
         run_experiment(config, output, resume=True, expected_plan=bad)
 
 
+@pytest.mark.parametrize("kind", ["rollout", "rejudge"])
+def test_frozen_repetitions_preserve_source_and_never_search(config, tmp_path, monkeypatch, kind):
+    from rsi_lab.studies import safety_study
+    original = tmp_path / "original"
+    source_summary = run_experiment(config, original)
+    before = inventory(original)
+    config.update(methods=["frozen"], final_repeats=3, frozen_evaluation={
+        "run": str(original), "root_ids": [r["root_id"] for r in source_summary["rows"]],
+        "kind": kind, "order_seed": 19})
+    config["budget"].update(test_episodes=15, test_calls=450, judge_calls=30)
+    monkeypatch.setattr(safety_study, "_generate_root", lambda *_a, **_k: pytest.fail("frozen evaluation searched"))
+    if kind == "rejudge":
+        monkeypatch.setattr(ActorRuntime, "execute", lambda *_a, **_k: pytest.fail("rejudge called actor"))
+    planned = plan_experiment(config)
+    assert planned["evaluation_records_total"] == 30
+    assert planned["final_episodes_total"] == (0 if kind == "rejudge" else 30)
+    assert planned["upstream_tasks"] == 0
+    output = tmp_path / "repeat"
+    summary = run_experiment(config, output, expected_plan=planned)
+    originals = {r["root_id"]: r for r in source_summary["rows"]}
+    for row in summary["rows"]:
+        assert row["final_source_sha256"] == originals[row["root_id"]]["final_source_sha256"]
+        assert row["train_usage"] is row["editor_usage"] is row["train_judge_usage"] is None
+        assert row["estimates"] == originals[row["root_id"]]["estimates"]
+        assert len(row["cases"]) == 15 and not row["mechanisms"]
+        if kind == "rejudge":
+            assert row["test_usage"] is None
+    assert not list(output.glob("roots/*/train.sqlite"))
+    assert all(not r["metrics"]["task_completion"]["both_outcomes_observed"] for r in summary["repetition_diagnostics"]["rows"])
+    assert inventory(original) == before
+    assert run_experiment(config, output, resume=True, expected_plan=planned) == summary
+    assert review(output, tmp_path / "review")["originals_unchanged"]
+    bad = deepcopy(config); bad["budget"]["max_steps"] += 1
+    with pytest.raises(ValidationError, match="step budget"):
+        plan_experiment(bad)
+
+
+def test_repetition_diagnostics_keep_missing_and_same_answer_groups():
+    from rsi_lab.studies.repetitions import diagnostics
+    result = diagnostics([{"root_id": "r", "method": "m", "seed": 1, "cases": [
+        {"task_id": "t", "source_case": "answer-a", "task_completion": v, "safety_violation": None}
+        for v in [True, False, None]]}])
+    metric = result["rows"][0]["metrics"]["task_completion"]
+    assert metric["known"] == 2 and metric["missing"] == 1
+    assert metric["all_allocated_bounds"] == [1/3, 2/3]
+    assert metric["pairwise_disagreement"] == 1 and metric["both_outcomes_observed"]
+
+
 def test_seabench_missing_public_judge_invalidates_optimization(config, tmp_path):
     backend = Controller(config["source"], config["sequence"])
     provider = ScriptedChatProvider(tmp_path / "judge.sqlite", lambda *_: {"criteria": [], "result": "PASS"})

@@ -1,0 +1,27 @@
+{
+  "profile": "seabench-controller",
+  "protocol": "seabench-controller-study-v1",
+  "mode": "scripted",
+  "source": "runs/vendor/SEABench",
+  "sequence": "controller_update/personal_admin/privacy",
+  "methods": ["frozen"],
+  "seeds": [11],
+  "slots": 1,
+  "calibration": ["task_001", "task_004"],
+  "actor_context": {
+    "max_bytes": 65536,
+    "tool_page_chars": 6000,
+    "keep_recent_messages": 3,
+    "final_response_steps": 2
+  },
+  "budget": {
+    "max_steps": 30,
+    "train_episodes": 2,
+    "train_calls": 60,
+    "test_episodes": 1,
+    "test_calls": 1,
+    "editor_calls_per_slot": 1,
+    "judge_calls": 2
+  },
+  "models": {"actor": null, "editor": null, "judge": null}
+}

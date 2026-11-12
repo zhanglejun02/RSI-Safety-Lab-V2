@@ -6,6 +6,7 @@ from pathlib import Path
 from rsi_lab.agents.runtime import source
 from rsi_lab.api import SystemSnapshot
 from rsi_lab.benchmarks.seabench import Controller, VERSION
+from rsi_lab.benchmarks.seabench_context import DEFAULT as DEFAULT_CONTEXT, settings as context_settings
 from rsi_lab.engine.continuation import read_record, save_record
 from rsi_lab.errors import BudgetExceeded, ConflictError, IntegrityError, OutcomeUnknown, ValidationError
 from rsi_lab.frozen import implementation_fingerprint
@@ -32,7 +33,7 @@ def default_config():
 
 def validate_config(config):
     default = default_config()
-    if not isinstance(config, dict) or set(config) - {"execution"} != set(default) or config["protocol"] != PROTOCOL:
+    if not isinstance(config, dict) or set(config) - {"execution", "actor_context", "calibration"} != set(default) or config["protocol"] != PROTOCOL:
         raise ValidationError("Start with the seabench-controller configuration schema")
     if config["profile"] != default["profile"] or config["mode"] not in ("scripted", "http"):
         raise ValidationError("Invalid SEABench profile or mode")
@@ -61,14 +62,27 @@ def validate_config(config):
             ChatConfig.from_dict({"schema_version": 1, **value})
     if any(type(config[k]) is not str or not config[k] for k in ("source", "sequence")):
         raise ValidationError("Declare the pinned source directory and sequence")
+    context = context_settings(config.get("actor_context", DEFAULT_CONTEXT))
+    if context["final_response_steps"] > budget["max_steps"]:
+        raise ValidationError("Finalization notice must fit inside the actor step budget")
+    if "calibration" in config and (config["methods"] != ["frozen"] or not config["calibration"]):
+        raise ValidationError("Upstream runtime calibration requires frozen only and explicit task IDs")
+    if config["mode"] == "http" and config["models"]["actor"].get("max_prompt_bytes", 65536) < context["max_bytes"] + 1024:
+        raise ValidationError("Actor request cap must cover the context allowance plus 1024 framing bytes")
     scheduling.settings(config)
     return deepcopy(config)
 
 
+def _backend(config):
+    return Controller(config["source"], config["sequence"], actor_context=config.get("actor_context"),
+                      upstream_task_ids=config.get("calibration"))
+
+
 def plan(config):
     config = validate_config(config)
-    backend = Controller(config["source"], config["sequence"])
-    dev, final = backend.cases("dev"), backend.cases("heldout")
+    backend = _backend(config)
+    calibration = "calibration" in config
+    dev, final = backend.cases("dev"), [] if calibration else backend.cases("heldout")
     budget = config["budget"]
     for phase, cases in (("train", dev), ("test", final)):
         if budget[phase + "_episodes"] < len(cases) or budget[phase + "_calls"] < len(cases) * budget["max_steps"]:
@@ -80,7 +94,7 @@ def plan(config):
              for method in config["methods"] for seed in config["seeds"]]
     calls = tokens = 0
     for root in roots:
-        phases = ["train", "test", "judge", "judge"] + (["editor"] if root["system"] != "frozen" else [])
+        phases = (["train", "judge"] if calibration else ["train", "test", "judge", "judge"]) + (["editor"] if root["system"] != "frozen" else [])
         for phase in phases:
             calls += config["slots"] * budget["editor_calls_per_slot"] if phase == "editor" else budget[phase + "_calls"]
             if config["mode"] == "http":
@@ -96,7 +110,9 @@ def plan(config):
             "final_episodes_total": len(roots) * len(final), "api_calls": 0,
             "execution": {**options, "allocated_calls": calls, "allocated_tokens": tokens,
                           "scheduling": "serial" if options["root_workers"] == 1 else "spawn_process_per_root_phase"},
-            "scope": "fixed public stress sequence; controller AGENTS.md only; no adaptive task discovery",
+            "scope": "upstream-only frozen runtime calibration" if calibration else "fixed public stress sequence; controller AGENTS.md only; no adaptive task discovery",
+            "evaluation_cases": dev if calibration else final,
+            "actor_context": backend.actor_context,
             "optimization": "fixed-H search over the ordered upstream suite; each rollout resets non-controller state",
             "adapter": VERSION, "mechanism_audit_complete": False}
 
@@ -155,7 +171,8 @@ def run(config, output, *, resume=False, expected_plan=None):
         measured = performance.collect(output, compiled["execution"])
         summary = {"protocol": PROTOCOL, "origin": manifest["origin"], "confirmatory": False,
                    "not_a_system_ranking": True, "rows": rows, "allocation": compiled,
-                   "statistics": summarize(rows, seed=1729, samples=2000), "performance": measured,
+                   "statistics": ({"scope": "fixed-policy development diagnostic; no method comparison"} if "calibration" in config else
+                                  summarize(rows, seed=1729, samples=2000)), "performance": measured,
                    "paid_calls": 0 if config["mode"] == "scripted" else None,
                    "manifest_sha256": digest(manifest)}
         _report(output, summary)
@@ -178,12 +195,14 @@ def _root_job(output, root, phase):
         config = manifest["config"]
         if root not in manifest["roots"] or digest(compiled) != manifest["plan_sha256"] or implementation_fingerprint() != manifest["implementation"]:
             raise IntegrityError("SEABench worker identity changed")
-        backend = Controller(config["source"], config["sequence"])
+        backend = _backend(config)
         if backend.source != compiled["source"] or backend.catalog != compiled["case_manifest"]:
             raise IntegrityError("SEABench benchmark changed")
         if phase == "evaluation" and read_record(output / "generation_complete.json") != _barrier(output, manifest):
             raise IntegrityError("Final evaluation requires all roots frozen")
-        judge_provider = _judge_provider(directory / ("train-judge" if phase == "generation" else "test-judge"), config)
+        calibration = "calibration" in config
+        judge_provider = (_judge_provider(directory / ("train-judge" if phase == "generation" else "test-judge"), config)
+                          if phase == "generation" or not calibration else None)
         backend.judge = judge_provider
         if phase == "generation":
             if not (directory / "root.json").exists():
@@ -196,13 +215,23 @@ def _root_job(output, root, phase):
         if digest(saved) != read_record(directory / "generation.json")["root_sha256"]:
             raise IntegrityError("Frozen controller changed before evaluation")
         program = SystemSnapshot.from_dict(saved["final_snapshot"]).version.component("policy")["source"]
-        provider = shared._provider(directory, config, "test", backend, backend.cases("heldout"))
-        runtime = shared._runtime(directory, provider, config, "test")
+        provider = None if calibration else shared._provider(directory, config, "test", backend, backend.cases("heldout"))
+        runtime = None if calibration else shared._runtime(directory, provider, config, "test")
+        observed = {}
+        if calibration:
+            for path in (directory / "train-episodes").glob("*/result.json"):
+                record = read_record(path)
+                if record["source"] != program:
+                    raise IntegrityError("Calibration changed the frozen controller")
+                observed[digest(record["case"])] = record
         cases = []
-        for case in backend.cases("heldout"):
+        for case in compiled["evaluation_cases"]:
             path = directory / "final" / (digest(case) + ".json")
             if path.exists():
                 record = read_record(path)
+            elif calibration:
+                record = observed.get(digest(case), {"error": "unobserved_upstream_episode", "metrics": {"complete": False}})
+                save_record(path, record)
             else:
                 try:
                     record = runtime.execute(program, case, backend, root["root_id"] + "/final/" + digest(case))
@@ -214,14 +243,14 @@ def _root_job(output, root, phase):
                           "task_completion": values.get("task_completion"), "safety_violation": values.get("safety_violation"),
                           "record": str(path.relative_to(output)), "error": record.get("error")})
         estimates = {k: sum(c[k] for c in cases) / len(cases) if all(c["complete"] and c[k] is not None for c in cases) else None
-                     for k in ("task_completion", "safety_violation")}
+                     for k in (("task_completion",) if calibration else ("task_completion", "safety_violation"))}
         save_record(directory / "scores.json", {"root_id": root["root_id"], "method": root["system"],
             "arm": "native_only", "seed": root["seed"], "benchmark": "seabench/" + config["sequence"],
             "final_source_sha256": digest(program), "cases": cases, "estimates": estimates,
             "learning_curve": saved["learning_curve"], "train_usage": saved["train_usage"],
-            "editor_usage": saved["editor_usage"], "test_usage": provider.summary(),
+            "editor_usage": saved["editor_usage"], "test_usage": provider.summary() if provider else None,
             "train_judge_usage": read_record(directory / "generation.json")["judge_usage"],
-            "test_judge_usage": judge_provider.summary()})
+            "test_judge_usage": judge_provider.summary() if judge_provider else None})
 
 
 def inspect(output):
@@ -229,7 +258,9 @@ def inspect(output):
 
 
 def _report(output, summary):
+    calibration = summary["allocation"]["downstream_tasks"] == 0
     lines = ["# SEABench controller pilot", "", "Origin: " + summary["origin"],
+             "Frozen upstream-only runtime calibration; no optimization or downstream tests." if calibration else
              "Fixed upstream suite → freeze controller → fixed downstream safety tests.",
              "Read-only file-tool bridge; independent task utility and endogenous safety rubrics.",
              "No adaptive task discovery; not a reproduction of the full upstream agent loop or an L1/L2 comparison.", "",
@@ -237,9 +268,9 @@ def _report(output, summary):
              "|---|---:|---:|---:|---:|---|"]
     for row in summary["rows"]:
         cs = row["cases"]
-        lines.append(f"| {row['root_id']} | {row['estimates']['task_completion']} | {row['estimates']['safety_violation']} | "
+        lines.append(f"| {row['root_id']} | {row['estimates']['task_completion']} | {row['estimates'].get('safety_violation', 'not evaluated')} | "
                      f"{sum(c['complete'] for c in cs)}/{len(cs)} | "
-                     f"{sum(c['task_completion'] is None or c['safety_violation'] is None for c in cs)} | "
+                     f"{sum(c['task_completion'] is None or not calibration and c['safety_violation'] is None for c in cs)} | "
                      f"{row['final_source_sha256'] != summary['allocation']['initial_policy_sha256']} |")
     lines += ["", "Scripted judges are CONTROL. Natural scores require rubric/trace spot checks.",
               "One root does not provide a confidence interval. Failed/no-update roots are retained.",

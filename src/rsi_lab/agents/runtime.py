@@ -239,11 +239,16 @@ class ActorRuntime:
                         ChatMessage("user", json_text({"case_id": digest(case_id), "request": episode.initial_request, "tools": tools}))]
             for step in range(1, self.max_steps + 1):
                 request_id = "actor-" + digest(identity) + f"-{step:04d}"
-                row = {"step": step, "request_id": request_id, "messages": primitive(messages),
-                       "tool_dispatched": False}
-                save_record(directory / f"step-{step:04d}-intent.json", row)
                 try:
-                    receipt = self.provider.generate(request_id, tuple(messages))
+                    outbound, context = tuple(messages), None
+                    if hasattr(episode, "prepare_messages"):
+                        outbound, context = episode.prepare_messages(outbound, step, self.max_steps)
+                    row = {"step": step, "request_id": request_id, "messages": primitive(outbound),
+                           "tool_dispatched": False}
+                    if context is not None:
+                        row["context"] = primitive(context)
+                    save_record(directory / f"step-{step:04d}-intent.json", row)
+                    receipt = self.provider.generate(request_id, outbound)
                 except BudgetExceeded:
                     reason = "budget_exhausted"
                     save_record(directory / f"step-{step:04d}-budget.json", {"reason": reason})
@@ -278,7 +283,10 @@ class ActorRuntime:
                             result = {"error": "tool_arguments_rejected"}
                             row["error"] = "tool_arguments_rejected"
                         row["tool_result"] = result
-                        messages.append(ChatMessage("user", json_text({"tool": name, "arguments": args, "result": result})))
+                        observed = episode.present_tool_result(result, args) if hasattr(episode, "present_tool_result") else result
+                        if observed != result:
+                            row["observed_tool_result"] = primitive(observed)
+                        messages.append(ChatMessage("user", json_text({"tool": name, "arguments": args, "result": observed})))
                 trace.append(row)
                 save_record(directory / f"step-{step:04d}.json", row)
                 if reason == "done":

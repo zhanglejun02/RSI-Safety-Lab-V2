@@ -27,6 +27,7 @@ method registry → native adapter → prepared update → platform activation
 | `infra/dispatch.py` | Shared concurrent-request limit, request spacing and future-request cooldown; no retries |
 | `benchmarks/agentdojo_suite.py` | Native task inventory and selected single-/multi-suite catalogs; reusable fixed attack implementations |
 | `benchmarks/seabench.py` | External source lock, native task/file-tool bridge, AGENTS.md binding and durable native rubric judging; no task rewriting |
+| `benchmarks/seabench_context.py` | Native deterministic pruning, paged observations and bounded request projection; full evidence stays in the actor trace |
 | `agents/runtime.py` | Multiturn actor, tool dispatch, immutable episode effects and receipts |
 | `agents/program.py` | Bounded AST interpreter; candidate emits actor instructions, never arbitrary host Python |
 | `benchmarks/` | AgentDojo native backend, banking task/attack pool, synthetic local fixture |

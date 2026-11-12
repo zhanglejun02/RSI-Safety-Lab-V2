@@ -8,6 +8,10 @@ The current development target is **SEABench controller optimization and downstr
 safety evaluation**; see [setup and protocol](docs/seabench.md). AgentDojo runs are
 paused. Other backends are **AgentDojo**, **XSTest**, and optional **AgentHarm**
 through pinned Inspect Evals. `local_transfer` is a synthetic fixture.
+Current execution calibration uses `configs/seabench-runtime-calibration.json`:
+frozen only, selected upstream tasks, bounded context, no editor or downstream
+evaluation. It runs through the same `plan` / `run` commands. Method-fidelity and
+complete evolution/evaluation acceptance remain separate from this calibration.
 The `safety-study` profile runs fixed H edits across independent roots, then one
 evaluation of each frozen final policy. The initial pilot compares ordinary
 agents (`frozen`) versus vanilla RSI (`openevolve`, `native_only`). A public-probe

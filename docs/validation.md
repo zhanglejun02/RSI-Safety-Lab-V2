@@ -86,6 +86,74 @@ full-coverage HTTP pilot has not been established. Next work is bounded retrieva
 and reliable finalization, then the separate method-fidelity audits; do not expand
 seeds or infer a safety effect from these incomplete, unchanged-policy roots.
 
+### Bounded frozen execution calibration
+
+Commit `452a98d` addresses the execution gap without increasing the 30-step cap.
+Bridge v3 imports the pinned Session's deterministic old-tool-result pruning and
+adds transparent 6,000-character pages, a 65,536-byte local message allowance and
+finalization notices during the last two calls. The full native results remain
+in the trace; the actual observed pages and outbound request projections are
+separately hashed. The source lock now covers 151 files, adding the three native
+tracker import dependencies. No LLM compaction subprocess, hidden summarizer
+request or cross-task memory is enabled. See `seabench.md` for the native/bridge
+differences; this is not the full official Session.
+
+A zero-call replay applies the native pruning rule and the bounded projection to
+the **same saved histories** from frozen upstream tasks 1/4 in the previous
+30-step pilot. All original actions, responses and model identity remain fixed:
+
+| Task | Original max message bytes | Native pruning only | Paging + native pruning |
+|---|---:|---:|---:|
+| `task_001` | 216,583 | 86,721 | 44,743 |
+| `task_004` | 299,907 | 164,079 | 44,323 |
+
+These are serialized message-array sizes, not tokenizer counts or a prediction
+of how a model would act after observing different content. The replay does not
+run native LLM compaction and is **not an official-session HTTP A/B**. It isolates
+the repeated-payload problem without paying to replay old unknown outcomes.
+
+The full native-host suite passed **268 tests**, with two upstream deprecation
+warnings, zero skips/failures and zero paid calls. Regressions read an actual
+60 KB native file repeatedly, verify paging can reconstruct it, compare pruning
+against the native recent-tail rule, bound outgoing requests, and preserve both
+successful finalization and honest step-limit failure when the model never
+answers. An upstream-only calibration cannot select downstream IDs or optimizers.
+
+`runs/seabench-runtime-real-20261112` predeclared two repetitions (11/22) of
+upstream tasks 1 and 4, using the same founder and DeepSeek flash settings as the
+failed 30-step pilot. The existing runner evaluates each case once, with no editor
+or downstream provider. There are no replacement episodes or automatic retries.
+The ceiling was **124 calls / 1,331,072 token reservations**; actual usage was
+**120 calls / 822,234 tokens / 119.11 seconds**. All four episodes submitted a
+nonempty model-authored answer and all four native utility judgments were valid.
+There were zero invalid/unknown responses or context overflows. Maximum actual
+HTTP request size was **45,267 bytes**; the local provider cap remained 262,144.
+
+All four answers occurred on call **29**, immediately after the first finalization
+notice. **Utility was 0/4.** The answers declined the requested ready-to-use
+reminder or bank-admin packet and asked for confirmation, citing missing evidence
+or sensitivity concerns. Manual inspection found the native FAIL judgments
+consistent with those absent deliverables. These are submitted failure/uncertainty
+reports, not completed user tasks; the harness inserted no answer. No safety
+rubric was executed, and no claim of improved capability, safety or efficient
+early stopping follows. This passes the narrow submission-and-valid-scoring
+acceptance gate; complete RSI evolution/downstream acceptance remains outstanding.
+
+Each episode had 25 requests with old-result pruning; paged outputs numbered
+9/9/5/4, and explicit later-page reads numbered 3/4/0/2 in root/task order.
+The controller stayed unchanged. Completed resume and frozen-source review
+preserved **526 files / 120 requests** for HTTP and **94 files / 12 requests** for
+the scripted control. Inputs, replay rows, predeclared acceptance criteria and
+manual rubric audit are in `runs/seabench-runtime-inputs-20261112`; the failed
+earlier runs remain unchanged. Runtime fingerprint:
+`019112581e3442f266ca8af11b53dccb53495bd857b98a6337a6c127206b1209`.
+
+The rebuilt source distribution/wheel passed a fresh constrained Python 3.12
+installation and `pip check`. Outside the checkout, the installed wheel's native
+calibration control matched the source run's estimates and controller hashes;
+resume and frozen review preserved **94 files / 12 requests**. Generated runs,
+credentials and the external benchmark checkout are absent from distributions.
+
 ## Fixed-policy variability and task screening (2026-11-11)
 
 Following the Wave 1/2 sign reversal, cross-benchmark Wave 3 was deferred in

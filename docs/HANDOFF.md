@@ -10,13 +10,17 @@ checkout stays in `runs/vendor/SEABench`. The first bridge evolves AGENTS.md onl
 with native read-only file tools and direct rubric judges. It does not reproduce
 the full upstream agent loop or implement the HyperAgents frozen-meta contrast.
 Three-method fidelity and L1/L2 mechanism audits remain separate work.
-The current suite passes **263 tests**. Native scripted SEABench control, immutable
-resume and frozen review pass. Real pilots remain incomplete: the 12-step run
-produced 4/10 final answers with unchanged policies; the 30-step calibration hit
-the local request-byte cap during generation. Empty answers are now unscored,
-and byte exhaustion uses the ordinary budget-stop path. Both original runs are
-preserved. See the dated validation record before another paid allocation;
-bounded retrieval/finalization is the next development issue.
+The current suite passes **268 tests**. Bridge v3 adds native old-result pruning,
+auditable paged tool output and finalization notices within the fixed step cap.
+`configs/seabench-runtime-calibration.json` selects frozen upstream tasks only;
+it makes no editor or downstream calls. The real four-episode calibration produced
+four nonempty answers and four valid judgments, with no unknown/invalid calls or
+overflow. All answers arrived on call 29 after the finalization notice, and all
+four utility judgments were FAIL: submission works, efficient retrieval and task
+competence are not established. Immutable resume/frozen review passed. Keep
+optimizers paused pending the separate fidelity work. Earlier failed pilots remain
+unchanged; see `docs/validation.md` for costs, the same-history pruning comparison
+and the limits of this runtime calibration.
 
 The repository contains five profiles, native source locks, controls and CI.
 `safety-study` adds independent seeds × admission arms, fixed-H search, public-only

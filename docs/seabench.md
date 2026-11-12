@@ -6,7 +6,7 @@ results remain available for later injection validation.
 
 The [official repository](https://github.com/SEABench-Endogenous-Misalignment/SEABench)
 is pinned at `21828194aa709da6c18cddaeb718b309db71d22f`. The source lock checks
-148 files, including native tools/judges, controller seeds, 89 environment JSON
+151 files, including native tools/judges/session helpers, controller seeds, 89 environment JSON
 files and 16 controller sequences. The external checkout is not redistributed;
 planning rejects modified, missing or added files in the locked trees.
 
@@ -34,6 +34,50 @@ credential names and `--env-file .env`, then freeze a new plan. All providers,
 including separate upstream/downstream judges, count toward allocation ceilings.
 The existing execution overlay supports process-per-root scheduling; pilots are
 serial. All methods in a comparison must share execution settings.
+
+For execution calibration, use `configs/seabench-runtime-calibration.json` with
+the same plan/run commands. Its `calibration` list selects official **upstream**
+task IDs; only frozen is allowed. Each task runs once per repetition through the
+usual baseline evaluator. Reporting reuses those observations without another
+actor call. There is no editor, downstream actor or safety judge, and no bootstrap
+method comparison. Nonempty answers and valid utility judgments are execution
+checks; utility PASS is not required. This remains the current priority before
+resuming optimizer experiments.
+
+## Context and execution adaptation
+
+The shared actor accepts benchmark-owned request/observation projections; other
+backends retain their existing behavior. SEABench bridge v3 uses these fixed
+settings for every method, declared in `plan.actor_context` and the backend identity:
+
+| Setting | Default | Behavior |
+|---|---:|---|
+| `tool_page_chars` | 6,000 | Native tool output is retained in full; the actor receives a page with hash, total length and `next_offset` |
+| `keep_recent_messages` | 3 | Calls the pinned `Session._prune_old_tool_results`; its rule retains the recent six non-system messages |
+| `max_bytes` | 65,536 | Local serialized message allowance before dispatch; the model's context-window size is not inferred from this |
+| `final_response_steps` | 2 | Last two calls receive a finalization notice within the original step cap; no answer is fabricated or extra call granted |
+
+All three read-only tools accept an optional Unicode-character `offset`. Repeat
+the same arguments with `next_offset` to read later pages. Pruning never promotes
+tool content into the system prompt, and preserves the controller, trusted task
+and latest observation. Older payloads may be pruned further to fit the byte
+allowance. If protected content still cannot fit, the episode stops as budget
+exhaustion. HTTP preflight reserves another 1,024 bytes for request framing.
+
+`trace[].tool_result` retains the native result; `observed_tool_result` records
+the page. Each request stores the actual outbound messages and a `context` receipt
+with input/output hashes, byte counts, pruning indices and finalization status.
+These receipts are audit data, not independent safety feedback.
+
+This reuses **native deterministic pruning**, not the entire native Session.
+Upstream also has LLM compaction via a subprocess, persistent session memory,
+native parallel tool-call messages and checkpoint submission. The bridge uses
+explicit pagination/pruning, fresh per-task history and one JSON action per step;
+it makes no hidden summarizer calls. A pruning notice is not a semantic summary
+and cannot preserve every earlier fact. The agent can reread evidence and must
+state uncertainty when it cannot finish. If it ignores the finalization notice,
+the original step-limit/missing-answer result remains. No equivalence to the full
+native agent loop is claimed.
 
 ## Exact scope and measurement
 
@@ -83,8 +127,9 @@ The first real development pilot completed orchestration but had incomplete
 downstream coverage. A longer calibration then exposed unbounded retrieval and
 hit the request-byte cap before finishing generation. See
 [`validation.md`](validation.md#seabench-controller-integration-2026-11-12) for
-the retained failures and costs. The latest byte-limit fix has zero-paid-call
-regression coverage; no successful full-coverage HTTP pilot is claimed.
+the retained failures and costs, followed by the bounded-runtime calibration.
+Upstream execution calibration does not establish complete evolution/downstream
+evaluation or method fidelity.
 
 ## Remaining mechanism work
 

@@ -14,6 +14,7 @@ class Method:
     scope: str
     searches: bool = True
     platforms: tuple[str, ...] = ("Darwin", "Linux")
+    editor_response_format: str = "json_object"
 
 
 METHODS = {
@@ -24,7 +25,8 @@ METHODS = {
     "openevolve": Method("openevolve", "openevolve", "OpenEvolveAdapter",
                          "iterative instruction search; fixed optimizer"),
     "hyperagents": Method("hyperagents", "hyperagents", "HyperAgentsAdapter",
-                          "bounded instruction + editable meta profile", platforms=("Darwin",)),
+                          "bounded instruction + editable meta profile", platforms=("Darwin",),
+                          editor_response_format="text"),
 }
 
 

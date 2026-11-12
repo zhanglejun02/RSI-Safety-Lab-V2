@@ -65,6 +65,45 @@ def config(**changes):
     return replace(ChatConfig("http://127.0.0.1:8000/v1", "local-model", max_output_tokens=64), **changes)
 
 
+def test_native_text_is_exact_replayable_and_format_bound(tmp_path):
+    native = 'Thought.\n<json>{"tool_name":"read_file","tool_input":{"name":"policy.py"}}</json>\n'
+    envelope = decode_json(response())
+    envelope["choices"][0]["message"]["content"] = native
+    calls = []
+    def transport(url, headers, body, timeout):
+        calls.append(decode_json(body))
+        return canonical_bytes(envelope)
+    path = tmp_path / "native.sqlite"
+    provider = DurableChatProvider(path, config(), transport=transport, response_format="text")
+    first = provider.generate("r1", MESSAGES)
+    assert first.content == {"text": native}
+    assert "response_format" not in calls[0]
+    assert provider.generate("r1", MESSAGES) == first and len(calls) == 1
+    with pytest.raises(ConflictError):
+        DurableChatProvider(path, config(), response_format="json_object")
+
+
+@pytest.mark.parametrize("failure", ["empty", "truncated", "unknown"])
+def test_text_failures_keep_existing_no_retry_semantics(tmp_path, failure):
+    calls = []
+    envelope = decode_json(response(finish="length" if failure == "truncated" else "stop"))
+    envelope["choices"][0]["message"]["content"] = "" if failure == "empty" else "partial text"
+    def transport(*_):
+        calls.append(1)
+        if failure == "unknown":
+            raise TimeoutError()
+        return canonical_bytes(envelope)
+    provider = DurableChatProvider(tmp_path / "native.sqlite", config(), transport=transport, response_format="text")
+    for _ in range(2):
+        with pytest.raises(OutcomeUnknown if failure == "unknown" else ModelResponseValidationError):
+            provider.generate("r1", MESSAGES)
+    assert calls == [1]
+    if failure == "unknown":
+        assert provider.summary()["reserved_tokens"] > 0
+    else:
+        assert provider.summary()["actual_total_tokens"] == 30
+
+
 @pytest.fixture
 def dispatch_clock(monkeypatch):
     class Clock:

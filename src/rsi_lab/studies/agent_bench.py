@@ -115,7 +115,8 @@ def _actor_provider(directory, config, module, cases):
 
 def _editor_provider(directory, config, method, *, control_instructions=None):
     if config["mode"] == "http":
-        return DurableChatProvider(directory / "editor.sqlite", ChatConfig.from_dict({"schema_version": 1, **config["editor"]}))
+        return DurableChatProvider(directory / "editor.sqlite", ChatConfig.from_dict({"schema_version": 1, **config["editor"]}),
+                                   response_format=METHODS[method].editor_response_format)
     from rsi_lab.agents.runtime import DEFAULT_INSTRUCTIONS, source
     instance = None
     def reply(operation, messages):

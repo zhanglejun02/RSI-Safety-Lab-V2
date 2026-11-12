@@ -14,7 +14,7 @@ from rsi_lab.api import SystemSnapshot
 from rsi_lab.benchmarks import banking_profile as pool
 from rsi_lab.engine.continuation import read_record, save_record
 from rsi_lab.errors import BudgetExceeded, ConflictError, IntegrityError, OutcomeUnknown, ValidationError
-from rsi_lab.methods import check_available, method
+from rsi_lab.methods import METHODS, check_available, method
 from rsi_lab.frozen import implementation_fingerprint
 from rsi_lab.infra.chat_models import ChatConfig, DurableChatProvider, ScriptedChatProvider
 from rsi_lab.serialization import decode_json, digest
@@ -173,7 +173,8 @@ def _actor(directory, model, mode, backend, cases):
 def _editor(directory, manifest, method):
     settings = manifest["config"]["optimization"]["editor"]
     if manifest["mode"] == "http":
-        return DurableChatProvider(directory / "editor.sqlite", ChatConfig.from_dict({"schema_version": 1, **settings}))
+        return DurableChatProvider(directory / "editor.sqlite", ChatConfig.from_dict({"schema_version": 1, **settings}),
+                                   response_format=METHODS[method].editor_response_format)
     def reply(operation, messages):
         program = source(DEFAULT_INSTRUCTIONS + "\nCONTROL_HARM " + operation.split("/model")[0])
         if method == "openevolve":

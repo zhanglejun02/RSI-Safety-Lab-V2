@@ -1,4 +1,4 @@
-"""Durable JSON chat gateway for explicitly configured compatible HTTP services.
+"""Durable chat gateway for explicitly configured compatible HTTP services.
 
 Only model *data* is accepted here; no generated source is imported or executed.
 Remote exactly-once execution is not assumed. A persisted dispatch with no known
@@ -156,7 +156,7 @@ def http_transport(url: str, headers: dict, body: bytes, timeout: float) -> byte
 
 
 class DurableChatProvider:
-    """One durable intent per request; successful JSON responses are replayable.
+    """One durable intent per request; complete responses are replayable.
 
     Token reservation uses request UTF-8 bytes + output cap + 256 overhead units.
     It is a conservative estimate, not a universal tokenizer bound or a billing
@@ -165,16 +165,21 @@ class DurableChatProvider:
     """
 
     origin = CandidateOrigin.NATURAL
+    response_format = "json_object"
 
-    def __init__(self, path: Path, config: ChatConfig, *, transport=None, limiter=None):
+    def __init__(self, path: Path, config: ChatConfig, *, transport=None, limiter=None, response_format="json_object"):
         if type(config) is not ChatConfig:
             raise ValidationError("A typed ChatConfig is required")
+        if response_format not in ("json_object", "text"):
+            raise ValidationError("Unsupported chat response format")
         self.path = _checked_path(Path(path))
         self.path.parent.mkdir(parents=True, exist_ok=True)
         self.config = config
         self.transport = transport or http_transport
         self.limiter = limiter
-        self.provider_id = "http_json_chat_" + digest({"url": config.base_url, "model": config.model})[:16]
+        self.response_format = response_format
+        prefix = "http_json_chat_" if response_format == "json_object" else "http_text_chat_"
+        self.provider_id = prefix + digest({"url": config.base_url, "model": config.model})[:16]
         self._initialize({"config": config, "provider_id": self.provider_id, "origin": self.origin.value})
 
     @contextmanager
@@ -215,7 +220,9 @@ class DurableChatProvider:
                    "messages": [{"role": m.role, "content": m.content} for m in messages],
                    "temperature": self.config.temperature,
                    "max_tokens": self.config.max_output_tokens,
-                   "response_format": {"type": "json_object"}, "stream": False}
+                   "stream": False}
+        if self.response_format == "json_object":
+            payload["response_format"] = {"type": "json_object"}
         if self.config.thinking_mode is not None:
             payload["thinking"] = {"type": self.config.thinking_mode}
         body = canonical_bytes(payload)
@@ -291,8 +298,13 @@ class DurableChatProvider:
             raise ModelResponseValidationError("Model response is incomplete or has an unsupported finish reason")
         message = choice["message"]
         if message.get("tool_calls") or message.get("refusal"):
-            raise ModelResponseValidationError("Expected JSON content, received tool calls or refusal")
-        content = response_object(message.get("content"))
+            raise ModelResponseValidationError("Expected message content, received tool calls or refusal")
+        raw_content = message.get("content")
+        if type(raw_content) is not str or not raw_content.strip():
+            raise ModelResponseValidationError("Model content must be nonempty text")
+        # Text adapters receive the exact native protocol, without JSON repair or
+        # stripping. Both modes retain identical reservation/replay semantics.
+        content = {"text": raw_content} if self.response_format == "text" else response_object(raw_content)
         response_model = envelope.get("model")
         if type(response_model) is not str or not response_model:
             raise ModelResponseValidationError("Response must identify its actual model")
@@ -356,7 +368,7 @@ class DurableChatProvider:
                         hashlib.sha256(raw).hexdigest(), canonical_bytes(result) if result else None,
                         None if result else "invalid_response", int(overrun), request_id))
         if result is None:
-            raise ModelResponseValidationError("Model response is not a complete JSON object; attempt recorded")
+            raise ModelResponseValidationError("Model response is incomplete or violates its transport format; attempt recorded")
         return result
 
     def _dispatch(self, request_id, headers, body):

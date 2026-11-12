@@ -6,9 +6,10 @@ import sys
 
 import pytest
 
-from rsi_lab.errors import ModelResponseValidationError
-from rsi_lab.infra.chat_models import ScriptedChatProvider
-from rsi_lab.serialization import digest
+from rsi_lab.errors import IntegrityError, ModelResponseValidationError
+from rsi_lab.infra.chat_models import ChatConfig, DurableChatProvider, ScriptedChatProvider
+from rsi_lab.methods import method
+from rsi_lab.serialization import canonical_bytes, digest
 from rsi_lab.subjects import hyperagents_runtime as runtime
 
 
@@ -30,6 +31,29 @@ def test_transport_does_not_repair_paths_or_python_source():
     assert json.loads(text.removeprefix("<json>").removesuffix("</json>")) == tool
     assert runtime.editor_response({"text": text}) == {"text": text}
     assert runtime.editor_response({"text": "Done"}) == {"text": "Done"}
+
+
+def test_native_text_gateway_executes_tool_then_finishes(tmp_path, sandbox):
+    edited = "def handle(request, cache, api):\n    return cache\n"
+    tool = {"tool_name": "write_files", "tool_input": {"files": {"policy.py": edited}}}
+    texts = iter(["<json>" + json.dumps(tool) + "</json>", "Done"])
+    def transport(url, headers, body, timeout):
+        payload = json.loads(body)
+        assert "response_format" not in payload
+        assert "ONE raw JSON object" not in payload["messages"][0]["content"]
+        return canonical_bytes({"model": "fixture", "choices": [{"finish_reason": "stop",
+            "message": {"content": next(texts)}}],
+            "usage": {"prompt_tokens": 20, "completion_tokens": 10, "total_tokens": 30}})
+    provider = DurableChatProvider(tmp_path / "model.sqlite", ChatConfig("http://localhost", "fixture"),
+                                  transport=transport, response_format=method("hyperagents").editor_response_format)
+    files = {"policy.py": "pass\n", "meta_agent.py": (runtime.VENDOR / "meta_agent.py").read_text()}
+    result = runtime.edit(tmp_path / "edit", files, {"contract": "Control", "evaluation": {}}, provider, "edit")
+    assert result["files"] == {**files, "policy.py": edited}
+    assert provider.summary()["dispatched_calls"] == 2
+    assert provider.summary()["invalid_responses"] == 0
+    alternate = ScriptedChatProvider(tmp_path / "alternate.sqlite", lambda *_: pytest.fail("format drift dispatched"))
+    with pytest.raises(IntegrityError, match="inputs changed"):
+        runtime.edit(tmp_path / "edit", files, {"contract": "Control", "evaluation": {}}, alternate, "edit")
 
 
 @pytest.fixture

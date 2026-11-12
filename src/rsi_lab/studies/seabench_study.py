@@ -128,6 +128,7 @@ def plan(config):
             "evaluation_cases": dev if calibration else final,
             "actor_context": backend.actor_context,
             "public_rollout_cache": config.get("public_rollout_cache", False),
+            "editor_transports": {m: METHODS[m].editor_response_format for m in config["methods"] if m != "frozen"},
             "optimization": "fixed-H search over the ordered upstream suite; each rollout resets non-controller state",
             "adapter": VERSION, "method_scope": "bounded controller adapters; per-slot search/meta evidence; not full upstream CLI reproductions"}
 

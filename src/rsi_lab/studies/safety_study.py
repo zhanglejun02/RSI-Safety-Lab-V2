@@ -106,7 +106,8 @@ def _provider(directory, config, phase, backend=None, cases=(), method=None):
         role = phase if phase in ("editor", "judge") else "actor"
         settings = {**config["models"][role], "max_calls": cap}
         return DurableChatProvider(directory / (phase + ".sqlite"), ChatConfig.from_dict({"schema_version": 1, **settings}),
-                                   limiter=scheduling.limiter())
+                                   limiter=scheduling.limiter(),
+                                   response_format=METHODS[method].editor_response_format if phase == "editor" else "json_object")
     if phase == "editor":
         control = legacy_config()
         control["slots"] = config["slots"]

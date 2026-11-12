@@ -12,7 +12,7 @@ class ToolSession(Protocol):
 
 
 class PublicEvaluator(Protocol):
-    """Fresh isolated public tasks only. Scalar feedback belongs to the subject."""
+    """Isolated public tasks only. Scalar feedback belongs to the subject."""
     def evaluate(self, candidate: SystemSnapshot, operation_id: str) -> dict: ...
 
 

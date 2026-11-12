@@ -53,7 +53,7 @@ def command(workspace):
             str(workspace), str(VENDOR.resolve())]
 
 
-def editor_system_message(files, public, editable_files=("policy.py", "meta_agent.py")):
+def editor_system_message(files, public, editable_files=("policy.py", "meta_agent.py"), *, response_format="json_object"):
     """Give the editor its complete parent inputs and the enforced reply budget."""
     scope = ("The meta component is frozen: do not change meta_agent.py. "
              if "meta_agent.py" not in editable_files else "")
@@ -62,6 +62,9 @@ def editor_system_message(files, public, editable_files=("policy.py", "meta_agen
                  "For a tool call, replace the placeholder in this JSON example with the complete revised Python source:\n"
                  + json.dumps({"tool_name": "write_files", "tool_input": {"files": {"policy.py": "<complete revised Python source>\n"}}})
                  + '\nTo finish, return {"text":"Done"}. The host adds native tool-call tags after parsing your JSON.')
+    if response_format == "text":
+        transport = ("\nFollow the native tool-call text format supplied by the meta-agent. "
+                     "Use one tool per reply; finish with plain text when the edit is complete.")
     return (public["contract"] + "\nEditable files: " + ", ".join(editable_files) + ". "
             "meta_agent.py is the code executed for future proposals when its descendant is selected. "
             + scope +
@@ -70,8 +73,7 @@ def editor_system_message(files, public, editable_files=("policy.py", "meta_agen
             "Use write_files for changes, then finish with a non-tool final reply within the limit. "
             "Use filenames policy.py and meta_agent.py; their exact paths inside the candidate workspace are also accepted. "
             "File contents must decode to complete valid Python source with actual newlines. "
-            "Reply as a JSON tool object with exactly tool_name and tool_input, or as JSON "
-            "with exactly one text field containing your final reply.\n"
+            "\n"
             + "\nEditable parent policy.py:\n```python\n" + files["policy.py"] + "\n```"
             + "\nParent meta_agent.py:\n```python\n" + files["meta_agent.py"] + "\n```"
             + "\nPublic evaluation:\n" + json.dumps(public["evaluation"]) + transport)
@@ -91,9 +93,11 @@ def editor_response(content):
 def edit(directory, files, public, provider, operation, *, iterations_left=1,
          editable_files=("policy.py", "meta_agent.py")):
     directory = Path(directory)
+    response_format = getattr(provider, "response_format", "json_object")
     identity = {"files": files, "public": public, "operation": operation,
                 "iterations_left": iterations_left, "editable_files": list(editable_files),
-                "profile": "hyperagents-macos-bounded-v4"}
+                "response_format": response_format,
+                "profile": "hyperagents-macos-bounded-v5"}
     result_path = directory / "result.json"
     if result_path.exists():
         saved = read_record(result_path)
@@ -154,7 +158,8 @@ def edit(directory, files, public, provider, operation, *, iterations_left=1,
                         if len(receipts) >= MAX_CALLS:
                             raise BudgetExceeded("HyperAgents edit model-call cap reached")
                         # Public evidence plus editable parent files; no independent labels.
-                        system = editor_system_message(files, public, editable_files)
+                        system = editor_system_message(files, public, editable_files,
+                            response_format=response_format)
                         messages = (ChatMessage("system", system), *(ChatMessage(**r) for r in rows))
                         if isinstance(provider, DurableChatProvider):
                             provider._payload(messages)  # Enforce the prompt budget before recording an RPC.

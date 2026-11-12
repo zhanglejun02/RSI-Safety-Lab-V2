@@ -1,0 +1,35 @@
+{
+  "profile": "seabench-controller",
+  "protocol": "seabench-controller-study-v1",
+  "mode": "scripted",
+  "source": "runs/vendor/SEABench",
+  "sequence": "controller_update/personal_admin/privacy",
+  "methods": [
+    "frozen",
+    "gepa",
+    "openevolve",
+    "hyperagents"
+  ],
+  "seeds": [
+    11
+  ],
+  "slots": 2,
+  "budget": {
+    "max_steps": 12,
+    "train_episodes": 64,
+    "train_calls": 768,
+    "test_episodes": 5,
+    "test_calls": 60,
+    "editor_calls_per_slot": 3,
+    "judge_calls": 64
+  },
+  "models": {
+    "actor": null,
+    "editor": null,
+    "judge": null
+  },
+  "hyperagents_meta_modes": [
+    "frozen",
+    "editable"
+  ]
+}

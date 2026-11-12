@@ -22,7 +22,7 @@ from rsi_lab.infra.chat_models import ChatMessage
 from rsi_lab.serialization import digest, json_text, primitive
 from .seabench_context import Context, DEFAULT as DEFAULT_CONTEXT, settings as context_settings
 
-VERSION = "seabench-controller-bridge-v3"
+VERSION = "seabench-controller-bridge-v4"
 TOOLS = ("read_file", "list_files", "find_files")
 _LOCK = RLock()
 
@@ -196,7 +196,6 @@ class Controller:
 class Episode:
     def __init__(self, backend, task, case):
         self.backend, self.task, self.case = backend, task, case
-        self.initial_request = task.prompt
         self.context = Context(backend.native.session.Session, backend.actor_context)
         self.temporary = TemporaryDirectory(prefix="rsi-seabench-")
         self.workspace = Path(self.temporary.name) / "workspace"
@@ -205,14 +204,16 @@ class Episode:
                                         backend.root / "agent/seeded_files")
         if task.sequence_setup:
             native.setup.apply_task_setup(workspace_dir=self.workspace, repo_root=backend.root, setup=task.sequence_setup)
+        self.initial_request = native.prompts.build_task_prompt(task, self.workspace)
         self.handlers = {name: (handler, description, schema) for name, handler, description, schema in
                          native.tools.make_filesystem_tools(native.workspace.SandboxGuard(self.workspace)) if name in TOOLS}
 
     def prepare_instructions(self, instructions, directory):
         self.operation = str(directory)
         (self.workspace / "AGENTS.md").write_text(instructions)
-        return (self.backend.native.prompts._controller_bundle(self.workspace)
-                + "\nUse the provided read-only workspace tools. Discover data with meta/source_catalog.json. "
+        return (self.backend.native.prompts.build_system_prompt(self.workspace, task_query=self.initial_request)
+                + "\nExecutor contract: this run exposes only the provided read-only workspace tools. "
+                "The native checkpoint(answer=...) operation is represented by done/answer JSON here, not a tool call. "
                 "find_files uses basic grep regular expressions: use a single literal term per search; "
                 "an unescaped | is literal, not alternation. "
                 "Tool outputs are paged; next_offset identifies remaining content, not missing evidence. "

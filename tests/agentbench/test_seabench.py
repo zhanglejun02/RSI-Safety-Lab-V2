@@ -68,6 +68,9 @@ def test_seabench_native_tools_controller_and_public_label_isolation(config, tmp
     episode = backend.new_episode(backend.cases("dev")[0])
     try:
         prompt = episode.prepare_instructions("unique controller marker", tmp_path)
+        assert episode.initial_request == backend.native.prompts.build_task_prompt(episode.task, episode.workspace)
+        assert episode.task.title in episode.initial_request
+        assert backend.native.prompts.build_system_prompt(episode.workspace) in prompt
         assert "unique controller marker" in prompt and (episode.workspace / "AGENTS.md").read_text() == "unique controller marker"
         assert {t["name"] for t in episode.tools()} == set(TOOLS)
         assert json.loads(episode.call("read_file", {"path": "meta/user_profile.json"})["content"])["records"]
@@ -279,3 +282,61 @@ def test_seabench_upstream_calibration_never_runs_editor_or_downstream(config, t
     for change in ({"methods": ["openevolve"]}, {"calibration": ["task_006"]}):
         with pytest.raises(ValidationError):
             plan_experiment({**config, **change})
+
+
+def test_long_public_traces_preserve_every_task_for_editors():
+    from rsi_lab.subjects.public_validation import public_rows
+    trace = [{"action": {"tool": "read_file", "arguments": {"path": "file"}},
+              "tool_result": {"content": "not observed" * 5000},
+              "observed_tool_result": {"content": "observed page"}, "tool_dispatched": True}] * 30
+    record = {"trace": trace, "messages": [{}, {"content": json_text({"request": "Full legitimate task request."})}],
+              "answer": "A model answer. " * 100, "stop_reason": "done",
+              "verdict": {"public_feedback": "Native utility feedback. " * 100}}
+    projected = _public_trace(record)
+    assert projected["request"]["truncated"] is False and projected["omitted_steps"] == 26
+    assert "not observed" not in json_text(projected)
+    rows = [{"task_id": str(i), "public_evaluation": {"utility": i % 2}, "execution": projected} for i in range(5)]
+    compact = public_rows({"public_trajectories": rows})
+    assert len(compact) == 5 and len(canonical_bytes(compact)) <= 10000
+    assert all("Full legitimate task request." in r["execution"]["request"]["text"] for r in compact)
+    assert all(r["execution"]["final_answer"]["text"] and r["execution"]["public_feedback"]["text"] for r in compact)
+
+
+def test_gepa_pool_retains_per_case_scores_across_slots(config, tmp_path):
+    config.update(methods=["gepa"], slots=2)
+    config["budget"].update(train_episodes=64, train_calls=1920, judge_calls=64)
+    out = tmp_path / "gepa"
+    summary = run_experiment(config, out)
+    root = out / "roots/gepa-native_only-11"
+    drafts = [read_record(root / f"step-{i:04d}/prepared.json")["draft"] for i in (1, 2)]
+    evidence = [decode_json(d["native_evidence_json"]) for d in drafts]
+    assert evidence[0]["pool_size_before"] == 1
+    assert evidence[1]["pool_size_before"] == len(evidence[0]["native_pool"]) >= 2
+    assert len(evidence[1]["native_pool"]) > evidence[1]["pool_size_before"]
+    ids = {c["case_id"] for c in summary["allocation"]["case_manifest"] if c["partition"] == "dev"}
+    assert all(set(c["case_scores"]) == ids for e in evidence for c in e["native_pool"])
+    state = decode_json(drafts[1]["candidate"]["state_json"])["search"]
+    assert len(state["native"]["program_candidates"]) == len(evidence[1]["native_pool"])
+    assert state["sampler"]["_current_iteration"] == 1
+    assert all(s["per_case_selection"] for s in summary["rows"][0]["mechanisms"])
+    for i, e in enumerate(evidence, 1):
+        slot = read_record(root / f"step-{i:04d}/slot.json")
+        assert slot["public_evaluation_cost"] == (sum(p["public"]["model_calls"] for p in e["public_evaluations"])
+                                                   + slot["public_active"]["model_calls"])
+    assert all(c["complete"] for c in summary["rows"][0]["cases"])
+    assert review(out, tmp_path / "review")["originals_unchanged"]
+    backend = Controller(config["source"], config["sequence"])
+    package = AgentBenchmarkTaskPackage(backend, backend.cases("dev"), None)
+    with pytest.raises(ValidationError):
+        package.subset([backend.cases("heldout")[0]["case_id"]])
+
+
+def test_hyperagents_meta_modes_are_paired_and_explicit(config):
+    import sys
+    if sys.platform != "darwin":
+        pytest.skip("HyperAgents requires the macOS isolation backend")
+    config.update(methods=["frozen", "gepa", "openevolve", "hyperagents"],
+                  hyperagents_meta_modes=["frozen", "editable"])
+    compiled = plan_experiment(config)
+    assert compiled["root_count"] == 5
+    assert [r["method_options"] for r in compiled["roots"][-2:]] == [{"meta_mode": "frozen"}, {"meta_mode": "editable"}]

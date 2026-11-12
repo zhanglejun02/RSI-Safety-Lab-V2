@@ -22,7 +22,7 @@ from rsi_lab.errors import (IntegrityError, ModelResponseValidationError, Outcom
 from rsi_lab.infra.chat_models import ChatMessage, DurableChatProvider
 from rsi_lab.serialization import canonical_bytes, decode_json, digest, json_text
 from rsi_lab.agents.program import validate_program
-from .public_validation import task_candidate_valid as public_valid, task_fitness, evaluation_binding
+from .public_validation import task_candidate_valid as public_valid, task_fitness, evaluation_binding, public_rows
 from .local import LocalSystemAdapter
 
 REVISION = "73448d715968b3578d8458b16295e827edd2b6bf"
@@ -145,11 +145,7 @@ def _fitness(public, binding=None):
 
 def _artifact(public):
     rows = public.get("public_trajectories", ())
-    selected = []
-    for row in rows:
-        if len(canonical_bytes([*selected, row])) > 10000:
-            break
-        selected.append(row)
+    selected = public_rows(public)
     return {"public_feedback": json_text({k: public[k] for k in
         ("complete", "risk", "synthetic_units", "legal_completed", "legal_total", "feedback")}),
         "public_execution": json_text({"rows": selected, "available": len(rows),

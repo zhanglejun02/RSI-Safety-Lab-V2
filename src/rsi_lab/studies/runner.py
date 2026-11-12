@@ -43,7 +43,8 @@ def _retain(snapshot, system):
     if system == "hyperagents":
         return [digest(row["files"]["policy.py"]) for row in decode_json(snapshot.state_json)["archive"].values()]
     if system == "gepa":
-        return [digest(snapshot.version.component("policy")["source"])]
+        from rsi_lab.methods import retained_policy_sources
+        return [digest(source) for source in retained_policy_sources(snapshot)]
     population = decode_json(snapshot.state_json).get("population")
     return ([digest(p["code"]) for p in population["programs"].values()] if population else
             [digest(snapshot.version.component("policy")["source"])])
@@ -57,13 +58,31 @@ def _context(base, system, evidence):
         return [{"native_id": parent, "role": role, "source": files[name]}
                 for name, role in (("policy.py", "parent"), ("meta_agent.py", "meta_parent")) if name in files]
     if system == "gepa":
-        source = base.version.component("policy")["source"]
+        source = evidence.get("parent_source", base.version.component("policy")["source"])
         return [{"native_id": "source-" + digest(source), "role": "parent", "source": source}]
     programs = evidence.get("population_before", {}).get("programs", {})
     ids = [(evidence.get("parent_id"), "parent"),
            *((key, "reference") for key in evidence.get("inspiration_ids", []))]
     return [{"native_id": key, "role": role, "source": programs[key]["code"]}
             for key, role in ids if key in programs]
+
+
+def _mechanism(system, active, evidence):
+    state = decode_json(active.state_json)
+    if system == "gepa":
+        before = evidence.get("pool_size_before")
+        after = len((state.get("search") or {}).get("native", {}).get("program_candidates", []))
+    elif system == "openevolve":
+        before = len(evidence.get("population_before", {}).get("programs", {}))
+        after = len((state.get("population") or {}).get("programs", {}))
+    else:
+        before, after = len(evidence.get("archive_before", {})), len(state.get("archive", {}))
+    return {"parent_id": evidence.get("parent_id"), "pool_before": before, "pool_after": after,
+            "native_admitted": evidence.get("native_admitted"),
+            "per_case_selection": evidence.get("configuration") == "persistent_per_case_pareto",
+            "meta_mode": evidence.get("meta_mode"), "meta_changed": evidence.get("meta_changed_from_parent"),
+            "edited_meta_used": evidence.get("edited_meta_used"),
+            "executed_meta_sha256": evidence.get("executed_meta_sha256")}
 
 
 
@@ -77,7 +96,8 @@ def _slot(output, root, index, adapter, package, provider, manifest, *, environm
         return read_record(location / "slot.json")
     operation = root["root_id"] + f"/edit-{index}"
     environment_hash = digest({} if environment_identity is None else environment_identity)
-    evaluator = PublicTaskEvaluator(adapter, package, location / "public", seed=root["seed"])
+    evaluator = PublicTaskEvaluator(adapter, package, location / "public", seed=root["seed"],
+                                    remaining_slots=manifest["horizon"] - index + 1)
     baseline_path = location / "request-baseline.json"
     if not baseline_path.exists():
         save_record(baseline_path, {"request_ids": sorted(_request_rows(provider))})
@@ -180,6 +200,8 @@ def _slot(output, root, index, adapter, package, provider, manifest, *, environm
         parent_source = base.version.component("policy")["source"]
         if root["system"] == "hyperagents":
             parent_source = evidence["archive_before"][evidence["parent_id"]]["files"]["policy.py"]
+        elif root["system"] == "gepa":
+            parent_source = evidence.get("parent_source", parent_source)
         generated.append({"source": source, "source_sha256": digest(source),
             "native_id": evidence.get("child_id", "source-" + digest(source)),
             "native_admitted": bool(evidence.get("native_admitted")),
@@ -197,6 +219,7 @@ def _slot(output, root, index, adapter, package, provider, manifest, *, environm
         "public_evaluation_cost": evaluator.synthetic_cost(),
         "native_error": evidence.get("native_error"),
         "prepared_sha256": digest(prepared) if prepared_path.exists() else None}
+    value["mechanism"] = _mechanism(root["system"], active, evidence)
     if resources is not None:
         value["resources"] = resources()
     save_record(location / "active.json", active)

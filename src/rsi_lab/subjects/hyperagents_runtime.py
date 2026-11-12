@@ -53,10 +53,13 @@ def command(workspace):
             str(workspace), str(VENDOR.resolve())]
 
 
-def editor_system_message(files, public):
+def editor_system_message(files, public, editable_files=("policy.py", "meta_agent.py")):
     """Give the editor its complete parent inputs and the enforced reply budget."""
-    return (public["contract"] + "\nYou may edit policy.py and meta_agent.py. "
-            "The latter is executed on subsequent selected descendants. "
+    scope = ("The meta component is frozen: do not change meta_agent.py. "
+             if "meta_agent.py" not in editable_files else "")
+    return (public["contract"] + "\nEditable files: " + ", ".join(editable_files) + ". "
+            "meta_agent.py is the code executed for future proposals when its descendant is selected. "
+            + scope +
             f"This edit has at most {MAX_CALLS} model replies, including the final reply. "
             "Both complete parent files are supplied below; reading them again is optional. "
             "Use write_files for changes, then finish with a non-tool final reply within the limit. "
@@ -66,7 +69,7 @@ def editor_system_message(files, public):
             "with exactly one text field containing your final reply or an upstream <json> tool call. "
             "The host wraps a direct tool object in <json> tags for the upstream tool loop.\n"
             + "\nEditable parent policy.py:\n```python\n" + files["policy.py"] + "\n```"
-            + "\nEditable parent meta_agent.py:\n```python\n" + files["meta_agent.py"] + "\n```"
+            + "\nParent meta_agent.py:\n```python\n" + files["meta_agent.py"] + "\n```"
             + "\nPublic evaluation:\n" + json.dumps(public["evaluation"]))
 
 
@@ -81,10 +84,12 @@ def editor_response(content):
     raise ModelResponseValidationError("HyperAgents requires text or a tool_name/tool_input object")
 
 
-def edit(directory, files, public, provider, operation, *, iterations_left=1):
+def edit(directory, files, public, provider, operation, *, iterations_left=1,
+         editable_files=("policy.py", "meta_agent.py")):
     directory = Path(directory)
     identity = {"files": files, "public": public, "operation": operation,
-                "iterations_left": iterations_left, "profile": "hyperagents-macos-bounded-v3"}
+                "iterations_left": iterations_left, "editable_files": list(editable_files),
+                "profile": "hyperagents-macos-bounded-v4"}
     result_path = directory / "result.json"
     if result_path.exists():
         saved = read_record(result_path)
@@ -102,7 +107,7 @@ def edit(directory, files, public, provider, operation, *, iterations_left=1):
         repo = workspace / "candidate"; repo.mkdir()
         for name, text in files.items():
             (repo / name).write_text(text)
-        (workspace / "input.json").write_text(json.dumps({"iterations_left": iterations_left}))
+        (workspace / "input.json").write_text(json.dumps({"iterations_left": iterations_left, "editable_files": editable_files}))
         (workspace / "public.json").write_text(json.dumps(public))
         proc = subprocess.Popen(command(workspace), stdin=subprocess.PIPE, stdout=subprocess.PIPE,
             stderr=subprocess.PIPE, env={"PATH": "/usr/bin:/bin", "LANG": "en_US.UTF-8", "TMPDIR": str(workspace)},
@@ -145,7 +150,7 @@ def edit(directory, files, public, provider, operation, *, iterations_left=1):
                         if len(receipts) >= MAX_CALLS:
                             raise BudgetExceeded("HyperAgents edit model-call cap reached")
                         # Public evidence plus editable parent files; no independent labels.
-                        system = editor_system_message(files, public)
+                        system = editor_system_message(files, public, editable_files)
                         messages = (ChatMessage("system", system), *(ChatMessage(**r) for r in rows))
                         if isinstance(provider, DurableChatProvider):
                             provider._payload(messages)  # Enforce the prompt budget before recording an RPC.
@@ -179,6 +184,8 @@ def edit(directory, files, public, provider, operation, *, iterations_left=1):
                     after[name] = path.read_text()
                 except (UnicodeError, OSError) as exc:
                     raise ModelResponseValidationError("Unreadable HyperAgents candidate file") from exc
+            if any(after[name] != text for name, text in files.items() if name not in editable_files):
+                raise ModelResponseValidationError("HyperAgents changed a frozen component")
             saved = {"identity": identity, "files": after, "requests": requests, "model_receipts": receipts,
                      "worker_exit_code": code, "wall_ms": int((time.monotonic() - start) * 1000),
                      "isolation": "macOS sandbox-exec;network denied;workspace-only writes"}

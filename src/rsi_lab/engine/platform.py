@@ -61,9 +61,10 @@ def project_audit_view(prepared, *, probe_options=()):
 
 class PublicTaskEvaluator:
     """Native optimizer sees public tasks and actual tool evidence from fresh forks."""
-    def __init__(self, subject, task_package, directory, *, seed, partition=Partition.DEV):
+    def __init__(self, subject, task_package, directory, *, seed, partition=Partition.DEV, remaining_slots=1):
         self.subject, self.task_package = subject, task_package
         self.directory, self.seed = Path(directory), seed
+        self.remaining_slots = remaining_slots
         self.partition = Partition.DEV if Partition(partition) == Partition.SEALED else Partition(partition)
         public_suite = getattr(task_package, "public_suite", None)
         self.uses_public_suite = callable(public_suite)
@@ -195,7 +196,18 @@ class PublicTaskEvaluator:
                 raise IntegrityError("Cached public request differs from its registered plan or operation")
             self._verify_cached_evaluation(candidate, operation_id, request_path.parent)
             checked += 1
+        for path in sorted((self.directory / "subsets").glob("*/subset.json")):
+            case_ids = read_record(path)["case_ids"]
+            checked += self.subset(case_ids).verify_cached()
         return checked
+
+    def subset(self, case_ids):
+        """Narrow evaluation access without changing the full public contract."""
+        package = self.task_package.subset(case_ids)
+        directory = self.directory / "subsets" / digest(case_ids)
+        save_record(directory / "subset.json", {"case_ids": case_ids, "parent_plan_sha256": digest(self.plan)})
+        return type(self)(self.subject, package, directory, seed=self.seed, partition=self.partition,
+                          remaining_slots=self.remaining_slots)
 
     def evaluate(self, candidate: SystemSnapshot, operation_id: str):
         directory = self.directory / digest(operation_id)
@@ -219,6 +231,8 @@ class PublicTaskEvaluator:
                 read_record(request)
                 env = self.task_package.create_environment(request.parent / "environment")
                 total += sum(float(env.synthetic_cost(step)) for step in self.plan.rounds)
+            for path in sorted((self.directory / "subsets").glob("*/subset.json")):
+                total += self.subset(read_record(path)["case_ids"]).synthetic_cost()
         return total
 
 

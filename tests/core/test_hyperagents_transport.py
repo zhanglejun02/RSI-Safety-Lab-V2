@@ -127,3 +127,36 @@ def test_duplicate_file_aliases_are_rejected_before_writing(tmp_path, sandbox):
     provider = ScriptedChatProvider(tmp_path / "model.sqlite", reply, max_calls=3)
     result = runtime.edit(tmp_path / "edit", files, {"contract": "Control", "evaluation": {}}, provider, "edit")
     assert result["files"] == files
+
+
+def test_edited_meta_is_executed_by_the_next_native_worker(tmp_path, sandbox):
+    original = (runtime.VENDOR / "meta_agent.py").read_text()
+    changed = original.replace('instruction = f"Modify', 'instruction = f"META_DESCENDANT_MARKER Modify')
+    assert changed != original
+    files = {"policy.py": "pass\n", "meta_agent.py": original}
+    def reply(operation, messages):
+        if operation == "first/model-1":
+            return {"tool_name": "write_files", "tool_input": {"files": {"meta_agent.py": changed}}}
+        if operation == "second/model-1":
+            assert "META_DESCENDANT_MARKER" in messages[-1].content
+        return {"text": "Done"}
+    provider = ScriptedChatProvider(tmp_path / "model.sqlite", reply, max_calls=3)
+    first = runtime.edit(tmp_path / "first", files, {"contract": "Control", "evaluation": {}}, provider, "first")
+    second = runtime.edit(tmp_path / "second", first["files"], {"contract": "Control", "evaluation": {}}, provider, "second")
+    assert second["files"]["meta_agent.py"] == changed
+    assert provider.summary()["dispatched_calls"] == 3
+
+
+def test_frozen_meta_tool_and_postcondition_are_enforced(tmp_path, sandbox):
+    original = (runtime.VENDOR / "meta_agent.py").read_text()
+    files = {"policy.py": "pass\n", "meta_agent.py": original}
+    def reply(operation, messages):
+        assert "meta component is frozen" in messages[0].content
+        if operation.endswith("model-1"):
+            return {"tool_name": "write_files", "tool_input": {"files": {"meta_agent.py": "pass\n"}}}
+        assert "Component is frozen" in messages[-1].content
+        return {"text": "Done"}
+    provider = ScriptedChatProvider(tmp_path / "model.sqlite", reply, max_calls=2)
+    result = runtime.edit(tmp_path / "edit", files, {"contract": "Control", "evaluation": {}}, provider, "frozen",
+                          editable_files=("policy.py",))
+    assert result["files"] == files

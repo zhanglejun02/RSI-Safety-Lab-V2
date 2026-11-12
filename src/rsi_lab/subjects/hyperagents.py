@@ -18,7 +18,7 @@ from rsi_lab.errors import IntegrityError, ValidationError
 from rsi_lab.serialization import decode_json, digest, json_text
 from rsi_lab.agents.program import validate_program
 from .local import LocalSystemAdapter
-from .public_validation import evaluation_binding, task_candidate_valid, task_fitness
+from .public_validation import evaluation_binding, task_candidate_valid, task_fitness, public_rows as compact_public_rows
 from . import hyperagents_runtime as runtime
 
 REVISION = "59a68f672dfb92c74aeb7e61535d776fb36e172d"
@@ -37,7 +37,9 @@ def verify_vendor():
             raise IntegrityError("Pinned HyperAgents source changed: " + name)
 
 
-def initial_snapshot(seed, source, tool_protocol, contract, *, evaluation):
+def initial_snapshot(seed, source, tool_protocol, contract, *, evaluation, meta_mode="editable"):
+    if meta_mode not in ("frozen", "editable"):
+        raise ValidationError("Unknown HyperAgents meta mode")
     verify_vendor(); validate_program(source); require_count(seed, "seed")
     meta = (runtime.VENDOR / "meta_agent.py").read_text()
     files = {"policy.py": source, "meta_agent.py": meta}
@@ -47,7 +49,8 @@ def initial_snapshot(seed, source, tool_protocol, contract, *, evaluation):
         Component("policy", json_text({"source": source}), "agent"),
         Component("meta_agent", json_text({"source": meta}), "optimizer"),
         Component("task_contract", json_text({"text": contract, "tool_protocol": tool_protocol,
-            "evaluation": evaluation, "admission": {"protocol": PROTOCOL, "condition": "bound_public_evaluation"}})),
+            "evaluation": evaluation, "meta_mode": meta_mode,
+            "admission": {"protocol": PROTOCOL, "condition": "bound_public_evaluation"}})),
     ), REVISION), json_text(state))
     evaluation_binding(snapshot)
     return snapshot
@@ -96,15 +99,21 @@ class HyperAgentsAdapter(LocalSystemAdapter):
             if set(row["files"]) != {"policy.py", "meta_agent.py"} or not row["valid_parent"]:
                 raise ValidationError("Invalid HyperAgents retained node")
             validate_program(row["files"]["policy.py"])
+            mode = snapshot.version.component("task_contract").get("meta_mode", "editable")
+            if mode not in ("frozen", "editable") or (mode == "frozen"
+                    and row["files"]["meta_agent.py"] != (runtime.VENDOR / "meta_agent.py").read_text()):
+                raise IntegrityError("Frozen HyperAgents meta component changed")
             try:
                 compile(row["files"]["meta_agent.py"], "meta_agent.py", "exec")
             except SyntaxError as exc:
                 raise ValidationError("Invalid retained meta source") from exc
 
     def describe(self):
+        mutable = (("policy",) if self.snapshot().version.component("task_contract").get("meta_mode") == "frozen"
+                   else ("policy", "meta_agent"))
         return SystemDescriptor(SYSTEM_ID, "HyperAgents (bounded task, executable meta-agent)",
             Capabilities(True, True, True, True, True,
-                (self.snapshot().version.component("task_contract")["tool_protocol"],), ("policy", "meta_agent"), False), URL, REVISION)
+                (self.snapshot().version.component("task_contract")["tool_protocol"],), mutable, False), URL, REVISION)
 
     def fork(self, snapshot, directory):
         return type(self)(directory, self.provider, snapshot)
@@ -154,9 +163,13 @@ class HyperAgentsAdapter(LocalSystemAdapter):
             row["score"] = task_fitness(measured, binding)
             public_rows[key] = measured
         parent = native_parent(archive, state["seed"] + state["epoch"])
+        mode = base.version.component("task_contract").get("meta_mode", "editable")
+        feedback = {k: v for k, v in public_rows[parent].items() if k != "execution_receipts"}
+        feedback["public_trajectories"] = compact_public_rows(public_rows[parent])
         execution = runtime.edit(directory / "worker", archive[parent]["files"],
-            {"contract": base.version.component("task_contract")["text"], "evaluation": public_rows[parent]},
-            self.provider, operation_id, iterations_left=1)
+            {"contract": base.version.component("task_contract")["text"], "evaluation": feedback},
+            self.provider, operation_id, iterations_left=getattr(evaluator, "remaining_slots", 1),
+            editable_files=("policy.py",) if mode == "frozen" else ("policy.py", "meta_agent.py"))
         files, error = execution["files"], None
         try:
             validate_program(files["policy.py"])
@@ -182,6 +195,8 @@ class HyperAgentsAdapter(LocalSystemAdapter):
             state.update(epoch=state["epoch"] + 1, active_id=selected)
             candidate = with_files(archive[selected]["files"], state)
         evidence = {"optimizer": "HyperAgents.MetaAgent+native_tool_loop+select_next_parent",
+            "meta_mode": mode, "executed_meta_sha256": digest(archive[parent]["files"]["meta_agent.py"]),
+            "edited_meta_used": archive[parent]["files"]["meta_agent.py"] != (runtime.VENDOR / "meta_agent.py").read_text(),
             "upstream_revision": REVISION, "profile": "bounded_single_task_self_modifying_meta",
             "parent_id": parent, "inspiration_ids": [], "archive_before": before_archive,
             "archive_after": decode_json(candidate.state_json)["archive"],

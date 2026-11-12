@@ -12,7 +12,7 @@ from rsi_lab.errors import BudgetExceeded, ConflictError, IntegrityError, Outcom
 from rsi_lab.frozen import implementation_fingerprint
 from rsi_lab.infra.chat_models import ChatConfig, ScriptedChatProvider
 from rsi_lab.infra.runlock import run_lock
-from rsi_lab.methods import METHODS
+from rsi_lab.methods import METHODS, check_available
 from rsi_lab.review import inventory
 from rsi_lab.serialization import digest
 from . import agent_bench as matrix, safety_study as shared, scheduling, performance
@@ -33,7 +33,7 @@ def default_config():
 
 def validate_config(config):
     default = default_config()
-    if not isinstance(config, dict) or set(config) - {"execution", "actor_context", "calibration"} != set(default) or config["protocol"] != PROTOCOL:
+    if not isinstance(config, dict) or set(config) - {"execution", "actor_context", "calibration", "hyperagents_meta_modes"} != set(default) or config["protocol"] != PROTOCOL:
         raise ValidationError("Start with the seabench-controller configuration schema")
     if config["profile"] != default["profile"] or config["mode"] not in ("scripted", "http"):
         raise ValidationError("Invalid SEABench profile or mode")
@@ -63,6 +63,10 @@ def validate_config(config):
     if any(type(config[k]) is not str or not config[k] for k in ("source", "sequence")):
         raise ValidationError("Declare the pinned source directory and sequence")
     context = context_settings(config.get("actor_context", DEFAULT_CONTEXT))
+    modes = config.get("hyperagents_meta_modes", ["editable"])
+    if (not isinstance(modes, list) or not modes or any(m not in ("frozen", "editable") for m in modes)
+            or len(set(modes)) != len(modes) or "hyperagents_meta_modes" in config and "hyperagents" not in config["methods"]):
+        raise ValidationError("HyperAgents meta modes must be frozen and/or editable")
     if context["final_response_steps"] > budget["max_steps"]:
         raise ValidationError("Finalization notice must fit inside the actor step budget")
     if "calibration" in config and (config["methods"] != ["frozen"] or not config["calibration"]):
@@ -80,6 +84,7 @@ def _backend(config):
 
 def plan(config):
     config = validate_config(config)
+    check_available(config["methods"])
     backend = _backend(config)
     calibration = "calibration" in config
     dev, final = backend.cases("dev"), [] if calibration else backend.cases("heldout")
@@ -89,9 +94,16 @@ def plan(config):
             raise ValidationError("Budget cannot cover the selected " + phase + " allocation")
     if budget["judge_calls"] < max(budget["train_episodes"], 2 * len(final)):
         raise ValidationError("Judge caps must cover training episodes and both final rubrics")
-    roots = [{"root_id": f"{method}-native_only-{seed}", "path": f"roots/{method}-native_only-{seed}",
-              "system": method, "arm": "native_only", "seed": seed}
-             for method in config["methods"] for seed in config["seeds"]]
+    roots = []
+    for method in config["methods"]:
+        modes = config.get("hyperagents_meta_modes", [None]) if method == "hyperagents" else [None]
+        for mode in modes:
+            comparison = method + ("_" + mode + "_meta" if mode else "")
+            for seed in config["seeds"]:
+                root_id = f"{comparison}-native_only-{seed}"
+                roots.append({"root_id": root_id, "path": "roots/" + root_id, "system": method,
+                              "comparison": comparison, "arm": "native_only", "seed": seed,
+                              "method_options": {"meta_mode": mode} if mode else {}})
     calls = tokens = 0
     for root in roots:
         phases = (["train", "judge"] if calibration else ["train", "test", "judge", "judge"]) + (["editor"] if root["system"] != "frozen" else [])
@@ -114,7 +126,7 @@ def plan(config):
             "evaluation_cases": dev if calibration else final,
             "actor_context": backend.actor_context,
             "optimization": "fixed-H search over the ordered upstream suite; each rollout resets non-controller state",
-            "adapter": VERSION, "mechanism_audit_complete": False}
+            "adapter": VERSION, "method_scope": "bounded controller adapters; per-slot search/meta evidence; not full upstream CLI reproductions"}
 
 
 def _judge_provider(directory, config):
@@ -244,10 +256,13 @@ def _root_job(output, root, phase):
                           "record": str(path.relative_to(output)), "error": record.get("error")})
         estimates = {k: sum(c[k] for c in cases) / len(cases) if all(c["complete"] and c[k] is not None for c in cases) else None
                      for k in (("task_completion",) if calibration else ("task_completion", "safety_violation"))}
-        save_record(directory / "scores.json", {"root_id": root["root_id"], "method": root["system"],
+        save_record(directory / "scores.json", {"root_id": root["root_id"], "method": root["comparison"],
             "arm": "native_only", "seed": root["seed"], "benchmark": "seabench/" + config["sequence"],
             "final_source_sha256": digest(program), "cases": cases, "estimates": estimates,
             "learning_curve": saved["learning_curve"], "train_usage": saved["train_usage"],
+            "mechanisms": [{"step": s["step"], "status": s["status"], "activated": s["committed"],
+                             "policy_changed": s["base_source"] != s["active_source"],
+                             **s["mechanism"]} for s in saved["slots"]],
             "editor_usage": saved["editor_usage"], "test_usage": provider.summary() if provider else None,
             "train_judge_usage": read_record(directory / "generation.json")["judge_usage"],
             "test_judge_usage": judge_provider.summary() if judge_provider else None})
@@ -277,10 +292,17 @@ def _report(output, summary):
               "Actor, editor and upstream/downstream judges have separate journals and budgets."]
     (output / "report.md").write_text("\n".join(lines) + "\n")
     for name, rows in (("cases", [{"root_id": r["root_id"], **c} for r in summary["rows"] for c in r["cases"]]),
+                       ("mechanisms", [{"root_id": r["root_id"], **s} for r in summary["rows"] for s in r["mechanisms"]]),
+                       ("learning-curves", [{"root_id": r["root_id"], "step": s["step"],
+                           "public_utility": (s["public"] or {}).get("feedback", {}).get("mean_utility"),
+                           "activated": s.get("activated", False), "policy_changed": s.get("policy_changed", False)}
+                           for r in summary["rows"] for s in r["learning_curve"]]),
                        ("costs", [{"root_id": r["root_id"], "phase": k.removesuffix("_usage"),
                                    "calls": v["dispatched_calls"], "tokens": v["actual_total_tokens"],
                                    "invalid": v["invalid_responses"], "unknown": v["unknown_responses"]}
                                   for r in summary["rows"] for k, v in r.items() if k.endswith("_usage") and v])):
+        if not rows:
+            continue
         with (output / (name + ".csv")).open("w", newline="") as stream:
             writer = csv.DictWriter(stream, fieldnames=list(rows[0]))
             writer.writeheader()

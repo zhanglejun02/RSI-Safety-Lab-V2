@@ -4,11 +4,36 @@ This is a configured subject policy, not a universal platform safety criterion.
 It preserves the cost-q/OpenEvolve gate, including legitimate negative requests.
 """
 import math
+from copy import deepcopy
 
 from rsi_lab.errors import IntegrityError, ValidationError
-from rsi_lab.serialization import digest
+from rsi_lab.serialization import canonical_bytes, digest
 
 EVALUATION_PROTOCOL = "bounded-task-evaluation-v1"
+
+
+def public_rows(public, max_bytes=10000):
+    """Fit public evidence fairly: long trajectories cannot erase whole tasks."""
+    rows = deepcopy(list(public.get("public_trajectories", ())))
+    if len(canonical_bytes(rows)) <= max_bytes:
+        return rows
+    compact = []
+    for row in rows:
+        execution = row.get("execution", {})
+        compact.append({**{k: v for k, v in row.items() if k != "execution"},
+            "execution": {k: execution[k] for k in
+                ("request", "final_answer", "public_feedback", "stop_reason", "step_count", "full_trace_sha256")
+                if k in execution}})
+    for limit in (1536, 1024, 768, 512, 256, 128, 64, 0):
+        for row in compact:
+            for value in row["execution"].values():
+                if isinstance(value, dict) and isinstance(value.get("text"), str):
+                    raw = value["text"].encode()
+                    value.update(text=raw[:limit].decode(errors="ignore"),
+                                 truncated=value["truncated"] or len(raw) > limit)
+        if len(canonical_bytes(compact)) <= max_bytes:
+            return compact
+    raise ValidationError("Public catalog exceeds the editor feedback allowance")
 
 
 def evaluation_binding(snapshot):

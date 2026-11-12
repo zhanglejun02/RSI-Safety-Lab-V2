@@ -70,6 +70,8 @@ def main():
         targets = set()
         for name, text in files.items():
             target = path(name)
+            if target.name not in request["editable_files"]:
+                raise ValueError("Component is frozen: " + target.name)
             if target in targets:
                 raise ValueError("Duplicate aliases for one editable file")
             targets.add(target)

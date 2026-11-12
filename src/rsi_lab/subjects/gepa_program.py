@@ -1,10 +1,10 @@
 """Pinned GEPA reflection over bounded source, with explicit activation.
 
-This is a separate GEPA configuration from the prompt/actor adapter. One epoch
-uses the official optimizer and at most one reflection. Only the selected,
-activated source survives an epoch; the native Pareto pool is not inherited.
+Agent benchmarks retain the native per-case Pareto pool across activated slots.
+Legacy bounded-program contracts keep their single-reflection epoch protocol.
 """
 from dataclasses import replace
+from tempfile import TemporaryDirectory
 
 from rsi_lab.api import (ActivationCommand, CandidateDraft, Capabilities, Component,
     ExecutionReceipt, SystemDescriptor, SystemSnapshot, SystemVersion, replace_component)
@@ -17,7 +17,7 @@ from rsi_lab.serialization import canonical_bytes, decode_json, digest, json_tex
 from rsi_lab.agents.program import validate_program
 from .gepa_support import GEPA_REVISION, GEPA_URL, _QuietLogger, require_gepa
 from .local import LocalSystemAdapter
-from .public_validation import task_candidate_valid, task_fitness, evaluation_binding
+from .public_validation import task_candidate_valid, task_fitness, evaluation_binding, public_rows
 
 SYSTEM_ID = "gepa-bounded-program"
 ADMISSION_PROTOCOL = "gepa-bounded-program-admission-v1"
@@ -35,10 +35,13 @@ def initial_snapshot(seed, source, tool_protocol, contract, *, evaluation=None):
                       "condition": "bound_public_evaluation" if evaluation else "public_complete_correct"}}
     if evaluation is not None:
         task_contract["evaluation"] = evaluation
+    state = {"seed": seed, "epoch": 0}
+    if evaluation and evaluation["kind"] == "agent_utility":
+        state["search"] = None
     return SystemSnapshot(SystemVersion(SYSTEM_ID, (
         Component("policy", json_text({"source": source}), "agent"),
         Component("task_contract", json_text(task_contract)),
-    ), GEPA_REVISION), json_text({"seed": seed, "epoch": 0}))
+    ), GEPA_REVISION), json_text(state))
 
 
 def _fitness(public, binding=None):
@@ -47,11 +50,7 @@ def _fitness(public, binding=None):
 
 def _reflection_example(public, binding=None):
     """Only public evidence, with the same 10,000-byte row allowance as OE."""
-    rows, selected = public.get("public_trajectories", ()), []
-    for row in rows:
-        if len(canonical_bytes([*selected, row])) > 10000:
-            break
-        selected.append(row)
+    rows, selected = public.get("public_trajectories", ()), public_rows(public)
     return {"Inputs": {"scope": "public_development"},
         "Generated Outputs": {"public_execution": selected, "available_rows": len(rows),
             "full_sha256": public.get("public_trajectories_sha256")},
@@ -70,8 +69,9 @@ class GepaProgramAdapter(LocalSystemAdapter):
         super().__init__(directory, initial_snapshot)
         save_record(self.directory / "configuration.json", {"provider_id": provider.provider_id,
             "upstream_revision": GEPA_REVISION, "admission_protocol": initial_snapshot.version.component("task_contract")["admission"]["protocol"],
-            "max_metric_calls": MAX_METRIC_CALLS, "max_reflections": 1,
-            "pool_inheritance": "activated_source_only", "actor_calls":
+            "max_metric_calls": "2*cases+2*min(3,cases)" if "search" in decode_json(initial_snapshot.state_json) else MAX_METRIC_CALLS,
+            "max_reflections": 1,
+            "pool_inheritance": "native_per_case_checkpoint" if "search" in decode_json(initial_snapshot.state_json) else "activated_source_only", "actor_calls":
                 "delegated_to_task_runtime" if (evaluation_binding(initial_snapshot) or {}).get("kind") == "agent_utility" else 0,
             "reflection_public_rows_max_bytes": 10000})
 
@@ -92,8 +92,11 @@ class GepaProgramAdapter(LocalSystemAdapter):
             raise ValidationError("Invalid GEPA bounded-program contract")
         validate_program(policy["source"])
         state = decode_json(snapshot.state_json)
-        if set(state) != {"seed", "epoch"}:
+        if set(state) not in ({"seed", "epoch"}, {"seed", "epoch", "search"}):
             raise ValidationError("Invalid GEPA bounded-program state")
+        if state.get("search"):
+            from .gepa_state import restore
+            restore(state["search"]["native"])
         require_count(state["seed"], "seed")
         require_count(state["epoch"], "epoch")
 
@@ -159,6 +162,12 @@ class GepaProgramAdapter(LocalSystemAdapter):
         optimize, EvaluationBatch = require_gepa()
         state = decode_json(base.state_json)
         source_before = base.version.component("policy")["source"]
+        search = None
+        if "search" in state:
+            from .gepa_state import Search
+            ids = [c["case_id"] for step in evaluator.plan.rounds for c in step.cases]
+            search = Search(state["search"], evaluator.plan, ids, state["seed"])
+        metric_limit = 2 * len(search.data) + 2 * search.sampler.minibatch_size if search else MAX_METRIC_CALLS
         evidence, reflection_inputs, reflection_receipts, reflection_errors = [], [], [], []
         owner = self
 
@@ -173,8 +182,8 @@ class GepaProgramAdapter(LocalSystemAdapter):
                 if set(candidate) != {"policy"} or type(candidate["policy"]) is not str:
                     raise ValidationError("GEPA changed undeclared source components")
                 outputs, scores = [], []
-                for _ in batch:
-                    if len(evidence) >= MAX_METRIC_CALLS:
+                for item in batch:
+                    if len(evidence) >= metric_limit:
                         raise BudgetExceeded("GEPA public metric budget exhausted")
                     source = candidate["policy"]
                     op = "gepa.program.public." + digest({"operation": operation_id, "index": len(evidence)})
@@ -188,12 +197,14 @@ class GepaProgramAdapter(LocalSystemAdapter):
                             "legal_completed": 0, "legal_total": 0, "public_trajectories": [],
                             "feedback": {"complete_correct": False, "bounded_program_error": validation_error}}
                     else:
-                        feedback = evaluator.evaluate(snapshot(source), op)
+                        selected_evaluator = evaluator.subset([item]) if search else evaluator
+                        feedback = selected_evaluator.evaluate(snapshot(source), op)
                     score = _fitness(feedback, evaluation_binding(base))
                     evidence.append({"source": source, "source_sha256": digest(source),
                         "candidate_sha256": snapshot(source).sha256, "operation_id": op,
                         "public": feedback, "combined_score": score,
-                        "bounded_validation_error": validation_error})
+                        "bounded_validation_error": validation_error, "case_id": item if search else None,
+                        "capture_traces": capture_traces})
                     outputs.append(feedback)
                     scores.append(float(score))
                 return EvaluationBatch(outputs=outputs, scores=scores,
@@ -218,9 +229,10 @@ class GepaProgramAdapter(LocalSystemAdapter):
                 "and escape newlines, quotes and backslashes inside the text string; do not return a Python dict. "
                 "JSON format example (replace the placeholder with the complete revised program):\n" +
                 json_text({"text": "```python\n<complete revised program>\n```"})), ChatMessage("user", raw))
+            parent_source = search.parent["source"] if search and search.parent else source_before
             reflection_inputs.append({"request_id": request_id, "messages_sha256": digest(messages),
-                "upstream_prompt": raw, "parent_source_sha256": digest(source_before),
-                "parent_source_present": source_before in raw})
+                "upstream_prompt": raw, "parent_source_sha256": digest(parent_source),
+                "parent_source_present": parent_source in raw})
             try:
                 result = owner.provider.generate(request_id, messages)
                 reflection_receipts.append(result)
@@ -233,7 +245,15 @@ class GepaProgramAdapter(LocalSystemAdapter):
                 reflection_errors.append(exc)
                 raise
 
-        result = optimize(seed_candidate={"policy": source_before},
+        options = {}
+        if search:
+            options = {"trainset": search.data, "valset": search.data,
+                       "candidate_selection_strategy": search.selector, "batch_sampler": search.sampler,
+                       "reflection_minibatch_size": None, "callbacks": [search],
+                       "stop_callbacks": lambda s: bool(reflection_inputs),
+                       "max_metric_calls": (search.state.total_num_evals if search.state else 0) + metric_limit,
+                       "seed_candidate": search.state.program_candidates[0] if search.state else {"policy": source_before}}
+        arguments = dict(seed_candidate={"policy": source_before},
             trainset=[{"public": True}], valset=[{"public": True}], adapter=NativeTaskAdapter(),
             reflection_lm=reflect, reflection_minibatch_size=1, max_metric_calls=MAX_METRIC_CALLS,
             stop_callbacks=lambda s: s.total_num_evals + 3 > MAX_METRIC_CALLS,
@@ -241,29 +261,45 @@ class GepaProgramAdapter(LocalSystemAdapter):
             candidate_selection_strategy="pareto", seed=state["seed"] + state["epoch"],
             logger=_QuietLogger(), run_dir=None, raise_on_exception=True,
             use_merge=False, track_best_outputs=False)
+        arguments.update(options)
+        with TemporaryDirectory(prefix="rsi-gepa-") as native_dir:
+            if search:
+                search.prepare(native_dir)
+                arguments["run_dir"] = native_dir
+            result = optimize(**arguments)
         if reflection_errors:
             raise reflection_errors[0]
         index = max(range(len(result.candidates)), key=lambda i: (result.val_aggregate_scores[i], i))
         selected_source = result.candidates[index]["policy"]
-        native_admitted = len(result.candidates) > 1
+        old_pool_size = len(state["search"]["native"]["program_candidates"]) if state.get("search") else 1
+        native_admitted = len(result.candidates) > old_pool_size
         selected_public = [e["public"] for e in evidence if e["source"] == selected_source]
-        platform_accepted = bool(native_admitted and selected_public and
+        if search and not selected_public:
+            measured = evaluator.evaluate(snapshot(selected_source), operation_id + "/selected-validation")
+            selected_public = [measured]
+        platform_accepted = bool((native_admitted or search) and selected_public and
             all(task_candidate_valid(p, evaluation_binding(base)) for p in selected_public))
         source_changed = selected_source != source_before
         candidate = snapshot(selected_source) if source_changed else base
+        if search:
+            candidate = replace(snapshot(selected_source), state_json=json_text({
+                **state, "epoch": state["epoch"] + 1, "search": search.export()}))
         # The first two evaluations are native seed validation and parent minibatch.
         # Keep evaluated rewrites even when identical to their parent or rejected.
-        proposed = evidence[2]["source"] if len(evidence) >= 3 else None
+        proposed = search.proposed if search else evidence[2]["source"] if len(evidence) >= 3 else None
         pool = [{"source": c["policy"], "source_sha256": digest(c["policy"]),
-            "score": result.val_aggregate_scores[i], "parents": result.parents[i]}
+            "score": result.val_aggregate_scores[i], "parents": result.parents[i],
+            **({"case_scores": search.state.prog_candidate_val_subscores[i]} if search else {})}
             for i, c in enumerate(result.candidates)]
-        draft = CandidateDraft(base.sha256, candidate, native_admitted, json_text({
+        parent_source = search.parent["source"] if search and search.parent else source_before
+        draft = CandidateDraft(base.sha256, candidate, bool(search) or native_admitted, json_text({
             "optimizer": "gepa.optimize", "upstream_revision": GEPA_REVISION,
-            "configuration": "bounded_source_single_reflection_epoch", "epoch": state["epoch"],
+            "configuration": "persistent_per_case_pareto" if search else "bounded_source_single_reflection_epoch", "epoch": state["epoch"],
             "acceptance_semantics": base.version.component("task_contract")["admission"]["protocol"], "native_acceptance_criterion": "improvement_or_equal",
-            "selection": "highest_native_validation_score_latest_tie", "pool_inheritance": "activated_source_only",
-            "public_plan_sha256": digest(evaluator.plan), "parent_source_sha256": digest(source_before),
-            "parent_id": "source-" + digest(source_before), "inspiration_ids": [],
+            "selection": "highest_native_validation_score_latest_tie", "pool_inheritance": "native_per_case_checkpoint" if search else "activated_source_only",
+            "public_plan_sha256": digest(evaluator.plan), "parent_source_sha256": digest(parent_source),
+            "parent_source": parent_source, "parent_id": "source-" + digest(parent_source), "inspiration_ids": [],
+            "pool_size_before": old_pool_size, "selected_parent_index": search.parent["index"] if search and search.parent else 0,
             "proposed_source": proposed, "proposed_source_sha256": digest(proposed) if proposed is not None else None,
             "proposed_source_changed": proposed is not None and proposed != source_before,
             "native_admitted": native_admitted, "native_pool": pool, "native_parents": result.parents,
@@ -271,7 +307,7 @@ class GepaProgramAdapter(LocalSystemAdapter):
             "source_changed": source_changed, "state_changed": candidate != base,
             "platform_accepted": platform_accepted, "extra_gate": base.version.component("task_contract")["admission"]["condition"],
             "public_valid": bool(selected_public and all(task_candidate_valid(p, evaluation_binding(base)) for p in selected_public)),
-            "public_candidate": evidence[2]["public"] if len(evidence) >= 3 else None,
+            "public_candidate": next((e["public"] for e in evidence if e["source"] == proposed), None),
             "public_evaluations": evidence, "metric_calls": result.total_metric_calls,
             "reflection_inputs": reflection_inputs, "model_receipts": reflection_receipts,
             "actor_model_calls": (sum(e["public"].get("model_calls", 0) for e in evidence)

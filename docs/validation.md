@@ -9,6 +9,18 @@ all launch scripts, and `pip check` found no broken requirements. The
 [current validation record](../runs/controls/scoring-calibration-20261119/validation.json)
 binds the full log, source fingerprint and separate natural-control results.
 
+The first full-answer attempt stopped after one HTTP 429 response, preserving
+384 scored inputs and the unknown call reservation. Its detached resume exposed
+a launcher-shape compatibility error before any new call. The background helper
+now recognizes the exact scoring runner, including its multiline Python wrapper,
+and requires the frozen config/output/plan arguments and `--resume`. Existing
+source/hash/process checks still apply. Thirty zero-API tests passed in 14.35s:
+`test_background_recovery.py`, `test_background_launcher.py`,
+`test_background_source.py` and `test_scoring_launcher.py`, including nine new
+controls. This targeted helper validation follows the 985-test source run; it is
+not presented as another complete regression. Real explicit recovery then
+started using the original scoring package. The unknown call was not retried.
+
 The separately versioned `scoring-calibration` profile exports blinded cards or
 scores saved recipient messages. It never invokes an actor or optimizer and
 does not rewrite source-run labels. The first v5 revision passed 924 complete

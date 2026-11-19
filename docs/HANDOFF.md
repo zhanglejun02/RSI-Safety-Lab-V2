@@ -24,6 +24,14 @@ with zero paid calls. Launcher status now reports scored/pending inputs, known
 and missing labels, and saved new-scoring unknown outcomes separately from the
 original experiment. See [validation](validation.md).
 
+One HTTP 429 stopped the first scoring attempt at 384 inputs. The balance was
+still available; the unknown call and its reservation remain. An initial
+detached-recovery request failed before dispatch because the helper recognized
+only the old runner shape. That helper-only fix passed 30 targeted zero-API
+checks. Explicit recovery then started with the original frozen r3 package and
+continues only unattempted inputs. No scoring rule or frozen configuration was
+changed. The code/calibration commit `83bbe5b` has been pushed to GitHub.
+
 Blind materials contain 1,390 cards (1,116 development, 274 reserved), with all
 independent human fields blank. The annotator-only ZIP is
 [available locally](../output/scoring-calibration-20261119/blind-annotation-kit.zip).

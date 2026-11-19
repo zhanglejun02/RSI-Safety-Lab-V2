@@ -259,6 +259,44 @@ def recovery_directory(campaign, nonce):
     return campaign / 'background-recoveries' / nonce
 
 
+def resume_script(campaign, original_run, nonce):
+    """Recognize frozen launchers without replaying a non-resumable command."""
+    driver = campaign / 'background-driver.sh'
+    export = 'export RSI_BACKGROUND_RESUME_NONCE=' + shlex.quote(nonce) + '\n'
+    suffix = 'source ' + shlex.quote(str(driver)) + ' run ' + shlex.quote(str(campaign)) + '\n'
+    if original_run.endswith(suffix):
+        return (original_run[:-len(suffix)] + export
+                + 'source ' + shlex.quote(str(driver)) + ' resume ' + shlex.quote(str(campaign)) + '\n')
+
+    # The scoring launcher already embeds --resume in its immutable driver.
+    # Accept only its exact runner and canonical argv, not arbitrary shell code
+    # that happens to contain the expected paths or a --resume substring.
+    header = '#!/usr/bin/env bash\nset -euo pipefail\n'
+    command = 'exec bash ' + shlex.quote(str(driver)) + '\n'
+    if original_run != header + command:
+        raise ValueError('Unrecognized frozen background runner; refuse recovery')
+    driver_header = (header + 'export PYTHONDONTWRITEBYTECODE=1 PYTHONSAFEPATH=1\n'
+                     + 'export PYTHONPATH=' + shlex.quote(str(campaign / 'execution-source/package')) + '\n')
+    saved_driver = driver.read_text()
+    if not saved_driver.startswith(driver_header + 'exec '):
+        raise ValueError('Unrecognized frozen resume driver; refuse recovery')
+    execution = saved_driver[len(driver_header):]
+    try:
+        argv = shlex.split(execution[len('exec '):])
+    except ValueError:
+        raise ValueError('Unrecognized frozen resume command; refuse recovery') from None
+    expected = ['run', '--config', str(campaign / 'config.json'), '--output', str(campaign / 'run'),
+                '--plan', str(campaign / 'plan.json'), '--resume']
+    prefix = argv[:-len(expected)]
+    module_cli = len(prefix) == 3 and prefix[1:] == ['-m', 'rsi_lab.cli']
+    wrapped_cli = (len(prefix) == 5 and prefix[1] == '-c'
+                   and prefix[-1] == str(campaign / 'run/summary.json'))
+    if (execution != 'exec ' + shlex.join(argv) + '\n' or argv[-len(expected):] != expected
+            or not (module_cli or wrapped_cli)):
+        raise ValueError('Frozen driver is not an explicit resume command; refuse recovery')
+    return header + export + command
+
+
 def resume_start(campaign):
     """Explicit detached recovery, retaining every prior attempt and frozen input."""
     campaign = Path(campaign).resolve()
@@ -275,18 +313,14 @@ def resume_start(campaign):
         # Retain the original environment and driver; only select explicit resume.
         original_job = read(campaign / 'background-job.json')
         original_run = (campaign / 'background-run.sh').read_text()
-        suffix = 'source ' + shlex.quote(str(campaign / 'background-driver.sh')) + ' run ' + shlex.quote(str(campaign)) + '\n'
-        if not original_run.endswith(suffix):
-            raise ValueError('Unrecognized frozen background runner; refuse recovery')
         nonce = uuid.uuid4().hex
+        recovery_script = resume_script(campaign, original_run, nonce)
         attempt = recovery_directory(campaign, nonce)
         attempt.mkdir(parents=True)
         worker_path = attempt / 'worker.py'
         shutil.copyfile(__file__, worker_path)
         script = attempt / 'run.sh'
-        script.write_text(original_run[:-len(suffix)]
-                          + 'export RSI_BACKGROUND_RESUME_NONCE=' + shlex.quote(nonce) + '\n'
-                          + suffix.replace(' run ' + shlex.quote(str(campaign)), ' resume ' + shlex.quote(str(campaign))))
+        script.write_text(recovery_script)
         keep_awake = original_job.get('keep_awake', False)
         job_path = attempt / 'job.json'
         write(job_path, {'command': ['bash', str(script)], 'cwd': original_job['cwd'],

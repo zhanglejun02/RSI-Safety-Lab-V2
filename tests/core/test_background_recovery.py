@@ -169,3 +169,88 @@ def test_actual_shared_driver_recognizes_own_recovery_and_uses_frozen_pythonpath
     assert Path(observed['file']).is_relative_to(tmp_path / 'execution-source/package')
     assert observed['session'] == result['pid']
     assert '--resume' in observed['args']
+
+
+def direct_failed_attempt(campaign, *, wrapped=False, defect=None):
+    """Freeze the scoring launcher's actual shape around a zero-API fake CLI."""
+    campaign.mkdir()
+    package = campaign / 'execution-source/package/rsi_lab'
+    package.mkdir(parents=True)
+    (package / '__init__.py').write_text('')
+    (package / 'cli.py').write_text(
+        'import json,os,sys\nfrom pathlib import Path\n'
+        'def main(args=None):\n'
+        '    args=sys.argv[1:] if args is None else args\n'
+        "    p=Path(args[args.index('--output')+1]).parent\n"
+        "    expected=['run','--config',str(p/'config.json'),'--output',str(p/'run'),'--plan',str(p/'plan.json'),'--resume']\n"
+        '    assert args == expected\n'
+        "    (p/'observed.json').write_text(json.dumps({'args':args,'file':__file__,'session':os.getsid(0),'nonce':os.environ.get('RSI_BACKGROUND_RESUME_NONCE')}))\n"
+        "    (p/'run/summary.json').write_text('{}')\n"
+        "if __name__ == '__main__': main()\n")
+    background.write(campaign / 'execution-source.json', {'files': {
+        p.relative_to(campaign / 'execution-source').as_posix(): background.sha(p)
+        for p in package.rglob('*') if p.is_file()}})
+    (campaign / 'config.json').write_text('{}')
+    (campaign / 'plan.json').write_text('{}')
+    arguments = ['run', '--config', str(campaign / 'config.json'), '--output', str(campaign / 'run'),
+                 '--plan', str(campaign / 'plan.json'), '--resume']
+    if defect == 'no_resume':
+        arguments.pop()
+    elif defect in ('--config', '--output', '--plan'):
+        arguments[arguments.index(defect) + 1] = str(campaign / 'wrong-path')
+    if wrapped:
+        wrapper = 'import sys\nfrom rsi_lab.cli import main\nraise SystemExit(main(sys.argv[3:]))'
+        command = [sys.executable, '-c', wrapper, str(campaign / 'missing.env'),
+                   str(campaign / 'run/summary.json'), *arguments]
+    else:
+        command = [sys.executable, '-m', 'rsi_lab.cli', *arguments]
+    if defect == 'wrong_cli':
+        command[2] = 'unrelated_command'
+    header = '#!/usr/bin/env bash\nset -euo pipefail\n'
+    driver = campaign / 'background-driver.sh'
+    driver.write_text(header + 'export PYTHONDONTWRITEBYTECODE=1 PYTHONSAFEPATH=1\n'
+                      + 'export PYTHONPATH=' + shlex.quote(str(package.parent)) + '\n'
+                      + 'exec ' + shlex.join(command)
+                      + ('; echo unexpected' if defect == 'shell_suffix' else '') + '\n')
+    (campaign / 'background-run.sh').write_text(header + 'exec bash ' + shlex.quote(str(driver)) + '\n'
+                                               + ('echo unexpected\n' if defect == 'runner_suffix' else ''))
+    # The initial interruption is local. Only explicit recovery runs the driver.
+    background.start(campaign, [sys.executable, '-c',
+        "from pathlib import Path; p=Path('run'); p.mkdir(); (p/'manifest.json').write_text('{}'); raise SystemExit(9)"], campaign)
+    wait_for(campaign, 'background-exit.json')
+    return {p.relative_to(campaign): p.read_bytes() for p in campaign.rglob('*') if p.is_file()}
+
+
+@pytest.mark.parametrize('wrapped', [False, True], ids=['module-cli', 'multiline-http-wrapper'])
+def test_direct_scoring_driver_recovers_frozen_inputs_without_rewriting_originals(tmp_path, wrapped):
+    campaign = tmp_path / 'scoring campaign with spaces'
+    originals = direct_failed_attempt(campaign, wrapped=wrapped)
+    # A later checkout must not supply the CLI even for the -c wrapper.
+    checkout = campaign / 'rsi_lab'
+    checkout.mkdir()
+    (checkout / '__init__.py').write_text('raise RuntimeError("live checkout must not execute")\n')
+    started = background.resume_start(campaign)
+    attempt = background.recovery_directory(campaign, started['recovery_nonce'])
+    state = wait_for(campaign, str((attempt / 'exit.json').relative_to(campaign)))
+    assert state['status'] == 'completed', (attempt / 'background.log').read_text()
+    observed = background.read(campaign / 'observed.json')
+    assert observed['nonce'] == started['recovery_nonce']
+    assert observed['session'] == started['pid']
+    assert Path(observed['file']).is_relative_to(campaign / 'execution-source/package')
+    assert observed['args'][-1] == '--resume'
+    assert originals == {path: (campaign / path).read_bytes() for path in originals}
+    before = {p.relative_to(campaign): p.read_bytes() for p in campaign.rglob('*') if p.is_file()}
+    assert not background.resume_start(campaign)['started']
+    assert before == {p.relative_to(campaign): p.read_bytes() for p in campaign.rglob('*') if p.is_file()}
+
+
+@pytest.mark.parametrize('defect', ['no_resume', '--config', '--output', '--plan',
+                                  'shell_suffix', 'runner_suffix', 'wrong_cli'])
+def test_direct_runner_refuses_unrecognized_or_nonresume_commands_before_dispatch(tmp_path, defect):
+    campaign = tmp_path / 'bad-scoring-runner'
+    originals = direct_failed_attempt(campaign, defect=defect)
+    with pytest.raises(ValueError, match='refuse recovery'):
+        background.resume_start(campaign)
+    assert not (campaign / 'background-recoveries').exists()
+    assert not (campaign / 'observed.json').exists()
+    assert originals == {path: (campaign / path).read_bytes() for path in originals}

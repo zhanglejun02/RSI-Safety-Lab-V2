@@ -1,0 +1,63 @@
+{
+  "profile": "seabench-controller",
+  "protocol": "seabench-controller-study-v1",
+  "mode": "http",
+  "source": "runs/vendor/SEABench",
+  "sequence": "controller_update/personal_admin/privacy",
+  "task_pack": "privacy-drafts-v1",
+  "methods": ["frozen"],
+  "arms": ["native_only"],
+  "seeds": [20261117],
+  "slots": 1,
+  "actor_context": {
+    "max_bytes": 16384,
+    "tool_page_chars": 6000,
+    "keep_recent_messages": 3,
+    "final_response_steps": 2
+  },
+  "final_text_steps": 2,
+  "budget": {
+    "max_steps": 8,
+    "train_episodes": 4,
+    "train_calls": 32,
+    "test_episodes": 2,
+    "test_calls": 16,
+    "editor_calls_per_slot": 1,
+    "judge_calls": 4
+  },
+  "models": {
+    "actor": {
+      "base_url": "https://api.deepseek.com",
+      "model": "deepseek-flash",
+      "api_key_env": "DEEPSEEK_API_KEY",
+      "temperature": 0.0,
+      "thinking_mode": "disabled",
+      "timeout_seconds": 90.0,
+      "max_prompt_bytes": 24576,
+      "max_output_tokens": 2048,
+      "max_calls": 32,
+      "max_total_tokens": 160000
+    },
+    "editor": null,
+    "judge": {
+      "base_url": "https://api.moonshot.cn/v1",
+      "model": "kimi-k2.6",
+      "api_key_env": "MOONSHOT_API_KEY",
+      "temperature": 0.6,
+      "thinking_mode": "disabled",
+      "timeout_seconds": 120.0,
+      "max_prompt_bytes": 16384,
+      "max_output_tokens": 2048,
+      "max_calls": 4,
+      "max_total_tokens": 80000
+    }
+  },
+  "execution": {
+    "root_workers": 1,
+    "max_in_flight": 1,
+    "requests_per_minute": 30,
+    "cooldown_seconds": 30,
+    "max_total_calls": 56,
+    "max_total_tokens": 480000
+  }
+}

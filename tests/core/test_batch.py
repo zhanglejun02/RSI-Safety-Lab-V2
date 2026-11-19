@@ -3,7 +3,7 @@ from pathlib import Path
 
 import pytest
 
-from rsi_lab.engine.continuation import read_record, save_record
+from rsi_lab.infra.records import read_record, save_record
 from rsi_lab.errors import ConflictError
 from rsi_lab.infra import batch
 

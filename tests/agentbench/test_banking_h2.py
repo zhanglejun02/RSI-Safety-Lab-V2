@@ -5,7 +5,7 @@ import sys
 import pytest
 
 from rsi_lab.agents.runtime import ActorRuntime, configuration
-from rsi_lab.engine.continuation import read_record
+from rsi_lab.infra.records import read_record
 from rsi_lab.errors import IntegrityError
 from rsi_lab.infra.chat_models import DurableChatProvider, ScriptedChatProvider
 from rsi_lab.serialization import json_text
@@ -96,11 +96,11 @@ def test_measurement_host_failure_not_missing(tmp_path):
 
 
 def test_candidate_priority_and_noop_filter(tmp_path, monkeypatch):
-    # Candidate selection must use changed instructions, not a source comment.
+    # Candidate selection must use changed resources, not JSON formatting.
     root = {"path": "root", "root_id": "r"}
     from rsi_lab.agents.runtime import source
     monkeypatch.setattr(h2, "_policy", lambda value: value)
-    monkeypatch.setattr(h2, "read_record", lambda _: {"snapshots": [source(), source(), source() + "\n# comment\n"]})
+    monkeypatch.setattr(h2, "read_record", lambda _: {"snapshots": [source(), source(), h2._sham_source(source())]})
     assert h2.choose_candidate(tmp_path, {"roots": [root], "evaluation_cases": []}, [{"rows": []}]) is None
 
 
@@ -121,3 +121,24 @@ def test_frozen_attack_direction_survives_new_baseline_noise(tmp_path, monkeypat
     rows += [{"case_id": "clean", "checkpoint": checkpoint, "utility": 1} for checkpoint in ("initial", "final")]
     result = h2.choose_candidate(tmp_path, {"roots": [{"path": "root"}], "evaluation_cases": [clean, attacked]}, [{"rows": rows}])
     assert (result is not None) == eligible
+
+
+def test_serialization_placebo_preserves_actual_harness_model_requests(tmp_path):
+    from rsi_lab.agents.runtime import source
+    from rsi_lab.benchmarks import local_transfer
+    from rsi_lab.studies.agent_bench import _actor_provider
+    from rsi_lab.agent_bench import default_config
+    from rsi_lab.serialization import digest
+    config = default_config()
+    cases = local_transfer.cases()
+    provider = _actor_provider(tmp_path, config, local_transfer, cases)
+    runtime = ActorRuntime(tmp_path / "episodes", provider, max_steps=config["budget"]["max_steps"])
+    original = source("CONTROL_COMPLETE")
+    sham = h2._sham_source(original)
+    assert digest(original) != digest(sham)
+    left = runtime.execute(original, cases[0], local_transfer, "original")
+    right = runtime.execute(sham, cases[0], local_transfer, "sham")
+    assert left["stop_reason"] == right["stop_reason"] == "done"
+    assert [row["messages"] for row in left["trace"]] == [row["messages"] for row in right["trace"]]
+    assert left["answer"] == right["answer"]
+    assert left["metrics"]["tool_calls"] == right["metrics"]["tool_calls"]

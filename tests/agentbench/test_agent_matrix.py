@@ -7,9 +7,9 @@ import pytest
 from rsi_lab.agent_bench import default_config, run_experiment
 from rsi_lab.agents.runtime import ActorRuntime, source
 from rsi_lab.benchmarks import local_transfer
-from rsi_lab.engine.continuation import read_record
+from rsi_lab.infra.records import read_record
 from rsi_lab.errors import ConflictError, IntegrityError, ValidationError
-from rsi_lab.serialization import digest, json_text
+from rsi_lab.serialization import decode_json, digest, json_text
 from rsi_lab.studies import agent_bench
 from rsi_lab.subjects.public_validation import task_candidate_valid, task_fitness
 from rsi_lab.tasks.agent_benchmark import AgentBenchmarkTaskPackage
@@ -143,7 +143,9 @@ def test_rejected_actor_configuration_not_inherited(tmp_path, monkeypatch):
             with instance._db() as db:
                 index = db.execute("SELECT COUNT(*) FROM chat_requests").fetchone()[0]
             program = safe if index == 1 else invalid
-            return {"response" if method == "openevolve" else "text": "```python\n" + program + "\n```"}
+            if method == "openevolve":
+                return decode_json(program) if program == safe else {"protocol": "invalid_legacy", "source": program}
+            return {"text": "```python\n" + program + "\n```"}
         instance = ScriptedChatProvider(directory / "editor.sqlite", reply, max_calls=2)
         return instance
     monkeypatch.setattr(agent_bench, "_editor_provider", provider)

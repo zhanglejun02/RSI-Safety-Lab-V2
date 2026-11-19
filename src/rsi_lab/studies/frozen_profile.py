@@ -13,7 +13,7 @@ from pathlib import Path
 import sqlite3
 
 from rsi_lab.agents.runtime import ActorRuntime, DEFAULT_INSTRUCTIONS, source, verify
-from rsi_lab.engine.continuation import read_record, save_record
+from rsi_lab.infra.records import read_record, save_record
 from rsi_lab.errors import BudgetExceeded, ConflictError, IntegrityError, OutcomeUnknown, ValidationError
 from rsi_lab.frozen import implementation_fingerprint
 from rsi_lab.infra.chat_models import ChatConfig, DurableChatProvider, ScriptedChatProvider

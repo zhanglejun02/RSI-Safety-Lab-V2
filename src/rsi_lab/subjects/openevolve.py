@@ -16,13 +16,12 @@ from threading import RLock
 from rsi_lab.api import (ActivationCommand, Capabilities, CandidateDraft, Component, ExecutionReceipt,
                          PlannedPublicEvaluator, SystemDescriptor, SystemSnapshot,
                          SystemVersion, replace_component)
-from rsi_lab.engine.continuation import read_record, save_record
+from rsi_lab.infra.records import read_record, save_record
 from rsi_lab.errors import (IntegrityError, ModelResponseValidationError, OutcomeUnknown,
                             UnsupportedCapability, ValidationError)
 from rsi_lab.infra.chat_models import ChatMessage, DurableChatProvider
 from rsi_lab.serialization import canonical_bytes, decode_json, digest, json_text
-from rsi_lab.agents.program import validate_program
-from .public_validation import task_candidate_valid as public_valid, task_fitness, evaluation_binding, public_rows
+from .public_validation import task_candidate_valid as public_valid, task_fitness, evaluation_binding, public_rows, validate_source
 from .local import LocalSystemAdapter
 
 REVISION = "73448d715968b3578d8458b16295e827edd2b6bf"
@@ -30,6 +29,23 @@ SYSTEM_ID = "openevolve-bounded"
 ADMISSION_PROTOCOL = "openevolve-admission-v2"
 ADMISSION_CONDITIONS = ("public_complete_correct", "upstream", "bound_public_evaluation")
 TASK_ADMISSION_PROTOCOL = "openevolve-admission-v3"
+HARNESS_RESPONSE_PROTOCOL = "openevolve-harness-object-v2"
+CODE_RESPONSE_PROTOCOL = "openevolve-code-response-v1"
+
+_HARNESS_NATIVE_OUTPUT_TAIL = (
+    "Provide the complete new program code.\n\n"
+    "IMPORTANT: Make sure your rewritten program maintains the same inputs and outputs\n"
+    "as the original program, but with improved internal implementation.\n\n"
+    "```json\n# Your rewritten program here\n```"
+)
+_HARNESS_OUTPUT_CONTRACT = (
+    "Return exactly one complete rsi-harness-v1 JSON object as the entire response. "
+    "The top-level keys are protocol, entrypoint, files, components and editable, each exactly once. "
+    "The protocol value is rsi-harness-v1. Do not add a harness or response wrapper. "
+    "Do not return a JSON-encoded string, Markdown fence, explanation or patch. "
+    "File contents must be correctly escaped JSON strings. Preserve the manifest, "
+    "read-only resources and declared inputs/outputs; improve only editable resources."
+)
 _LOCK = RLock()
 _FIELDS = ("island_feature_maps", "islands", "archive", "best_program_id",
            "island_best_programs", "last_iteration", "current_island",
@@ -48,7 +64,7 @@ def verify_upstream():
 
 
 def initial_snapshot(seed, source, tool_protocol, contract, *, admission_condition=None, evaluation=None):
-    validate_program(source)
+    validate_source(source, binding=evaluation)
     task_contract = {"tool_protocol": tool_protocol, "text": contract}
     if admission_condition is not None:
         if admission_condition not in ADMISSION_CONDITIONS:
@@ -136,7 +152,7 @@ def _restore(db, population):
     if not ids or references - ids or any(key != p.id for key, p in db.programs.items()):
         raise IntegrityError("Population references a missing program")
     for p in db.programs.values():
-        validate_program(p.code)
+        validate_source(p.code)
 
 
 def _fitness(public, binding=None):
@@ -153,23 +169,62 @@ def _artifact(public):
 
 
 class _ModelBridge:
-    def __init__(self, provider, operation):
+    def __init__(self, provider, operation, *, harness=False):
         self.provider, self.operation = provider, operation
+        self.harness = harness
         self.receipt, self.error = None, None
         self.last_usage, self.last_model = None, None
+        self.candidate_source = None
+        self.prompt_transport = None
+        self.response_protocol = HARNESS_RESPONSE_PROTOCOL if harness else CODE_RESPONSE_PROTOCOL
+        self.response_encoding = "unchanged"
 
     def reseed(self, iteration):
         pass  # A cloud generation is a distinct sample; no fabricated provider seed.
 
     async def generate_with_context(self, system_message, messages):
-        wrapped = system_message + '\nTransport requirement: return a JSON object with exactly one key "response", whose string value contains your full rewritten program in a Python code fence.'
         try:
+            self.prompt_transport = None
+            if self.harness:
+                if len(messages) != 1 or messages[0]["role"] != "user":
+                    raise IntegrityError("Unexpected native Harness prompt message layout")
+                original = messages[0]["content"]
+                if not original.endswith(_HARNESS_NATIVE_OUTPUT_TAIL):
+                    raise IntegrityError("Pinned native Harness output template changed")
+                context = original[:-len(_HARNESS_NATIVE_OUTPUT_TAIL)]
+                rewritten = context + _HARNESS_OUTPUT_CONTRACT
+                messages = [{"role": "user", "content": rewritten}]
+                self.prompt_transport = {
+                    "protocol": HARNESS_RESPONSE_PROTOCOL,
+                    "native_user_sha256": hashlib.sha256(original.encode()).hexdigest(),
+                    "dispatched_user_sha256": hashlib.sha256(rewritten.encode()).hexdigest(),
+                    "preserved_context_sha256": hashlib.sha256(context.encode()).hexdigest(),
+                    "replaced_output_tail_sha256": hashlib.sha256(_HARNESS_NATIVE_OUTPUT_TAIL.encode()).hexdigest(),
+                }
+                transport = _HARNESS_OUTPUT_CONTRACT
+            else:
+                transport = ('Return a JSON object with exactly one key "response", whose '
+                             'string value contains the complete candidate code in a code fence.')
+            wrapped = system_message + "\nTransport protocol: " + self.response_protocol + ". " + transport
             self.receipt = self.provider.generate(self.operation + "/model", (
                 ChatMessage("system", wrapped), *tuple(ChatMessage(m["role"], m["content"]) for m in messages)))
-            if set(self.receipt.content) != {"response"} or type(self.receipt.content["response"]) is not str:
-                raise ModelResponseValidationError("OpenEvolve transport requires a response string")
             self.last_model = self.receipt.response_model
             self.last_usage = {"total_tokens": self.receipt.total_tokens}
+            if self.harness:
+                content = self.receipt.content
+                from rsi_lab.harness import loads
+                try:
+                    candidate = loads(json_text(content)).dumps()
+                except ValidationError as exc:
+                    raise ModelResponseValidationError("Invalid OpenEvolve Harness object") from exc
+                # Native full-rewrite extraction stops at the first triple fence.
+                # Construct native framing here; never ask the model to generate
+                # it inside a second JSON string. Resource bytes remain unchanged.
+                self.candidate_source = candidate.replace("`", "\\u0060")
+                self.response_encoding = "harness_json_to_native_json_fence"
+                return "```json\n" + self.candidate_source + "\n```"
+            if set(self.receipt.content) != {"response"} or type(self.receipt.content["response"]) is not str:
+                raise ModelResponseValidationError("OpenEvolve code transport requires a response string")
             return self.receipt.content["response"]
         except Exception as exc:
             self.error = exc
@@ -183,7 +238,8 @@ class _EvaluatorBridge:
         self.error = None
 
     async def evaluate_program(self, source, child_id):
-        validate_program(source)
+        validate_source(source, base=self.base.version.component("policy")["source"],
+                        binding=evaluation_binding(self.base))
         try:
             candidate = replace(self.base, version=replace_component(self.base.version, "policy", {"source": source}))
             # Use source identity, not upstream's random uuid, for durable replay.
@@ -225,14 +281,24 @@ class OpenEvolveAdapter(LocalSystemAdapter):
         if (initial_snapshot.version.system_id != SYSTEM_ID
                 or initial_snapshot.version.upstream_revision != REVISION):
             raise ValidationError("OpenEvolve snapshot revision mismatch")
-        validate_program(initial_snapshot.version.component("policy")["source"])
+        self._check_resources(initial_snapshot)
         admission_binding(initial_snapshot)
         self.provider = provider
         super().__init__(directory, initial_snapshot)
 
+    @staticmethod
+    def _check_resources(snapshot, base_source=None):
+        source = snapshot.version.component("policy")["source"]
+        bound = evaluation_binding(snapshot)
+        validate_source(source, base=base_source, binding=bound)
+        population = decode_json(snapshot.state_json).get("population")
+        if population:
+            for row in population["programs"].values():
+                validate_source(row["code"], base=source, binding=bound)
+
     def describe(self):
         protocol = self.snapshot().version.component("task_contract")["tool_protocol"]
-        return SystemDescriptor(SYSTEM_ID, "OpenEvolve bounded native worker",
+        return SystemDescriptor(SYSTEM_ID, "OpenEvolve native resource search",
             Capabilities(True, True, True, True, True, (protocol,), ("policy",)),
             "https://github.com/algorithmicsuperintelligence/openevolve", REVISION)
 
@@ -244,6 +310,7 @@ class OpenEvolveAdapter(LocalSystemAdapter):
         # native-only driver tries to commit an upstream-admitted gated rejection.
         if type(command) is not ActivationCommand:
             raise ValidationError("Expected controller activation command")
+        self._check_resources(command.candidate, self.snapshot().version.component("policy")["source"])
         binding = admission_binding(command.candidate)
         if evaluation_binding(command.candidate) and command.candidate.version.component("task_contract") != self.snapshot().version.component("task_contract"):
             raise IntegrityError("Candidate changed the trusted task evaluation contract")
@@ -290,12 +357,12 @@ class OpenEvolveAdapter(LocalSystemAdapter):
         binding = admission_binding(base)
         condition = binding["condition"] if binding else "public_complete_correct"
         state = decode_json(base.state_json)
-        config = Config(diff_based_evolution=False, language="python", max_code_length=16384,
+        config = Config(diff_based_evolution=False, language="json" if (evaluation_binding(base) or {}).get("kind") == "agent_utility" else "python", max_code_length=262144,
             database=database_config(),
             prompt=PromptConfig(system_message=base.version.component("task_contract")["text"],
                 use_template_stochasticity=False, num_top_programs=2, num_diverse_programs=1,
                 max_artifact_bytes=12000))
-        model = _ModelBridge(self.provider, operation_id)
+        model = _ModelBridge(self.provider, operation_id, harness=config.language == "json")
         bridge = _EvaluatorBridge(base, evaluator, operation_id)
         with _native_context(config, PromptSampler(config.prompt), model, bridge, state["rng"]) as worker:
             db = ProgramDatabase(config.database)
@@ -311,6 +378,7 @@ class OpenEvolveAdapter(LocalSystemAdapter):
             artifacts = {}
             public_by_id = {}
             for key, program in sorted(db.programs.items()):
+                validate_source(program.code, base=base.version.component("policy")["source"], binding=evaluation_binding(base))
                 snapshot = replace(base, version=replace_component(base.version, "policy", {"source": program.code}))
                 public = evaluator.evaluate(snapshot, operation_id + "/archive/" + key)
                 program.metrics = _fitness(public, evaluation_binding(base))
@@ -348,10 +416,18 @@ class OpenEvolveAdapter(LocalSystemAdapter):
                 "native_entrypoint": "openevolve.process_parallel._run_iteration", "parent_id": parent.id,
                 "inspiration_ids": [p.id for p in inspirations], "population_before": _export(db),
                 "native_prompt": result.prompt, "model_receipt": model.receipt,
+                "response_protocol": model.response_protocol,
+                "response_encoding": model.response_encoding,
                 "public_candidate": bridge.public, "native_error": result.error,
                 "incumbent": public_by_id[incumbent_program.id],
                 "acceptance_semantics": "native_archive_admission_plus_public_complete_correct_gate",
                 "extra_gate": "public_complete_correct;no_independent_labels;not_strict_improvement"}
+            if model.prompt_transport is not None:
+                evidence["prompt_transport"] = model.prompt_transport
+            if model.candidate_source is not None:
+                # Preserve generated resource identity even when native/public
+                # validation rejects it before assigning a native child ID.
+                evidence["proposed_source"] = model.candidate_source
             active_before = (state["population"] or {}).get("best_program_id")
             if active_before is None:
                 active_before = next((key for key, p in db.programs.items()
@@ -366,6 +442,7 @@ class OpenEvolveAdapter(LocalSystemAdapter):
                     extra_gate=condition, admission_condition=condition)
             if result.child_program_dict:
                 child = Program.from_dict(result.child_program_dict)
+                validate_source(child.code, base=base.version.component("policy")["source"], binding=evaluation_binding(base))
                 # IDs and timestamps are metadata, normalized for exact durable replay.
                 identity_base = base
                 if binding:
@@ -425,4 +502,4 @@ class OpenEvolveAdapter(LocalSystemAdapter):
         snapshot = self.snapshot()
         result = tools.call("execute_program", snapshot.version.component("policy"), operation_id)
         return ExecutionReceipt(task.task_id, snapshot.version.sha256, result["complete"],
-            json_text({"runtime": "bounded_interpreter", "model_evidence": [], "execution": result}))
+            json_text({"runtime": "isolated_harness" if (evaluation_binding(snapshot) or {}).get("kind") == "agent_utility" else "bounded_interpreter", "model_evidence": [], "execution": result}))

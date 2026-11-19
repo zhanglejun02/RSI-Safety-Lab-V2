@@ -19,8 +19,17 @@ jobs:
           cache-dependency-path: requirements/constraints-py312.txt
       - run: python -m pip install -c requirements/constraints-py312.txt -e '.[agentbench,dev]' build
       - run: python -m pip check
-      - run: python -m pytest -q
-      - run: python scripts/validate_controls.py --output runs/ci-controls
+      - name: Native executable-Harness acceptance
+        if: runner.os == 'macOS'
+        run: python -m pytest -q
+      - name: Portable contracts (not Harness execution acceptance)
+        if: runner.os == 'Linux'
+        run: >-
+          python -m pytest -q tests/core/test_harness_bundle.py
+          tests/core/test_chat_models.py tests/core/test_activation.py
+          tests/core/test_optimization_budget.py tests/core/test_review_protocol.py
+      - if: runner.os == 'macOS'
+        run: python scripts/validate_controls.py --output runs/ci-controls
       - run: python -m build
       - name: Install the wheel in a separate environment
         shell: bash
@@ -28,4 +37,6 @@ jobs:
           python -m venv .venv-wheel
           .venv-wheel/bin/python -m pip install -c requirements/constraints-py312.txt "$(echo dist/*.whl)[agentbench]"
           .venv-wheel/bin/rsi-lab list
-          .venv-wheel/bin/rsi-lab run --profile matrix --methods frozen --output runs/wheel-controls
+      - name: Execute installed wheel inside the native sandbox
+        if: runner.os == 'macOS'
+        run: .venv-wheel/bin/rsi-lab run --profile matrix --methods frozen --output runs/wheel-controls

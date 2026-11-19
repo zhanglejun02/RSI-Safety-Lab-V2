@@ -6,6 +6,21 @@ from rsi_lab.subjects.hyperagents_runtime import editor_system_message, MAX_CALL
 from rsi_lab.tasks.agent_benchmark import CONTRACT
 
 
+@pytest.mark.parametrize("profile", ["matrix", "safety-study", "seabench-controller"])
+def test_editor_reply_budget_is_a_declared_positive_integer(profile):
+    from rsi_lab.agent_bench import default_config, preflight
+    config = default_config(profile)
+    key = "max_editor_calls_per_slot" if profile == "matrix" else "editor_calls_per_slot"
+    config["budget"][key] = 6
+    checked = preflight("openevolve", config=config)
+    assert checked["config"]["budget"][key] == 6
+    assert checked["platform_api_calls"] == 0
+    for value in (0, -1, True, 1.5, float("inf")):
+        config["budget"][key] = value
+        with pytest.raises(ValidationError):
+            preflight("openevolve", config=config)
+
+
 def test_edit_contract_separates_task_policy_from_meta_permissions():
     message = editor_system_message(
         {"policy.py": "POLICY", "meta_agent.py": "META"},

@@ -11,7 +11,7 @@ def test_report_labels_control_per_row_and_distinguishes_meta_capability(tmp_pat
     _report(tmp_path, summary)
     text = (tmp_path / "report.md").read_text()
     assert text.count("| CONTROL |") == 4
-    assert "fixed optimizer" in text and "editable meta profile" in text
+    assert "native text reflection" in text and "separately scoped optimizer meta" in text
     assert "not evidence that a meta edit occurred" in text
     summary["origin"] = "natural"
     _report(tmp_path, summary)

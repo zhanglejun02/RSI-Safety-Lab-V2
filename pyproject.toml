@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "rsi-safety-lab"
-version = "0.4.0"
+version = "0.5.0"
 description = "Reproducible agent safety benchmark evaluation for frozen agents and self-improving methods"
 readme = "README.md"
 requires-python = ">=3.11"

@@ -5,7 +5,7 @@ import os
 from pathlib import Path
 
 from rsi_lab.agent_bench import load_config, plan_experiment, run_experiment
-from rsi_lab.engine.continuation import read_record, save_record
+from rsi_lab.infra.records import read_record, save_record
 from rsi_lab.errors import ConflictError, ValidationError
 from rsi_lab.infra.runlock import run_lock
 from rsi_lab.serialization import digest

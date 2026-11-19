@@ -230,7 +230,8 @@ class DurableChatProvider:
             payload["thinking"] = {"type": self.config.thinking_mode}
         body = canonical_bytes(payload)
         if len(body) > self.config.max_prompt_bytes:
-            raise BudgetExceeded("Model request exceeds max_prompt_bytes")
+            raise BudgetExceeded("Model request exceeds max_prompt_bytes", resource="prompt_bytes",
+                                 required=len(body), limit=self.config.max_prompt_bytes)
         return body
 
     def _credentials(self):
@@ -238,7 +239,8 @@ class DurableChatProvider:
 
     def _reserve(self, request_id, body):
         request_hash = hashlib.sha256(body).hexdigest()
-        with self._db() as db:
+        budget = getattr(self, "optimization_budget", None)
+        with budget.admission() if budget else nullcontext(), self._db() as db:
             db.execute("BEGIN IMMEDIATE")
             old = db.execute("SELECT * FROM chat_requests WHERE request_id=?", (request_id,)).fetchone()
             if old:
@@ -252,6 +254,8 @@ class DurableChatProvider:
                 raise BudgetExceeded("Model call limit reached before dispatch")
             if stats["budget_overrun"] or stats["actual_total_tokens"] + stats["reserved_tokens"] + reservation > self.config.max_total_tokens:
                 raise BudgetExceeded("Token budget cannot cover pre-dispatch reservation")
+            if budget is not None:
+                budget.check(self.path, stats, reservation)
             headers = self._credentials()  # Missing key does not create a dispatched intent.
             db.execute("INSERT INTO chat_requests(request_id,request_sha,request_json,status,reserved_tokens) VALUES(?,?,?,'pending',?)",
                        (request_id, request_hash, body, reservation))

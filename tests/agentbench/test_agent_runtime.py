@@ -5,7 +5,7 @@ import pytest
 
 from rsi_lab.agents.runtime import (ActorRuntime, CandidateConfigurationError,
                                     configuration, source, verify)
-from rsi_lab.engine.continuation import read_record
+from rsi_lab.infra.records import read_record
 from rsi_lab.errors import (BudgetExceeded, ConflictError, IntegrityError,
                             OutcomeUnknown, ValidationError)
 from rsi_lab.infra.chat_models import ChatConfig, DurableChatProvider, ScriptedChatProvider
@@ -55,16 +55,18 @@ def provider(tmp_path, callback, max_calls=20):
     return ScriptedChatProvider(tmp_path / "provider.sqlite", callback, max_calls=max_calls)
 
 
-def test_instruction_only_configuration():
-    assert configuration(source("Follow user with quote ' and newline\nend")) == {
-        "instructions": "Follow user with quote ' and newline\nend"}
-    invalid = ["import os\n", "def handle(request, cache, api):\n    return cache\n",
-               "def handle(request, cache, api):\n    api.execute({'instructions':'ok','actions':[]})\n    return cache\n",
-               "def handle(request, cache, api):\n    api.execute({'instructions':'ok'})\n    cache['state']=1\n    return cache\n",
-               "def handle(request, cache, api):\n    api.execute({'instructions':'ok'})\n    api.execute({'instructions':'two'})\n    return cache\n"]
-    for program in invalid:
-        with pytest.raises(CandidateConfigurationError):
-            configuration(program)
+def test_executable_bundle_configuration_is_pure():
+    from rsi_lab.harness import Harness, loads
+    text = "Follow user with quote ' and newline\nend"
+    bundle = loads(source(text))
+    assert bundle.files["AGENTS.md"] == text
+    assert configuration(bundle.dumps())["entrypoint"] == "agent.py:run"
+    assert "runtime" in configuration(bundle.dumps())["editable"]
+    # Validation never imports or executes arbitrary module bodies.
+    hostile = Harness({"agent.py": "raise RuntimeError('must not run')\ndef run(task, api):\n    return ''\n"})
+    assert configuration(hostile.dumps())["protocol"] == "rsi-harness-v1"
+    with pytest.raises(CandidateConfigurationError):
+        configuration("def handle(request, cache, api):\n    return cache\n")
 
 
 @pytest.mark.parametrize("mode", ["answer", "tool", "empty", "unknown"])
@@ -199,7 +201,8 @@ def test_invalid_action_and_tool_argument_are_recorded_and_bounded(tmp_path, fir
     responses = iter([first, {"done": True, "answer": "task done"}])
     record = ActorRuntime(tmp_path / "actor", provider(tmp_path, lambda *_: next(responses))).execute(
         source(), {"case_id": "case"}, Backend(), "corrected")
-    assert record["trace"][0]["error"]
+    assert record["trace"][0]["action"] == first
+    assert "error" in record["trace"][1]["messages"][-1]["content"]
     assert record["metrics"]["complete"]
     assert record["metrics"]["actor_calls"] == 2
     assert record["metrics"]["tool_calls"] == int(first.get("tool") == "read")
@@ -215,7 +218,7 @@ def test_invalid_json_hint_keeps_strict_parsing_and_step_budget(tmp_path, correc
         if seen:
             feedback = decode_json(messages[-1]["content"])
             assert feedback["error"] == "invalid_model_response"
-            assert "escape newlines" in feedback["format_hint"]
+            assert "escape newlines" in feedback["format_hint"].lower()
         seen.append(body)
         content = json_text({"done": True, "answer": "task done"}) if corrected and len(seen) == 2 else malformed
         return canonical_bytes({"model": "fixture", "choices": [{

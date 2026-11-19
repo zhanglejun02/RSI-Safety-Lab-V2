@@ -3,8 +3,10 @@ from collections import Counter
 from copy import deepcopy
 
 from rsi_lab.agents.runtime import DEFAULT_INSTRUCTIONS, source
+from rsi_lab.harness import configured_source, describe as describe_harness
 from rsi_lab.errors import ValidationError
 from rsi_lab.frozen import implementation_fingerprint
+from rsi_lab.methods import plugin_bindings
 from rsi_lab.serialization import digest
 from .scheduling import allocation
 
@@ -90,6 +92,7 @@ def compile_plan(config, backend, external):
     prompts = config.get("prompts", {})
     return {"version": "selected-allocation-v1", "protocol": config["protocol"],
             "config_sha256": digest(config), "implementation": implementation_fingerprint(),
+            "method_plugins": plugin_bindings(config["methods"]),
             "catalog_sha256": digest(backend.catalog), "case_manifest": backend.catalog,
             "benchmark": backend.describe(), "external": external, "study": study_scope(config, backend),
             "roots": roots, "root_count": len(roots), "horizon": config["slots"],
@@ -97,7 +100,8 @@ def compile_plan(config, backend, external):
             "final_episodes_total": len(roots) * sum(final.values()),
             "execution": allocation(config, roots, final),
             "search_cost": "separately capped and reported; excluded from final episode allocation",
-            "initial_policy_sha256": digest(source(prompts.get("initial_instructions", DEFAULT_INSTRUCTIONS))),
+            "initial_policy_sha256": digest(configured_source(config, prompts.get("initial_instructions", DEFAULT_INSTRUCTIONS))),
+            "harness": describe_harness(configured_source(config, prompts.get("initial_instructions", DEFAULT_INSTRUCTIONS))),
             "editor_guidance_sha256": digest(prompts.get("editor_guidance", "")),
             "budget_per_provider": config["budget"], "api_calls": 0,
             "scope_note": "Complete selected final-case allocation; not the entire upstream benchmark or all possible attacks."}

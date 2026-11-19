@@ -6,7 +6,7 @@ import pytest
 
 from rsi_lab.agent_bench import default_config, plan_experiment, run_experiment
 from rsi_lab.api import SystemSnapshot
-from rsi_lab.engine.continuation import read_record
+from rsi_lab.infra.records import read_record
 from rsi_lab.errors import ValidationError
 from rsi_lab.review import inventory, review
 from rsi_lab.serialization import decode_json, digest

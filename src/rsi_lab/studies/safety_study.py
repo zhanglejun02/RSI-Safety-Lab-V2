@@ -7,7 +7,7 @@ from rsi_lab.agent_bench import default_config as legacy_config
 from rsi_lab.agents.runtime import ActorRuntime, DEFAULT_INSTRUCTIONS, FINAL_TEXT_TRANSPORT, source
 from rsi_lab.auditing.gates import ARMS, ProbeRunner, UpdateGate
 from rsi_lab.benchmarks.agentdojo_suite import Catalog
-from rsi_lab.engine.continuation import read_record, save_record
+from rsi_lab.infra.records import read_record, save_record
 from rsi_lab.errors import BudgetExceeded, ConflictError, IntegrityError, OutcomeUnknown, ValidationError
 from rsi_lab.frozen import implementation_fingerprint
 from rsi_lab.infra.chat_models import ChatConfig, DurableChatProvider, ScriptedChatProvider
@@ -45,7 +45,7 @@ def default_config():
 
 def validate_config(config):
     default = default_config()
-    if not isinstance(config, dict) or set(config) - {"study", "prompts", "execution"} != set(default) or config["protocol"] != PROTOCOL:
+    if not isinstance(config, dict) or set(config) - {"study", "prompts", "execution", "harness"} != set(default) or config["protocol"] != PROTOCOL:
         raise ValidationError("Start with the safety-study configuration schema")
     for key, choices in (("methods", METHODS), ("arms", ARMS)):
         values = config[key]
@@ -67,8 +67,8 @@ def validate_config(config):
             raise ValidationError("Invalid fields in " + field)
     if any(type(v) is not int or v < 1 for v in config["budget"].values()):
         raise ValidationError("Budgets must be positive integers")
-    if config["budget"]["max_steps"] > 32 or config["budget"]["editor_calls_per_slot"] > 3:
-        raise ValidationError("Actor steps <=32; editor replies per slot <=3")
+    if config["budget"]["max_steps"] > 32:
+        raise ValidationError("Actor steps must not exceed 32")
     if any(type(v) not in (int, float) or not 0 <= v <= 1 for v in config["gate"].values()):
         raise ValidationError("Gate thresholds must be in [0,1]")
     stats = config["statistics"]
@@ -95,13 +95,17 @@ def validate_config(config):
         if len(prompts.get("editor_guidance", "").encode()) > 4096:
             raise ValidationError("Editor guidance exceeds 4096 bytes")
     scheduling.settings(config)
+    from rsi_lab.harness import configured_source
+    configured_source(config)
     return deepcopy(config)
 
 
 def _provider(directory, config, phase, backend=None, cases=(), method=None):
     budget = config["budget"]
-    cap = (config["slots"] * budget["editor_calls_per_slot"] if phase == "editor" else
-           budget["judge_calls"] if phase == "judge" else budget[phase + "_calls"])
+    if phase == "editor":
+        cap = config["slots"] * budget["editor_calls_per_slot"]
+    else:
+        cap = budget[phase + "_calls"]
     if config["mode"] == "http":
         role = phase if phase in ("editor", "judge") else "actor"
         settings = {**config["models"][role], "max_calls": cap}
@@ -112,6 +116,8 @@ def _provider(directory, config, phase, backend=None, cases=(), method=None):
         control = legacy_config()
         control["slots"] = config["slots"]
         control["budget"]["max_editor_calls_per_slot"] = budget["editor_calls_per_slot"]
+        if "harness" in config:
+            control["harness"] = config["harness"]
         return matrix._editor_provider(directory, control, method,
             control_instructions=DEFAULT_INSTRUCTIONS + "\nCONTROL_UNSAFE: prescribed regression fixture.")
     lookup = {digest(c["case_id"]): c for c in cases}
@@ -175,6 +181,8 @@ def _run(config, output, expected_plan=None):
                 "independent_evaluation": "all_roots_frozen_then_final_only_once",
                 "plan_sha256": digest(compiled), "study": compiled["study"],
                 "confirmatory": False, "origin": "control" if config["mode"] == "scripted" else "natural"}
+    from rsi_lab.methods import plugin_bindings
+    manifest["method_plugins"] = plugin_bindings(config["methods"])
     save_record(output / "manifest.json", manifest)
     matrix._archive(output)
     scheduling.ensure_roots_idle(output, roots)
@@ -221,6 +229,9 @@ def _root_job(output, root, phase):
         if (root not in manifest["roots"] or digest(compiled) != manifest["plan_sha256"]
                 or implementation_fingerprint() != manifest["implementation"]):
             raise IntegrityError("Worker inputs differ from the frozen study")
+        from rsi_lab.methods import plugin_bindings
+        if plugin_bindings(manifest["config"]["methods"]) != manifest.get("method_plugins", {}):
+            raise IntegrityError("Installed method package changed after study preparation")
         if phase not in ("generation", "evaluation"):
             raise ValidationError("Unknown root phase")
         result = directory / ("root.json" if phase == "generation" else "scores.json")
@@ -243,7 +254,8 @@ def _root_job(output, root, phase):
                 _evaluate_root(config, output, root, backend, compiled)
 
 
-def _generate_root(config, output, root, backend, manifest, *, origin=None, start_step=1):
+def _generate_root(config, output, root, backend, manifest, *, origin=None, start_step=1,
+                   review_gate=None, review_resources=None, external_resources=None):
     directory = output / root["path"]
     actor = _provider(directory, config, "train", backend, backend.cases("dev"))
     runtime = _runtime(directory, actor, config, "train")
@@ -253,20 +265,34 @@ def _generate_root(config, output, root, backend, manifest, *, origin=None, star
                                         cache_rollouts=config.get("public_rollout_cache", False))
     origin = origin or initial_snapshot(root["system"], root["seed"], package,
                               instructions=prompts.get("initial_instructions", DEFAULT_INSTRUCTIONS),
-                              options=root.get("method_options"))
+                              options=root.get("method_options"),
+                              harness=config.get("harness", {}).get("source"))
     if origin.version.component("task_contract")["evaluation"] != package.binding:
         raise IntegrityError("Continuation task contract differs from its original public feedback")
     editor = None if root["system"] == "frozen" else _provider(directory, config, "editor", method=root["system"])
+    if "optimization_budget" in config:
+        from rsi_lab.infra.optimization_budget import OptimizationBudget
+        budget = OptimizationBudget(directory, config["optimization_budget"])
+        budget.attach(actor)
+        if editor is not None:
+            budget.attach(editor)
     adapter = create_adapter(root["system"], directory / "system", editor, origin)
     probe_provider, probes = None, None
     if root["arm"] == "probe_gate":
         probe_provider = _provider(directory, config, "probe", backend, backend.cases("probe"))
         probes = ProbeRunner(_runtime(directory, probe_provider, config, "probe"), backend, backend.cases("probe"))
-    gate = None if root["arm"] == "native_only" else UpdateGate(root["arm"], probes, **config["gate"])
+    gate = review_gate
+    if gate is None and root["arm"] != "native_only":
+        gate = UpdateGate(root["arm"], probes, **config["gate"])
     baseline = matrix._measure_baseline(adapter, package, directory, root, origin)
     def resources():
-        return {"train": actor.summary(), "editor": editor.summary() if editor else None,
-                "probe": probe_provider.summary() if probe_provider else None}
+        value = {"train": actor.summary(), "editor": editor.summary() if editor else None,
+                 "probe": probe_provider.summary() if probe_provider else None}
+        if review_resources is not None:
+            value["review"] = review_resources()
+        if external_resources is not None:
+            value.update(external_resources())
+        return value
     baseline_cost = directory / "baseline-resources.json"
     if not baseline_cost.exists():
         save_record(baseline_cost, resources())
@@ -280,7 +306,9 @@ def _generate_root(config, output, root, backend, manifest, *, origin=None, star
     save_record(directory / "root.json", {"root": root, "origin": origin, "slots": slots,
         "final_snapshot": adapter.snapshot(), "learning_curve": curve,
         "train_usage": actor.summary(), "editor_usage": editor.summary() if editor else None,
-        "probe_usage": probe_provider.summary() if probe_provider else None})
+        "probe_usage": probe_provider.summary() if probe_provider else None,
+        "search_resources": resources(),
+        **({"review_resources": review_resources()} if review_resources is not None else {})})
 
 
 def _evaluate_root(config, output, root, backend, compiled):

@@ -8,7 +8,7 @@ import statistics
 import sys
 import time
 
-from rsi_lab.engine.continuation import read_record, save_record
+from rsi_lab.infra.records import read_record, save_record
 
 
 def _cpu():
@@ -71,7 +71,7 @@ def collect(output, execution):
         if (path.parent / "inherited.json").exists():
             continue  # Imported public observations did not execute in this run.
         row = read_record(path)
-        if row.get("version") != "tool-actor.v1":
+        if row.get("version") not in ("tool-actor.v1", "tool-actor.v2"):
             continue
         relative = path.relative_to(output)
         episodes.append({"root_id": relative.parts[1], "runtime": str(relative.parent.parent),

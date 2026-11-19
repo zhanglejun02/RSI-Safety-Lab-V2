@@ -1,124 +1,152 @@
-# Code map
+# Architecture
 
 ```text
-method registry → native adapter → prepared update → platform activation
-                        ↓ public evaluation             ↓ checkpoint
-                  shared actor → benchmark tools → independent scoring
-                        ↓                              ↓
-                 durable receipts              utility / security / cost
+common founder resources + declared editing scope
+                    ↓
+method search → candidate Harness + inherited optimizer state
+                    ↓ public evaluation in an isolated worker
+native admission → independent review → platform activation
+                                           ↓ freeze all search roots
+                              independent audit and final scoring
 ```
 
-## Boundaries
+The candidate owns agent behavior. The platform owns experimental authority.
+Methods share a founding resource version and outer task/resource contract;
+subsequent agent implementations may differ. A resource bundle records code and
+files. `SystemSnapshot` additionally records the method's inherited search state.
 
-| Directory / entry | Responsibility |
+## Execution boundary
+
+| Layer | Responsibility |
 |---|---|
-| `methods.py` | Canonical method IDs, mutable scope, editor transport, platform support and factories |
-| `agent_bench.py`, `cli.py` | One Python API and CLI; canonical configs plus execution-only overlays resolved before freezing |
-| `studies/runner.py` | Durable proposal slot, native decision, platform admission, actual editor context matching |
-| `studies/agent_bench.py` | Method × benchmark matrix and all-active-version reporting |
-| `studies/frozen_profile.py` | Fixed-policy pool execution, actual payload exposure, known/missing effect labels |
-| `studies/paired_search.py`, `paired_analysis.py` | H2 search, paired initial/final executions and bounded rollback diagnostics |
-| `studies/safety_study.py`, `statistics.py` | Fixed-H search per independent root/arm, final-only evaluation, paired root bootstrap |
-| `studies/seabench_study.py` | Fixed controller search on an upstream suite, frozen downstream tests and independent utility/safety judge budgets; reuses root generation, scheduling and activation |
-| `studies/disclosure_audit.py` | Identity-blinded saved-answer annotation with exact recipient spans/evidence; joins results only after annotation, never changes native labels |
-| `studies/meta_ablation.py` | Paired continuations from pre-meta-use checkpoints, verified public-cache import and immutable intervention provenance; uses the existing SEABench runner |
-| `studies/repetitions.py` | Frozen-policy/answer provenance and within-source repeat diagnostics; reuses the same final actor and native judges without search |
-| `infra/batch.py` | Preflight and sequential execution of fixed planned jobs through the public API; durable status, explicit resume, no automatic restart |
-| `studies/planning.py` | Selected allocation, screening history, primary endpoint and budget preflight; no model calls |
-| `studies/agentdojo_reporting.py` | Final case/task/attack projections and phase costs, using the existing root statistics |
-| `studies/scheduling.py` | Bounded fresh-process root jobs, full-allocation budget checks and shared HTTP admission |
-| `studies/performance.py` | Operational wall/CPU/episode/API timing, excluded from optimization and benchmark metrics |
-| `infra/dispatch.py` | Shared concurrent-request limit, request spacing and future-request cooldown; no retries |
-| `benchmarks/agentdojo_suite.py` | Native task inventory and selected single-/multi-suite catalogs; reusable fixed attack implementations |
-| `benchmarks/seabench.py` | External source lock, native task/file-tool bridge, AGENTS.md binding and durable native rubric judging; no task rewriting |
-| `benchmarks/seabench_context.py` | Native deterministic pruning, paged observations and bounded request projection; full evidence stays in the actor trace |
-| `agents/runtime.py` | Multiturn actor, tool dispatch, optional budgeted plain-text finalization, immutable episode effects and receipts |
-| `agents/program.py` | Bounded AST interpreter; candidate emits actor instructions, never arbitrary host Python |
-| `benchmarks/` | AgentDojo native backend, banking task/attack pool, synthetic local fixture |
-| `tasks/agent_benchmark.py`, `plans.py` | Public-only task contract and version-bound evaluation plan |
-| `subjects/` | Pinned native optimizers, forked state and adapter-specific worker boundaries |
-| `subjects/gepa_state.py` | JSON-bound native GEPA checkpoints, per-case Pareto pool, sampler and RNG inheritance |
-| `engine/` | Prepared-update identity, public evaluation, continuation, activation and reconciliation |
-| `infra/` | Durable JSON/text model gateway, artifact publication, SQLite transactions, run lock and environment loading |
-| `api/` | System, task, detector and admission interfaces |
-| `auditing/gates.py` | Public probe execution, regression detector, admission policy and control gates |
-| `benchmarks/final_evaluation.py`, `xstest.py`, `agentharm.py` | Evaluation-only adapters; refusal/harmful completion metrics and isolated judge budgets |
-| `learning/contracts.py` | Typed prediction boundary; no trained detector or learning pipeline |
-| `review.py` | Standalone restoration and inspection of trusted frozen source archives |
+| `harness.py` | Immutable `rsi-harness-v1` UTF-8 resource bundle, path/category/edit-scope checks, canonical identity and directory packaging |
+| `agents/default_agent.py`, `agents/default_context.py` | Founder code copied into candidate resources; agent loop, model-message construction and context policy are evolvable |
+| `agents/harness_worker.py` | Loads the candidate entrypoint and bundled modules inside the sandbox; exposes `api.model`, `api.tool`, `api.read` |
+| `agents/harness_process.py` | Starts and bounds the isolated worker, validates RPC framing, enforces output/time limits and terminates it |
+| `agents/runtime.py` | Trusted model/tool broker, durable episode intent, real request/effect receipts, resource caps and outer benchmark scoring |
+| `agents/program.py` | Bounded DSL for legacy non-agent task controls and bounded optimizer components; not the agent execution interface |
 
-The profile runners reuse the same actor, adapters, durable provider,
-proposal slot and activation controller. They keep different measurement policies
-explicit: cached all-checkpoint matrix measurements versus fresh paired deployment
-and rollback executions. They are not separate command-line applications.
+`run(task, api)` receives public task information, available tools and declared
+limits. It can change control flow, skill use, tool wrappers and context handling.
+Every model request passes through the parent-owned provider; every environment
+effect passes through the parent-owned task tools. Independent case metadata,
+labels, credentials, ledgers and activation handles are not passed to the worker.
+The parent computes scores from the actual answer and benchmark state. It records
+model calls and tool effects separately, including effects without a prior model
+call. Candidate-provided text cannot stand in for a provider receipt or tool event.
 
-`catalog` describes installed backend capacity. `plan` compiles a selected
-allocation and checks native worlds, partitions, optional data and declared
-budgets without running actors or graders. `run --plan` binds that allocation to
-the exact configuration and installed source. One multi-suite study optimizes
-one policy per root; suite/task/attack strata are repeated measurements, not
-additional roots. Completed resume remains read-only and skips fresh planning.
+Current executable support is macOS `sandbox-exec`, standard-library Python and
+bundled modules. Direct network access and writes to host/candidate files are
+blocked. Python runtime files and the isolated resource directory form the read
+boundary. There is no plain-subprocess fallback on an unsupported host. The
+worker's temporary resources do not become inherited state unless a method
+explicitly proposes a new version through the outer snapshot protocol.
+The worker also bounds CPU time, elapsed execution, RPC output and open files;
+the current macOS backend does not provide a strict memory quota.
 
-`scheduling.py` passes only root identity, phase and output path to spawn workers;
-`safety_study.py` owns the phase barrier and stable result order. Providers share
-`DispatchLimiter` primitives, never SQLite connections. `chat_timings` and
-`performance.py` are observational side channels. Scheduling, failure and recovery
-semantics live in the [runbook](safety-study.md#scheduling-and-operational-measurements).
+Installed optimizer and reviewer plugins are trusted host Python. The resource
+worker sandbox does not sandbox those plugins. HyperAgents also retains its
+separate bounded meta-execution boundary.
 
-## Add a method
+## Resource and state identity
 
-Implement `SystemAdapter` from `api/ports.py`, declare capabilities and immutable
-components, and register a `Method` in `methods.py`. Supply `initial_snapshot` and
-the adapter factory signature. `propose` must not mutate the active snapshot.
-Separate native validity/selection from platform admission. Generated code,
-optimizer memory and caches may become active only through the bound activation
-receipt. Forks use separate storage; rejected candidate state is never inherited.
+The `policy.source` wire field now serializes a complete Harness, not an
+instructions-only `handle` program. Its founding manifest fixes the entrypoint,
+resource component categories and editable categories. Validation compares updates
+against the existing declaration before public evaluation and before activation;
+candidates cannot authorize their own changes by altering the manifest.
 
-Verify proposal → public evaluation → selection → activation → next edit,
-rejection, fork isolation, unknown outcome reconciliation and interrupted resume.
-Do not describe a changed wrapper or seed as a reproduction of an upstream method.
+The entire bundle runs at evaluation time. Editing permissions do not strip
+unchanged files from execution. New resources receive their declared/inferred
+category and must fit the allowed scope. Source hashes bind resources, the manifest
+and runtime version to durable results. The resource identity is distinct from a
+native optimizer object's ID and from the full inherited `SystemSnapshot` identity.
 
-## Add a benchmark
+Archives, parent eligibility, scores, RNG and optimizer meta remain adapter-owned
+state. Child retention, whole-snapshot admission and actual commit are separate
+process events. A review rejection preserves all declared inherited base state.
+Provider journals, consumed budget, public caches and already executed external
+effects are outside this rollback boundary.
 
-Register its module in `benchmarks/__init__.py`. Provide `describe()`, `cases(suite)`,
-`new_episode(case)` and explicit scripted controls. An episode exposes the trusted
-user prompt, tool descriptions, tool dispatch, observable history, native utility
-and independent security outcomes. Use the existing AgentDojo backend as the
-concrete port example. The same shared actor must serve every compared method.
+## Code map
 
-The public `TaskPackage` contains clean development cases only. Never expose
-independent attack goals, payload labels, security results or hidden grader data
-to optimizers. Define public selection fitness separately from independent
-utility/security; do not encode a missing label as safe zero. Bind caches to task,
-contract, source and execution version.
-`PublicTaskEvaluator.subset()` narrows the declared public catalog for native
-minibatches, preserving its contract, isolated execution, durable verification
-and cost accounting. The task package validates membership; an optimizer cannot
-request held-out IDs through this port. Runtime execution remains a task-package
-dependency; native optimizers never own benchmark tools or independent judges.
+| Interface / directory | Responsibility |
+|---|---|
+| `__init__.py`, `agent_bench.py`, `cli.py` | Public `adapt`/`evaluate`/`preflight`, configuration, run/resume and inspection |
+| `experiments.py`, `data/experiments_v1.json` | Installed presets and restricted runtime overlays; saved configuration contains the concrete initial bundle |
+| `methods.py` | Method selection, factories, declared search/observation/intervention capabilities and founder binding |
+| `sdk.py`, `plugins.py` | SDK v2 installed method discovery, object-level state projection and source archival |
+| `subjects/` | Native optimizer adapters, validated candidate resources, separate inherited state and worker boundaries |
+| `studies/runner.py`, `engine/` | Durable proposal, native admission, independent review, identity-bound activation and reconciliation |
+| `studies/process_events.py`, `candidate_state.py`, `proposal_evidence.py` | Recorded source/object identity, retention/commit projection and failure-stage evidence |
+| `tasks/agent_benchmark.py`, `tasks/contracts.py` | Public task package, evaluator cache and real execution receipts |
+| `benchmarks/` | Task environments, tools, case allocation and independent scoring |
+| `auditing/review.py`, `auditing/seabench_review.py` | Versioned public-behavior review, restricted evidence and durable decisions |
+| `studies/process_audit.py`, `risk_report.py`, `statistics.py` | Frozen-state audits, risk/utility changes, missing evidence and root-level uncertainty |
+| `studies/seabench_study.py`, `seabench_reporting.py` | SEABench-derived allocations, per-phase execution and reporting |
+| `studies/agent_bench.py`, `safety_study.py` | Matrix and paired method studies under the same outer execution contract |
+| `studies/disclosure_audit.py`, `repetitions.py`, `meta_ablation.py` | Saved-answer calibration materials and explicitly scoped diagnostic studies |
+| `infra/chat_models.py`, `dispatch.py`, `optimization_budget.py` | Durable calls, unknown reservations, concurrency and resource enforcement |
+| `infra/records.py`, `artifacts.py`, `review.py` | Immutable evidence, source archives and frozen verification |
 
-Public feedback includes bounded tool observations and a separately bounded final
-answer/stop reason so editors can inspect clean development failures. Optional
-`prompts.editor_guidance` extends this public contract; it never gains access to
-independent cases or labels. `prompts.initial_instructions` supplies the same
-founder to every compared method. Both settings are frozen in the plan/manifest.
+The default context implementation is candidate code. The backend can provide
+public environment/context settings, while the outer model request caps remain
+mandatory. A method can change how it constructs context, but cannot enlarge the
+provider's budget or read independent labels.
 
-## Safety methods
+## Extension contracts
 
-`Detector` receives a bounded `AuditView` and identity-bound public probe evidence.
-`AdmissionPolicy` returns a decision; `ActivationController` alone applies it.
-In `safety-study`, `UpdateGate` runs after the native/public admission decision,
-before activation. `ProbeRunner` owns only the public probe catalog and its actor;
-the detector and policy own no providers, benchmark graders or active adapters.
-The reference detector compares parent and newly retained policies (including
-archive additions). A rejection preserves the whole active snapshot and state.
-Legacy profiles use their original admission policy. Independent evaluation
-labels never enter the gate or optimizer. See [the study protocol](safety-study.md).
+An agent author can package an existing compatible directory with
+`rsi_lab.adapt(path, entrypoint="agent.py:run", components=None, editable=None)`.
+The function validates and reads resources; it does not execute code or infer an
+arbitrary framework's lifecycle. `evaluate(..., harness=directory_or_bundle)` freezes
+that version before planning. Completed resume loads saved resources without
+opening the original directory. Explicit replacement resources must match.
 
-## Frozen artifacts
+A method author implements `SystemAdapter` and registers a `MethodPlugin` through
+`rsi_lab.methods`. See [SDK v2](adapter-sdk.md). The adapter owns search and native
+selection; `propose` must leave the active snapshot unchanged. It supplies a
+`StateView` distinguishing native object identity, resource equality and deployment.
+The platform checks declared capabilities before dispatch. A plugin declaration is
+not evidence that its mechanism faithfully reproduces an upstream method.
 
-A run stores `manifest.json`, `source.zip`, `source-manifest.json`, native state,
-proposals, activation receipts, provider SQLite journals and episode effects.
-Canonical JSON checksums and installed-source fingerprints work without Git or an
-editable checkout. A wheel includes upstream source locks and HyperAgents notices.
-`review-frozen` extracts trusted archived code into a new directory, disables
-network/model/effect execution, and compares the reproduced summary and ledgers.
+A benchmark supplies `describe`, `cases`, `new_episode` and explicit controls.
+Episodes expose public requests/tools and keep grading private. The same outer
+broker must serve compared methods, while their Harness versions may differ.
+`PublicTaskEvaluator.subset()` restricts native minibatches to declared development
+cases. Missing labels never become safe zero. The optional AgentHarm execution
+bridge is currently unsupported pending migration to the executable contract;
+XSTest and ordinary task bridges use their declared current interfaces.
+
+## Review and final evaluation
+
+`ReviewGate` runs after native/public admission and before activation. A module
+receives immutable `ReviewView`, `ReviewEvidence` and parameters, not an adapter,
+provider or final-evaluation handle. The reference module compares behavior of the
+deployed candidate and optionally newly retained candidates using public probes.
+It does not predict future optimizer execution. See [review contracts](review-protocol.md).
+
+`reject` and `inconclusive` prevent the candidate snapshot from committing.
+Observe-only records a decision without enforcing it. Review evidence and reasons
+are excluded from optimizer feedback; acceptance still exposes a selection signal.
+Independent audit and final partitions stay outside optimization and review.
+All search roots freeze before their independent evaluations begin.
+
+Costs are reported by phase and in total. Unknown calls retain reservations;
+rejection does not refund calls. Equal update counts and extra review do not imply
+equal compute. Finite continuation review, archive withdrawal and arbitrary
+external-effect rollback remain unsupported.
+
+## Migration and immutable evidence
+
+Version 0.5.0 replaces the instructions-only actor with executable resources and
+SDK v2. A prompt-only editable scope remains a legitimate configuration, but it
+runs the complete candidate Harness. Old SDK v1 packages must migrate explicitly.
+Old completed runs retain their original source and cannot be relabelled as
+executable-Harness experiments. Legacy non-agent DSL profiles are separate.
+
+Runs store resolved configuration, initial and candidate resources, method state,
+model/tool receipts, activation records, provider journals and frozen platform/
+plugin sources. `review-frozen` restores trusted archived code and checks completed
+artifacts with new model/effect execution disabled. It does not recreate arbitrary
+binary or remote dependencies. Generated outputs and credentials remain outside Git.

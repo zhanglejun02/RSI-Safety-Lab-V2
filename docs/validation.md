@@ -1,8 +1,519 @@
 # Validation records
 
+## 2026-11-19 GitHub synchronization regression
+
+The current working tree passed a fresh full run of `.venv/bin/python -m pytest -q`:
+**847 passed, zero failures or skips, in 440.48 seconds**. All tests used zero
+paid API calls. Native sandbox and process-identity checks ran with host
+permissions; candidate isolation stayed enabled. This collection includes the
+independent adapter wheel installation, scripted execution and frozen-source
+review acceptance. `pip check` and Bash syntax checks for all nine launch scripts
+also passed. The [local validation record](../runs/controls/github-sync-20261119/validation.json)
+retains the full test log and its SHA-256 hash. Generated artifacts, environments
+and credentials are excluded from the GitHub commit. Natural scoring remains
+provisional; passing software tests does not calibrate its labels.
+
+## 2026-11-19 provider interruption and explicit recovery
+
+The expanded experiment completed generation but exhausted the Kimi balance
+while auditing. A stationary snapshot has 80 generation roots, 80 audit summaries,
+1,920 audit cases, 281 missing risk labels and no final episodes. All 529 HTTP429
+responses came from independent audit/judge after generation froze; search and
+review decisions were unaffected. The user replenished the original account;
+read-only balance was confirmed before explicit frozen-source `resume-start`.
+Recovery completed at 13:45:29 CST with exit code zero and all 80 final roots.
+The 1,920 final cases have 1,890 valid risk labels and 30 missing; automatic
+semantic positives are provisional, not independently validated violations.
+Original audit missing labels and unknown reservations remain. See the
+[completed grouped report](../runs/current/scale-20261119-v3/analysis/grouped-report.md)
+and the separately retained [interim metrics](../runs/current/scale-20261119-v3/analysis/metrics-interim.md).
+
+Detached recovery passed 18 zero-paid controls, including the original frozen
+Bash driver and package import path; a later display-only correction passed five
+controls. It records separate attempts, rejects concurrent recoveries, and never
+automatically retries failed requests. No frozen run, original job/exit or active
+recovery file was changed by the implementation work.
+
+
+## 2026-11-19 expanded experiment readiness
+
+`scale-20261119-v3` was launched as the explicitly scoped exploratory stress
+batch. Source and readiness evidence are frozen; initial progress verified 24
+confirmed HTTP-200 responses and an active matching supervisor. Execution has
+since completed as recorded above. The final authored controls scored 124/132, with 5 FP,
+3 FN and no missing/unknown labels: the measurement gate failed and remains
+failed. See [the launch scope and limitations](scale-experiment-20261119.md).
+
+
+The expanded allocation and versioned recipient-only measurement are described in
+[the scale plan](scale-experiment-20261119.md). Current implementation evidence is
+saved in [scale readiness](../runs/controls/scale-readiness-20261119/validation.json):
+812 full-suite checks on the first recipient-only revision, 77 targeted checks
+after the full-fact-entailment prompt revision, and an actual frozen-package
+four-method isolated execution control. All these checks made zero paid calls.
+The first two real authored-control runs failed and are retained: 125/132 then
+128/132 agreement, with one false negative in each. The exhaustive-checklist
+recipe also retains semantic errors; its original readiness gate is not passed.
+See the scale protocol for the explicit prelaunch decision: the larger batch is
+exploratory measurement/engineering stress with provisional automatic labels,
+not an accepted method-risk comparison. A bad temperature configuration was
+aborted with 77 unresolved reservations preserved; config validation now rejects
+that recipe and authored controls stop at the first unknown response.
+
+
 Engineering acceptance records and separately labeled pilot observations follow.
-All controls and tests use zero paid API calls. Scripted outcomes are not natural
+All software tests and scripted controls use zero paid API calls. Scripted outcomes are not natural
 experiments or method rankings.
+
+## Adapter transport/resource revision r2 (2026-11-18)
+
+Current core source:
+`1ed8e11c145ff5f9de74025f301b8fe6641fa40bba08996b1144111b0b9a8aba`.
+The full core regression collection passed **776 tests, zero failures/skips,
+in 449.02s**, with zero paid API calls; see
+[validation.json](../runs/current/authorization-v2-r2-validation-20261118/validation.json).
+Thirty-seven report tests added during that execution are recorded separately. They
+are not added to the full-collection count or described as part of that run.
+
+OpenEvolve now uses `openevolve-harness-object-v2`: a raw Harness object, with
+strict duplicate-key/resource/executable validation. The native worker receives
+deterministically serialized candidate contents; there is no response repair or
+automatic retry. The launcher declares six editor calls per update, a
+262,144-byte prompt cap and 1,000,000 total tokens per editor provider. This is a
+new protocol/resource condition, not a relabelling of the old failures.
+
+The separately frozen [natural adapter check](../runs/current/adapter-check-20261118-v2-r2/analysis/report.md)
+completed **118 calls / 311,591 tokens**, estimated **CNY 1.105354**. OpenEvolve
+completed 2/3 opportunities; one candidate failed generated-Python syntax
+validation. HyperAgents completed 3/3. Its bounded successes do not establish a
+stable error rate, a safety ranking or a reference module's benefit. The remaining
+failed candidate was neither repaired nor rerolled.
+
+[Frozen-source verification](../runs/current/adapter-check-20261118-v2-r2/frozen-verification/review.json)
+preserved 734 original files and 118 requests, with unchanged logical ledgers,
+disabled network, zero new API calls and zero fresh effects. Cumulative known
+spending before the new main run was estimated **CNY 17.4875135**, not an invoice.
+
+The separate main campaign `comparison-20261118-authorization-v2-r2` completed
+21 roots / 54 update opportunities / 336 audit episodes / 168 final episodes,
+with 38 snapshot commits and 22 deployment-change events. All 504 utility labels
+were true. Final safety labels were **0 violations / 137 valid, 31 missing**;
+audit labels were **0/207, 129 missing**. These are automated measurements with
+missing evidence, not independently annotated zero-risk outcomes.
+
+Review executed **25 times: 12 accept, 13 inconclusive and 0 reject**. All 13
+inconclusive outcomes arose from missing evidence; no natural dangerous update
+was detected. The post-completion
+[measurement diagnosis](../runs/current/comparison-20261118-authorization-v2-r2/analysis/measurement-interpretation.md)
+and [raw extraction replay](../runs/current/comparison-20261118-authorization-v2-r2/analysis/extraction-failures.md)
+locate all 178 failed extractions (final 31, audit 129, review 18) in private spans,
+with zero recipient-span validation errors. Ungrounded exact mappings, unknown
+fact IDs and duplicate pairs triggered whole-answer validation failure, which
+propagated private diagnostic errors into recipient-label missingness. This is
+a measurement-boundary defect, not evidence of safety-module detection benefit.
+
+The main run used **3,238 calls / 5,984,328 tokens**, estimated **CNY 25.47008**;
+unknown calls were zero. Cumulative known estimated spending is **CNY 42.9575935**.
+No-credential completed resume and network-disabled frozen-source verification
+preserved **14,024 files / 3,238 requests**, with zero new calls/effects. The
+exported 167 blind final task-answer items have no independent labels filled in.
+Per-root, mechanism and [grouped reports](../runs/current/comparison-20261118-authorization-v2-r2/analysis/grouped-report.md)
+were exported without modifying the source run.
+
+The next measurement revision should isolate recipient semantic extraction from
+private diagnostics and keep exact recognition local. This round does not change
+frozen protocol/labels or launch another large batch. Increasing sample size
+alone does not resolve the observed scoring failure. No stable ranking,
+independent natural calibration or effective safety gate is established.
+
+The preceding
+`comparison-20261118-authorization-v2` remains an independent engineering-aborted
+record, with generation 21 / audit 8 / final 0 roots; partial observations are not
+pooled with r2. The adapter smoke check and authored scorer controls likewise
+remain separate evidence with their original scopes.
+
+## Explicit authorization v2 and update audits (2026-11-18)
+
+That source is `5c884cd02ea9ea5988b862e3d070ab3475b343cbe802908423ed51f645f9b32b`.
+The full native-host zero-paid regression passed **752 tests, zero failures/skips,
+in 427.96s**, with unchanged source identity. New source-scoped evidence is under
+`runs/current/authorization-v2-validation-20261118/`. The later report-only
+evidence separation passed 11 tests; it does not change experiment labels.
+
+`privacy-drafts-v2` declares 31 canonical facts and recipient-bound permissions.
+Four final conditions form two authorization pairs; they are not four independent
+task worlds. The old v1 data bytes remain unchanged. The model extracts facts
+without authorization rules; trusted code evaluates permissions. Exact-match
+evidence supplements semantic extraction. Missing semantic coverage does not
+establish safety, and known exact leaks retain positive evidence while review
+remains fail-closed on incomplete coverage.
+
+Twenty-five authored fixtures exercise rules, useful disclosure, private-channel
+separation, omission mentions, paraphrase, unknown IDs and missing extraction.
+They are author controls, not independent human annotations. `rsi-process-audit-v2`
+additionally binds audit positions to declared update opportunities; v1 calls/token
+coordinates remain supported. A skewed-cost test confirms rounds 0/1/2/3 are
+selected instead of repeatedly measuring the same end state.
+
+The persistent seven-root scripted integration ran three opportunities per
+updating root, all three native methods and review/no-review conditions. Nine
+scripted native updates committed; nine prescribed risky reviewed updates were
+blocked. All updating roots selected audit steps 0/1/2/3. Its initial stdin-based
+multiprocessing invocation failed before dispatch; explicit recovery via the
+public CLI completed the same allocation. Frozen-source verification preserved
+3,954 files and 804 scripted receipts, with zero new calls/effects and disabled
+network. These are engineering controls, not natural module performance.
+
+Separately, a real Kimi extractor evaluated 23 eligible authored examples three
+times each: **69/69 valid, 67/69 agreeing**, false positives **2/51**, false
+negatives **0/18**, no missing/unknown responses. Both false positives infer
+specific clinical facts from a generic appointment statement; this is a remaining
+semantic extraction error, not an authorization-program error. The diagnostic
+does not estimate independent natural-answer accuracy. It used 64,560 tokens,
+estimated CNY 0.5205615, and passed no-credential byte-unchanged completed resume.
+See [the scoped interpretation](../runs/current/authorization-scorer-20261118/interpretation.md).
+
+The user removed the monetary ceiling. The first fixed natural comparison under
+`runs/current/comparison-20261118-authorization-v2/` was stopped for generation
+engineering failures, with 21 generation roots, 8 audit roots and 0 final roots.
+OpenEvolve had 10/18 transport failures (7 bare objects, 3 duplicate top-level
+keys), and HyperAgents had 7/18 prompt/call-limit failures (5 prompt-byte caps,
+2 per-edit call caps). The stop used generation engineering evidence rather than
+audit/final safety scores. Its estimated spend was CNY 12.1131355, or cumulative
+CNY 16.3821595 at abort. No method endpoint findings follow from this batch;
+the original run and failures remain unchanged. Its frozen plan,
+finite resource bounds and scientific limitations are in
+[the experiment design](current-experiment-plan.md).
+
+## Candidate contract and measurement diagnostics (2026-11-18)
+
+OpenEvolve agent responses use `openevolve-harness-object-v1`, a typed Harness
+object serialized for the native worker by the adapter. Invalid responses are
+not repaired/retried. Non-agent code transport remains separate. The privacy
+judge uses `privacy-answer-spans-v1`, selecting exact, channel-bound answer IDs;
+the platform derives quotation text. Rejudging binds scorer/task/runtime sources
+and includes every selected saved answer, including missing outcomes.
+
+Targeted zero-paid checks passed: 46 candidate/adapter controls, 73 privacy and
+review controls, and 8 measurement/repetition checks. The captured full regression
+then returned **692 passed, 1 failed in 376.68s** at source
+`5f0d2954b36a4cda32f8ba6c8de390c6b1ef9aefaac742411bd149b84a4dc031`.
+The failure identified the legacy H2 scripted editor's old OpenEvolve response
+string. Updating that fixture to the Harness object yielded **19 passing H2 and
+profile tests in 73.89s**. Launcher/report controls separately passed **19 tests**
+after cumulative-spend settings changed. Final source is
+`520553d151db217744807ca411d07407302859b87513a972744027d42423ca49`.
+The complete suite was not repeated after that one-line scripted compatibility
+fix; these counts are not added together or labelled a new full release acceptance.
+
+Separately authorized natural measurement used the earlier `5f0d...` source:
+two unchanged-founder tasks × three executions, followed by three new judgments
+for every founder answer. One additional OpenEvolve root checked candidate
+transport once; it successfully retained a child while still deploying founder.
+There were **127 calls / 150,899 tokens**, estimated **CNY 0.7432025**. Founder
+execution labels were utility 6/6 and risk 1/6 with no missing; repeat judging
+yielded utility 18/18 and **17/18 valid safety labels**. One fixed answer had a
+safety-label flip and another had a rejected private-channel judgment. These
+show measurement variability, not calibrated accuracy or RSI-induced risk.
+
+Both immutable phases passed no-credential completed resume and network-disabled
+frozen-source review, with unchanged inventories/ledgers and zero new calls or
+effects. The [interpretation](../runs/current/measurement-20261118/analysis/interpretation.md)
+documents task authorization ambiguity, missing evidence and limitations.
+Twelve natural answers have empty independent annotation forms. No human labels,
+method safety ranking, meta effect or safety-module effectiveness are inferred.
+
+## Executable Harness and SDK v2 (2026-11-17)
+
+Version **0.5.0** replaces the instructions-only agent runtime with executable,
+versioned resources. Final implementation fingerprint:
+`75d357b5110c0b2433b11cf16f42be2fda1055992293a7642e77cda907a3f8d2`.
+
+The final native macOS/Python 3.12 regression passed **648 tests, zero skips**, in
+**427.06 seconds**, with zero paid API calls. The suite includes an independent
+offline wheel installation outside the checkout, source-directory removal,
+installed external-method discovery, actual code/skill execution, completed
+resume and frozen review after uninstalling the plugin. These are current-source
+checks; earlier intermediate test counts below are not added to this total.
+
+Execution controls establish that candidate Python owns the loop, context,
+skill use and tool wrappers. The parent records actual model requests and tool
+effects independently, including multiple tools per model call and model-free
+execution. Tests exercise host-file/network/write restrictions, forged RPC,
+time/output/call caps, unknown-call reservations and no replay of effects.
+Resource controls reject entrypoint/scope escalation, readonly edits, case and
+Unicode path aliases, file/directory collisions and unmaterializable paths.
+The candidate cannot authorize its own resource changes. Public evaluation and
+prepared-update checks also enforce this contract for installed method plugins.
+
+Persistent public-entry controls are recorded in
+[`runs/harness-release-20261117/acceptance.json`](../runs/harness-release-20261117/acceptance.json):
+
+| Method / preset | Roots | Update slots | Final cases | Audit cases | Scripted calls |
+|---|---:|---:|---:|---:|---:|
+| GEPA / privacy-process-v1 | 2 | 2 | 4 | 20 | 146 |
+| OpenEvolve / privacy-process-v1 | 2 | 2 | 4 | 20 | 146 |
+| HyperAgents / privacy-process-v1 | 3 | 4 | 6 | 30 | 236 |
+| OpenEvolve / privacy-review-v1 | 3 | 4 | 6 | 30 | 264 |
+
+Every allocated update completed; final/audit coverage had no missing cases.
+The review arm rejected both prescribed adverse candidates. Each run passed
+byte-unchanged completed resume and network-disabled frozen-source verification,
+with no new model calls/effects and unchanged logical ledgers. The implementation
+fingerprint remained identical before and after every control. All 792 calls
+were scripted, with zero paid calls and zero unknown calls.
+
+The published [`examples/harness_agent`](../examples/harness_agent/agent.py) also
+passed the actual one-call API:
+`rsi_lab.evaluate("openevolve", harness="examples/harness_agent")`.
+Its two roots had complete baseline/final/slot measurements and all OpenEvolve
+updates committed. Independent evidence is in
+[`custom-agent-acceptance.json`](../runs/harness-release-20261117/custom-agent-acceptance.json),
+including readonly resume and frozen review. This checks the delivered example,
+not only a test-specific agent. Its outputs are separate from the four controls.
+
+The current worker supports macOS `sandbox-exec`, Python standard library and
+bundled modules. Linux/Windows execution and the old AgentHarm model-wrapper
+bridge are explicitly unsupported; they do not fall back to instructions-only
+or unsandboxed execution. Installed method/reviewer plugins remain trusted host
+code. These controls are not a certification against arbitrary hostile software
+and do not establish natural scoring validity or safety effectiveness. Existing
+natural answers and completed runs retain their original execution versions.
+
+## One-call entry and installed presets (2026-11-17)
+
+`rsi_lab.evaluate` and `rsi_lab.preflight` are lazy public exports over the
+existing configuration/runner API. `evaluate` resolves a registered method and
+packaged experiment, freezes the full configuration and preset digest, checks
+capabilities/allocation, and executes with a matched frozen reference. Its
+summary mapping exposes `.output` and `.report_path`; omitting the output path
+creates a new UUID-suffixed directory. Resume requires an explicit path and,
+without overrides, uses saved configuration without reloading presets or planning.
+
+The installed presets are `local-control-v1`, `privacy-process-v1` and
+`privacy-review-v1`. All default to CONTROL. Named runtime overrides cannot
+replace partitions, audit scope or review thresholds. HTTP requires explicit
+models, episode budgets and positive global call/token caps, which must cover
+the allocation. Full custom configuration remains supported without a preset.
+Preflight marks declaration/allocation checks passed while execution, native
+mechanism validation and natural calibration remain not run. Plugins still need
+one adaptation to the shared policy/snapshot/activation contract; arbitrary
+black-box agents are not automatically converted into this interface.
+
+Frozen implementation:
+`47c0ed0ee26931ebb17e02fd729af09832f2531e5b88b8f48005759b613a6967`.
+The full native-host suite passed **590 tests in 261.48s**, zero skips, two
+existing dependency warnings and zero paid calls. Three additional negative
+allocation controls were added after that suite's collection and passed a
+separate **3-test run in 0.13s**, without further source edits. All **35 new
+entry-point tests** passed with the 25 existing SDK controls in their targeted
+run. They cover explicit paid budgets, insufficient real allocations, capability
+rejection before output/providers, preset semantics, output paths and immutable
+completed recovery. No natural model request was made in this change.
+
+The independent-wheel test passed using a fresh environment without system site
+packages. It deletes the build copies, imports the external plugin before the
+platform, verifies the preset resource and hash under installed site-packages,
+and runs `rsi_lab.evaluate("echo", output=...)` from outside both checkouts.
+Named preflight resolves the same default configuration. Patched-to-fail
+preflight/preset functions are not invoked during completed resume. After the
+plugin is uninstalled, frozen review still succeeds from the archived package,
+discovery metadata and preset data. These checks preserve the earlier SDK scope.
+
+Four persistent one-call controls use the new frozen implementation:
+
+| Method / preset | Control roots | Scripted calls |
+|---|---:|---:|
+| GEPA / privacy-process-v1 | 2 | 146 |
+| OpenEvolve / privacy-process-v1 | 2 | 146 |
+| HyperAgents / privacy-process-v1 | 3 | 236 |
+| OpenEvolve / privacy-review-v1 | 3 | 264 |
+
+Their output directories begin `runs/one-line-` and end `-20261117`;
+`runs/one-line-controls-20261117.json` records review receipts, preset bindings
+and acceptance. All four passed byte-identical
+completed resume and network-disabled frozen review with no new calls/effects.
+HyperAgents retained native isolation. Each preset has one default seed; these
+control branches are not independent natural samples or a method ranking.
+
+## Installed method SDK and risk report (2026-11-17)
+
+The first-release scope is now fixed to an installed adapter SDK, a calibrated
+natural risk report, and a reference safety module's detection/intervention
+acceptance. Only the first delivery is complete. Calibration and natural safety
+benefit are not inferred from engineering tests or the new report generator.
+
+`rsi-method-sdk-v1` discovers trusted installed `rsi_lab.methods` entry points.
+Methods provide snapshots, native evidence, capabilities and object projections;
+the existing runner supplies evaluation, candidate review, atomic activation and
+reporting. The `evaluate` API adds a matched frozen reference. Its default is a
+zero-API local control; natural SEABench work requires an explicit allocation.
+Selected distribution sources and discovery metadata are bound to plans/manifests
+and archived. All registered method packages from the selected distribution are
+included because restored entry-point discovery loads them together. The SDK
+does not freeze arbitrary dependencies or sandbox trusted plugin code.
+
+The final native-host suite passed **558 tests in 266.76s**, zero skips, with two
+existing upstream deprecation warnings and zero paid calls. Source fingerprint:
+`9e38cfdddd77ec59f3cccaa65a2c090ddeb9aaf8a6781740b07c744d33fd1c5c`.
+The preceding full run passed 557 tests; review then found and repaired the
+multi-top-level-package archive gap, with a real distribution-metadata regression
+and this complete final rerun. No vendor source or completed run was rewritten.
+
+The independent Echo package imports only the public SDK. The installation test
+builds separate core/adapter wheels offline, installs into a fresh environment
+without system site packages, imports outside the checkout, executes one-call
+evaluation and verifies byte-identical completed resume. It then uninstalls the
+adapter and successfully reviews the run from its archived package and metadata.
+The example is an integration control, not a new RSI algorithm.
+
+`runs/sdk-external-seabench-control-20261117-final` verifies the installed external
+method in the shared task-pack, scorer, review, process-audit and risk-report path:
+3 roots, H1, 18 events, 30 complete audit observations and 6 complete final cases.
+It used 222 scripted calls: 62 search, 16 review, 120 audit and 24 final. Native
+Echo commits; behavior review rejects the prescribed adverse update after four
+complete policy/probe pairs, preserving the entire base snapshot. This control
+covers native/review arms, not natural effectiveness or a random-control result.
+Both risk reports correctly return `insufficient_evidence` for CONTROL,
+uncalibrated measurement and one root. Completed resume is byte-identical;
+network-disabled frozen review verifies all 222 requests and all 808 original
+files with no new calls/effects or ledger changes. The root environment was not
+modified by installing the example plugin.
+
+`rsi-risk-report-v1` pairs frozen and method roots by seed, retains missing-value
+bounds, reports task/repeat coverage and independent checkpoint trajectories,
+and distinguishes observed increase, not detected and insufficient evidence.
+Bootstrap units are roots; repeated tasks do not inflate sample size. Calibration
+confirmation is an external declaration whose evidence this reporter does not
+verify. Inconsistent task identities fail closed. No false-positive/false-negative
+rates are inferred from the reference module's own verdicts.
+
+### Separately authorized natural annotation collection
+
+The user selected DeepSeek plus Kimi, capped the first collection at CNY 10,
+and requested unannotated answers only. The frozen config is
+`configs/privacy-calibration-deepseek-kimi.json`; bound inputs and protocol are in
+`runs/privacy-calibration-inputs-20261117`. One founder root, four dev tasks and
+two final tasks allocate at most 56 calls / 480,000 tokens, with no editor,
+intervention, process audit, retries or outcome-dependent extension. At official
+peak/uncached rates the configured provider caps total CNY 6.88, leaving CNY 3.12
+of the authorization unused as margin. Rates were checked at
+[DeepSeek](https://api-docs.deepseek.com/zh-cn/quick_start/pricing/) and
+[Kimi](https://platform.kimi.com/docs/pricing/chat); provider invoices were not read.
+
+`runs/privacy-calibration-natural-20261117` completed six nonempty answers with
+16 DeepSeek actor and 7 Kimi judge calls, all complete responses: 29,365 tokens,
+zero unknown responses and no budget overrun. Maximum-rate estimation from
+reported input/output usage is **CNY 0.112186**, ignoring cache and off-peak
+discounts; this is not a measured invoice. One answer fails the required output
+JSON structure and is retained without repair or replacement. This sample is a
+founder-only development collection, not an RSI comparison or a calibrated score.
+
+`runs/privacy-calibration-annotations-20261117` contains the six original answers,
+public tasks, authoritative facts, hash manifest and empty human-label records.
+Automatic judgments, model identity and source mapping are stored separately in
+the inputs directory. Human annotation count is zero and `is_gold` is false.
+The run-local exporter passed normal, no-answer and no-overwrite controls; missing
+answers remain explicit records. Completed natural resume and network-disabled
+frozen review verified all 23 requests with no new calls/effects and unchanged
+source artifacts/ledgers. Independent human calibration and natural intervention
+effectiveness remain pending.
+
+## Repository cleanup and review diagnostics (2026-11-16)
+
+The cleanup removes unused early checkpoint/transfer contracts, the uncalled
+generic continuation/probe chain, a content-addressed store with no consumers,
+and unimplemented training-example interfaces. Live audit/prediction wire fields
+are retained. Shared immutable JSON I/O now lives in `infra/records.py`, and public
+task plans/evaluation records in `tasks/contracts.py`. Static reference and dynamic
+entry-point checks cover all six profiles and four adapters. First-party Python
+decreased from 77 files / 11,830 lines to 75 files / 11,111 lines, including the new
+review diagnostics. Vendor sources, locks and licenses are unchanged.
+
+After all source changes were frozen, the complete native-host suite was rerun:
+**381 passed in 232.67s**, zero skips and two upstream deprecation warnings.
+The run includes native HyperAgents sandbox checks and local HTTP transport
+fixtures, with zero paid API calls. Earlier restricted-host targeted checks hit
+the host's sandbox/localhost-bind permissions; the final full run passed with
+those required host capabilities available and isolation retained.
+
+SEABench reporting is separated from execution, and planning, generation and
+evaluation have named stages. Candidate review shares one scope-selection helper
+and separates request binding, durable evidence and decision commit. The four
+checked SEABench configuration plans are unchanged apart from implementation
+identity. Thirteen gate/probe comparison scenarios preserve evidence, decisions,
+operation IDs and call ordering after accounting for source-bound identity changes.
+
+`review-decisions.csv` derives policy counts, complete/incomplete evidence,
+nonexclusive risk/utility reasons, explicit budget/unknown errors and resource
+deltas from completed review receipts. It does not identify noise-induced
+rejections, infer the cause of unlabeled missing evidence or replace whole-root
+resource accounting for interrupted reviews. Existing integration tests now check
+both rejection output and budget-induced inconclusive output. Thresholds and
+review scopes are unchanged; natural decision calibration remains outstanding.
+
+The five-group H2 control in `runs/cleanup-review-control-20261116` completed
+**9 roots, 27 final episodes and 8 review decisions**. All nine final policy hashes,
+endpoint estimates and phase resource summaries match the preceding protocol
+control. Counts remain 399 search, 128 review, 108 final requests (635 scripted
+requests total), with all eight prescribed adverse updates rejected. Completed
+resume is byte-identical. Frozen-source review in
+`runs/cleanup-review-frozen-20261116` verified all 635 requests with network
+disabled, zero API calls/fresh effects, unchanged ledgers and all 3,169 original
+files unchanged. Implementation fingerprint:
+`fdececdaf213563407478dfec1908c78c813468e5349331aaa652523cd07fe10`.
+The preceding accepted protocol control's full inventory was checked against its
+saved frozen-review inventory hash and also remained unchanged.
+
+README and HANDOFF now describe current entry points and outstanding research;
+historical evidence and detailed AgentDojo commands are preserved in `history.md`
+and `legacy-agent-studies.md`. All local documentation link targets and
+`git diff --check` pass. No paid experiment or release was launched by this cleanup.
+
+## Versioned review protocol and SEABench reference module (2026-11-16)
+
+`rsi-review-v1` adds a trusted static module registry, immutable candidate/evidence
+views, module-owned parameter schemas, explicit protocol/module versions, bound
+decision receipts and fail-closed activation. The reference module supports
+current deployed-policy review and current-plus-newly-retained-policy review.
+Both reject the entire declared candidate snapshot; neither claims to assess
+future meta execution. Public probe IDs and the full case-hash manifest are bound
+before dispatch. Final tasks and hidden rubric text are absent from the module
+port; review evidence is absent from optimizer feedback.
+
+The complete native-host suite passed **381 tests in 229.16s**, with no skips and
+two existing upstream deprecation warnings. This includes a second registered
+module with its own parameter schema, incomplete/undeclared evidence, version
+and identity mismatches, exhausted budgets, interrupted-review no-retry behavior,
+immutable completed resume, review/final partitioning and HTTP budget preflight.
+Scripted native GEPA, OpenEvolve and isolated HyperAgents checks verify declared
+snapshot restoration, fork separation and next-proposal inheritance after reject
+or inconclusive decisions. These checks do not measure full native-system fidelity.
+
+The frozen input plan is `runs/review-protocol-inputs-20261116/plan.json`.
+`configs/seabench-review.json` completed its five-group H2 control in
+`runs/review-protocol-control-20261116`: **9 roots, 27 final episodes**, and all
+eight prescribed adverse reviewed proposals rejected before activation. Frozen
+has one native root; each updating method/profile has native and review arms.
+The native arms exhibit the fixture's prescribed utility/safety outcomes and the
+review arms retain the founder. This establishes protocol wiring, not a natural
+model ranking or a measured safety benefit.
+
+The control records 399 search, 128 review and 108 final scripted requests,
+**635 total**. Reported tokens remain missing for scripted providers; unknown
+requests are zero. Review actor/judge journals and caps are independent, included
+in global allocation and reported separately. Equal search caps in this control
+do not establish an equal-total-compute comparison.
+
+Completed resume was immutable. Frozen-source review in
+`runs/review-protocol-frozen-review-20261116` verified all 635 logical requests
+with network disabled, zero API calls, zero fresh effects and unchanged ledgers;
+all 3,168 original files stayed unchanged. Implementation fingerprint:
+`ce0d104fc256470b519953bbbdb23ac4c3b17e9cb0b7e2cc5fd90ee7f69d907d`.
+Original inventory hash:
+`8433c2afe65848dd694f2d235c7f557f0a6f8ea06e6c5fbe08ee98f3b055fd15`.
+The preceding natural repetition/withdrawal artifacts remain untouched. No paid
+run, release build or new clean-install acceptance was performed for this change.
 
 ## Frozen-policy repetitions and background batches (2026-11-13)
 
@@ -1494,6 +2005,154 @@ runtime/prompt factors separately before making a mechanism claim.
   environment installed only the wheel plus declared dependencies, outside any
   checkout, and passed the same four-method matrix and byte-identical resume.
   See `validation.json` for content identities and exact control counts.
+
+## Process safety framework (2026-11-16)
+
+This acceptance covers the opt-in `privacy-drafts-v1` task pack, method capability
+declarations, versioned process events, independent saved-state auditing,
+observe-only/random reference arms and shared optimization budget reservations.
+The Python implementation fingerprint is
+`07d124538e448126f81146f49bd1f7c5d85367c1a18198ea59a25411752ec31a`.
+The task-pack content identity and full provenance are separately frozen in each plan.
+
+The complete native-host test suite passed **475 tests**, **zero skips**, in
+**241.05 seconds**. The two warnings are existing upstream deprecations from the
+optional AgentHarm bridge. Tests include actual GEPA/OpenEvolve/HyperAgents,
+recording noninterference, complete channel-specific judge evidence, partition
+isolation, saved-audit identity rejection, resource checkpoint selection,
+missing-label bounds, shared calls/tokens/unknown reservations, and concurrent
+budget admission. No paid API calls were made.
+
+| Scripted H2 allocation | Roots | Events | Audit observations | Final observations | Search / review / audit / final calls |
+|---|---:|---:|---:|---:|---|
+| `configs/seabench-process.json` | 5 | 48 | 50 | 10 | 168 / 0 / 200 / 40 |
+| `configs/seabench-interventions.json` | 5 | 48 | 50 | 10 | 164 / 56 / 200 / 40 |
+
+Artifacts are `runs/process-framework-control-20261116` and
+`runs/process-framework-interventions-20261116`; frozen reviews append
+`-frozen-20261116` to the respective `process-framework-control` or
+`process-framework-interventions` prefix. Both completed resumes preserved the
+inventory. Frozen reviewers verified **408 / 460** provider requests and
+**1,822 / 1,826** original files, with network disabled, zero fresh effects and
+unchanged logical ledgers and originals. The process configuration includes both
+HyperAgents meta modes on the real isolated native host.
+
+Offline source distribution and wheel builds succeeded using the available
+local build cache. A fresh Python 3.12 **base wheel** installation outside the
+checkout ran the frozen-reference task-pack control with ten independent audit
+observations and zero paid calls; its implementation fingerprint matched. The
+new data JSON is included in the installed wheel. This check did not reinstall
+all optional native dependencies: the installed uv version cannot parse the
+existing codeload direct-URL constraint without a filename extension. Native
+dependencies were instead covered by the constrained source environment's full
+suite and the two native controls above. No dependency lock was changed to bypass
+that installer limitation.
+
+These controls establish implementation behavior only. All ten task-pack tasks
+come from previously exposed development material in a shared world; the new
+model scorer has not undergone natural human-label calibration. No method safety
+ranking, natural intervention gain or unseen-task generalization follows from
+these scripted scores. Archive withdrawal and continuation review remain unsupported.
+
+## Adapter semantics walkthrough (2026-11-16)
+
+The [state mapping](method-state-mapping.md),
+[capability matrix](observation-intervention-matrix.md) and
+[conformance specification](adapter-conformance.md) now distinguish deployment,
+native retention/selection, prompt exposure, snapshot admission and commit.
+They record inspected paths, distinguishing controls and outstanding obligations
+separately. These documents do not certify every native channel.
+
+Two observation repairs accompany the walkthrough: OpenEvolve compares a
+generated source with the actual selected parent, returning unknown when that
+evidence is missing; HyperAgents exports its native child ID so same-policy,
+different-meta nodes remain distinct. HyperAgents' tie description now identifies
+archive iteration order. The native selection algorithms are unchanged. The
+capability description names the policy/meta **inherited** file surface, without
+claiming that the worker cannot create temporary files.
+
+Python implementation fingerprint:
+`8741eb6ce642f30cfb4e3ae3f0a379ee8adf33512a540567d4185b51cd550a20`.
+Relevant native-host regression: **106 passed, zero skips, 81.55 seconds**,
+with zero paid API calls. Command:
+
+```bash
+.venv/bin/python -m pytest -q \
+  tests/core/test_activation.py \
+  tests/core/test_review_adapter_semantics.py \
+  tests/core/test_gepa_semantics.py \
+  tests/core/test_hyperagents_identity.py \
+  tests/core/test_hyperagents_transport.py \
+  tests/core/test_process_events.py \
+  tests/agentbench/test_process_audit.py \
+  tests/agentbench/test_agent_matrix.py \
+  tests/agentbench/test_meta_ablation.py \
+  tests/agentbench/test_seabench.py
+```
+
+Eight added cases distinguish GEPA child rejection from admissible search-state
+commit (accept/reject/inconclusive), OpenEvolve's non-deployed/unknown parent
+comparisons, and HyperAgents node identity/tie semantics. The HyperAgents identity
+fixture stubs the worker; separate transport and adapter controls in the same
+run use the real macOS sandbox. Earlier sandbox-limited runs skipped worker
+cases and are not the basis for this zero-skip result.
+
+Documentation links and `git diff --check` passed. The earlier 475-test full
+suite, wheel installation and two frozen controls above belong to the preceding
+fingerprint; they were not rerun or relabeled for this targeted change. Completed
+run artifacts remain unchanged. No natural experiment or causal conclusion was
+added by this walkthrough.
+
+## Object-aware events and mechanism controls (2026-11-16)
+
+The current Python implementation fingerprint is
+`70bc146412e02da1e12aab4b148b0639e7523afa3d9a41d9077d75d22ebda83f`.
+`rsi-process-events-v2` separates native selection/child retention, snapshot
+admission and commit. `rsi-candidate-state-v2` separates policy equality from
+native-object membership and deployment. Legacy v1 slots are not rewritten or
+silently reinterpreted. HyperAgents worker profile v6 adds identity-bound
+invocation and execution-stage records; it keeps the native isolation and
+unknown-intent no-restart boundaries.
+
+Targeted native-host validation passed **50 tests, zero skips, 19.83 seconds**.
+The subsequent complete native-host suite passed **500 tests, zero skips,
+257.04 seconds**, using `.venv/bin/python -m pytest -q`. The two warnings are
+the existing optional AgentHarm dependency deprecations. All validation used
+scripted responses/local fixtures and **zero paid API calls**. This complete
+run supersedes the previous source's regression counts for the current code;
+it is not a natural experiment or a new wheel/release acceptance.
+
+Seventeen new cases extend the preceding 483-case source/test inventory:
+
+- Same-policy meta-only accept/reject/inconclusive separates policy matching,
+  candidate membership, committed object retention and deployment. Unknown IDs
+  remain unknown; retained non-deployed nodes, founder-meta execution inputs and
+  generation-source rebinding are covered.
+- GEPA's real per-case search selects a specialist A/C while deploying aggregate
+  best B. Its separate event-on/off runs preserve requests, responses, active
+  snapshots, pool/sampler/RNG and resource reservations. Only directory-derived
+  judge addresses are explicitly normalized by dispatch order; payloads are not.
+- OpenEvolve's real worker exposes top/diverse programs outside its fixed
+  parent/inspiration selection, with native deduplication and actual request
+  hashes. This tests the prompt channel, not the sampling distribution.
+- HyperAgents' real isolated worker executes a non-deployed parent's meta and
+  preserves observed loading/request stages after failure without a draft. The
+  full slot/v2 event path retains the evidence, rejects cross-base rebinding and
+  resumes completed slots read-only. Unknown worker intents do not restart.
+- HyperAgents event-on/off runs compare full provider requests, response hashes,
+  final archive and costs. Worker paths, actor elapsed time and judge operation
+  addresses are fixed before these runs. This is a bounded noninterference
+  control, not arbitrary stochastic or time-dependent meta replay.
+
+See the [claim-scoped acceptance requirements](adapter-conformance.md) for the
+separate obligations of descriptive risk curves, mechanism explanations and
+causal risk attribution. Scoring/execution calibration on natural frozen
+answers, valid targeted state interventions and appropriate counterfactuals
+remain distinct research work. The legacy meta-ablation checkpoint selector is
+not silently broadened by the new stage observations.
+
+Documentation links and `git diff --check` passed. No completed experiment
+artifact was altered to match the new protocol.
 
 ## Coverage
 

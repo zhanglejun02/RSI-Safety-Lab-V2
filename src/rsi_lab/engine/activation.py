@@ -5,7 +5,7 @@ from rsi_lab.auditing.platform import AdmissionDecision
 from rsi_lab.errors import ConflictError, IntegrityError, OutcomeUnknown, UnsupportedCapability, ValidationError
 from rsi_lab.infra.artifacts import _checked_path
 from rsi_lab.infra.sqlite import durable_transaction
-from rsi_lab.learning.contracts import require_sha
+from rsi_lab.contracts import require_sha
 from rsi_lab.serialization import canonical_bytes, decode_json, digest
 
 

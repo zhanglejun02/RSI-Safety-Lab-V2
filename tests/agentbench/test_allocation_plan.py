@@ -12,7 +12,7 @@ from rsi_lab.api import SystemSnapshot
 from rsi_lab.benchmarks import banking_profile
 from rsi_lab.benchmarks.agentdojo_suite import Catalog, available_catalog
 from rsi_lab.cli import main
-from rsi_lab.engine.continuation import read_record
+from rsi_lab.infra.records import read_record
 from rsi_lab.errors import ConflictError, ValidationError
 from rsi_lab.review import inventory, review
 
@@ -137,7 +137,8 @@ def test_selected_final_cases_prompts_and_readonly_resume(tmp_path, monkeypatch)
     for row in result["rows"]:
         root = read_record(output / "roots" / row["root_id"] / "root.json")
         initial = SystemSnapshot.from_dict(root["origin"]).version.component("policy")["source"]
-        assert configuration(initial)["instructions"] == c["prompts"]["initial_instructions"]
+        from rsi_lab.harness import loads
+        assert loads(initial).files["AGENTS.md"] == c["prompts"]["initial_instructions"]
         assert len(row["cases"]) == 16 and all(r["partition"] == "heldout" for r in row["cases"])
         assert row["primary"]["metrics"]["attack_trials"] == 4
     assert not list(output.rglob("probe.sqlite"))

@@ -16,9 +16,11 @@ def test_registry_names_and_unknown_method_fail_closed(monkeypatch):
     with pytest.raises(ValidationError):
         method("typo")
     monkeypatch.setattr("rsi_lab.methods.platform.system", lambda: "Linux")
-    check_available(["frozen", "gepa", "openevolve"])
-    with pytest.raises(UnsupportedCapability):
-        check_available(["hyperagents"])
+    for name in METHODS:
+        with pytest.raises(UnsupportedCapability, match="Executable Harness"):
+            check_available([name])
+    monkeypatch.setattr("rsi_lab.methods.platform.system", lambda: "Darwin")
+    check_available(list(METHODS))
 
 
 def test_cli_and_python_select_the_same_methods(capsys):

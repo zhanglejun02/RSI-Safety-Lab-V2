@@ -2,17 +2,15 @@
 from copy import deepcopy
 import hashlib
 from importlib import metadata
-import json
 from pathlib import Path
-import sys
 import zipfile
 
 from rsi_lab.agent_bench import default_config
 from rsi_lab.api import SystemSnapshot
 from rsi_lab.benchmarks import BENCHMARKS, backend
-from rsi_lab.engine.continuation import read_record, save_record
+from rsi_lab.infra.records import read_record, save_record
 from rsi_lab.engine.platform import PublicTaskEvaluator
-from rsi_lab.errors import BudgetExceeded, ConflictError, IntegrityError, LabError, OutcomeUnknown, ValidationError
+from rsi_lab.errors import BudgetExceeded, ConflictError, IntegrityError, OutcomeUnknown, ValidationError
 from rsi_lab.frozen import implementation_fingerprint
 from rsi_lab.infra.chat_models import ChatConfig, DurableChatProvider, ScriptedChatProvider
 from rsi_lab.serialization import decode_json, digest, json_text
@@ -20,13 +18,17 @@ from rsi_lab.tasks.agent_benchmark import AgentBenchmarkTaskPackage
 from rsi_lab.infra.runlock import run_lock as _run_lock
 from . import runner as continuation
 
-from rsi_lab.methods import METHODS, initial_snapshot, method
+from rsi_lab.methods import METHODS, create_adapter, initial_snapshot, method
 
 
 def _validate(config):
     default = default_config()
-    if type(config) is not dict or set(config) != set(default) or config["protocol"] != default["protocol"]:
+    if type(config) is not dict or set(config) - {"experiment", "harness"} != set(default) or config["protocol"] != default["protocol"]:
         raise ValidationError("Use default_config() and modify its declared fields")
+    from rsi_lab.experiments import validate_binding
+    validate_binding(config)
+    from rsi_lab.harness import configured_source
+    configured_source(config)
     for field, choices in (("methods", METHODS), ("benchmarks", BENCHMARKS), ("suites", ("banking", "travel"))):
         values = config[field]
         if not isinstance(values, list) or not values or len(set(values)) != len(values) or set(values) - set(choices):
@@ -38,8 +40,8 @@ def _validate(config):
     budget = config["budget"]
     if set(budget) != set(default["budget"]) or any(type(v) is not int or v < 1 for v in budget.values()):
         raise ValidationError("Explicit positive episode, step and provider-call budgets required")
-    if budget["max_steps"] > 32 or budget["max_editor_calls_per_slot"] > 3:
-        raise ValidationError("This profile supports at most 32 actor steps and 3 editor calls per slot")
+    if budget["max_steps"] > 32:
+        raise ValidationError("This profile supports at most 32 actor steps")
     if config["mode"] not in ("scripted", "http"):
         raise ValidationError("mode must be scripted or http")
     if config["mode"] == "scripted":
@@ -79,6 +81,9 @@ def _archive(output):
     target = output / "source.zip"
     hashes = {}
     if not target.exists():
+        from rsi_lab.plugins import source_files
+        manifest = read_record(output / "manifest.json")
+        plugins = source_files([r["system"] for r in manifest.get("roots", [])])
         with zipfile.ZipFile(target, "x", compression=zipfile.ZIP_DEFLATED) as archive:
             for path in sorted(package.rglob("*")):
                 if not path.is_file() or "__pycache__" in path.parts or path.suffix in (".pyc", ".sqlite"):
@@ -88,7 +93,12 @@ def _archive(output):
                 relative = "rsi_lab/" + path.relative_to(package).as_posix()
                 archive.write(path, relative)
                 hashes[relative] = hashlib.sha256(path.read_bytes()).hexdigest()
-        save_record(output / "source-manifest.json", {"files": hashes, "archive_sha256": hashlib.sha256(target.read_bytes()).hexdigest()})
+            for relative, raw in sorted(plugins.items()):
+                archive.writestr(relative, raw)
+                hashes[relative] = hashlib.sha256(raw).hexdigest()
+        save_record(output / "source-manifest.json", {"files": hashes,
+            **({"plugin_roots": sorted({name.split("/")[0] for name in plugins})} if plugins else {}),
+            "archive_sha256": hashlib.sha256(target.read_bytes()).hexdigest()})
 
 
 def _actor_provider(directory, config, module, cases):
@@ -117,26 +127,43 @@ def _editor_provider(directory, config, method, *, control_instructions=None):
     if config["mode"] == "http":
         return DurableChatProvider(directory / "editor.sqlite", ChatConfig.from_dict({"schema_version": 1, **config["editor"]}),
                                    response_format=METHODS[method].editor_response_format)
-    from rsi_lab.agents.runtime import DEFAULT_INSTRUCTIONS, source
+    from rsi_lab.harness import DEFAULT_INSTRUCTIONS, configured_source, loads
+    founder = loads(configured_source(config))
     instance = None
     def reply(operation, messages):
         with instance._db() as db:
             index = db.execute("SELECT COUNT(*) FROM chat_requests").fetchone()[0]
-        program = source((control_instructions or DEFAULT_INSTRUCTIONS + "\nCONTROL_COMPLETE: solve the user task.")
-                         + f" Revision {index}.")
+        instructions = (control_instructions or DEFAULT_INSTRUCTIONS + "\nCONTROL_COMPLETE: solve the user task.") + f" Revision {index}."
+        # Scripted controls preserve custom code and the founding scope. They
+        # change only an available resource, never replace a supplied Harness.
+        if founder.components.get("AGENTS.md") in founder.editable:
+            candidate = founder.replace({"AGENTS.md": instructions})
+        elif founder.components[founder.entrypoint.split(":")[0]] in founder.editable:
+            path = founder.entrypoint.split(":")[0]
+            candidate = founder.replace({path: founder.files[path] + f"\n# Control revision {index}\n"})
+        else:
+            candidate = founder
+        program = candidate.dumps()
+        from rsi_lab.methods import method_plugin
+        plugin = method_plugin(method)
+        if plugin:
+            return plugin.scripted_reply(operation, program)
         if method == "hyperagents":
             if operation.endswith("/model-1"):
                 return {"text": "<json>" + json_text({"tool_name": "write_files", "tool_input": {
                     "files": {"policy.py": program}}}) + "</json>"}
             return {"text": "Completed the edit."}
-        return {"response" if method == "openevolve" else "text": "```python\n" + program + "\n```"}
+        if method == "openevolve":
+            return candidate.to_dict()
+        return {"text": "```python\n" + program + "\n```"}
     instance = ScriptedChatProvider(directory / "editor.sqlite", reply, provider_id="scripted.editor.control.v1",
         max_calls=config["slots"] * config["budget"]["max_editor_calls_per_slot"])
     return instance
 
 
-def _initial(method_name, seed, package):
-    return initial_snapshot(method_name, seed, package)
+def _initial(method_name, seed, package, config=None):
+    from rsi_lab.harness import configured_source
+    return initial_snapshot(method_name, seed, package, harness=configured_source(config or {}))
 
 
 def _aggregate(records):
@@ -192,7 +219,9 @@ def _run(config, output):
         return inspect(output)
     from rsi_lab.agents.runtime import ActorRuntime
     roots = _matrix(config)
+    from rsi_lab.methods import plugin_bindings
     manifest = {"protocol": config["protocol"], "config": config, "horizon": config["slots"],
+                "method_plugins": plugin_bindings(config["methods"]),
                 "implementation": implementation_fingerprint(), "roots": roots,
                 "benchmarks": {n: backend(n).describe() for n in config["benchmarks"]},
                 "origin": "control" if config["mode"] == "scripted" else "natural",
@@ -213,13 +242,13 @@ def _run(config, output):
         runtime = ActorRuntime(directory / "episodes", actor, max_steps=config["budget"]["max_steps"],
                                max_episodes=config["budget"]["max_episodes_per_root"])
         package = AgentBenchmarkTaskPackage(module, root["public_cases"], runtime)
-        origin = _initial(root["system"], root["seed"], package)
+        origin = _initial(root["system"], root["seed"], package, config)
         editor = None if root["system"] == "frozen" else _editor_provider(directory, config, root["system"])
         if editor is None:
             from rsi_lab.subjects.frozen_agent import FrozenAgentAdapter
             adapter = FrozenAgentAdapter(directory / "system", origin)
         else:
-            adapter = continuation._adapter(root["system"], directory / "system", editor, origin)
+            adapter = create_adapter(root["system"], directory / "system", editor, origin)
         contexts[root["root_id"]] = (actor, editor, runtime, module)
         root_path = directory / "root.json"
         if root_path.exists():

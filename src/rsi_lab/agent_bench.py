@@ -83,7 +83,7 @@ def run_experiment(config=None, output="runs/agent-bench", *, resume=False, expe
     if output.exists():
         if not resume:
             raise ConflictError("Output exists; use a new directory or explicit resume")
-        from rsi_lab.engine.continuation import read_record
+        from rsi_lab.infra.records import read_record
         manifest = read_record(output / "manifest.json")
         expected = {**settings, "mode": config["mode"]} if profile == "banking-frozen" else settings
         if manifest["config"] != expected or manifest.get("mode", config["mode"]) != config["mode"]:
@@ -93,8 +93,122 @@ def run_experiment(config=None, output="runs/agent-bench", *, resume=False, expe
     return runner.run(output)
 
 
+def _harness_binding(value):
+    """Read resources once; subsequent planning and resume use saved contents."""
+    from rsi_lab.harness import Harness, loads
+    if isinstance(value, (str, Path)):
+        value = Harness.from_directory(value)
+    if isinstance(value, Harness):
+        return {"source": value.dumps()}
+    if type(value) is dict and set(value) == {"source"}:
+        return {"source": loads(value["source"]).dumps()}
+    raise ValidationError("Harness must be a resource directory, Harness, or a source binding")
+
+
+def _evaluation_config(method, *, experiment=None, config=None, review=None, harness=None):
+    from rsi_lab.methods import method as lookup
+    lookup(method)
+    settings = (load_config(config) if isinstance(config, (str, Path)) else deepcopy(config))
+    if experiment is not None or settings is None:
+        from rsi_lab.experiments import experiment_config
+        settings = experiment_config(experiment if experiment is not None else "local-control-v1", settings)
+    if not isinstance(settings, dict):
+        raise ValidationError("Configuration must be a JSON object")
+    if settings.get("profile") not in ("matrix", "safety-study", "seabench-controller"):
+        raise ValidationError("evaluate requires a method-comparison profile")
+    if harness is not None:
+        binding = _harness_binding(harness)
+        if "harness" in settings and _harness_binding(settings["harness"]) != binding:
+            raise ValidationError("Harness argument differs from the configured Harness")
+        settings["harness"] = binding
+    elif "harness" in settings:
+        settings["harness"] = _harness_binding(settings["harness"])
+    settings["methods"] = list(dict.fromkeys(["frozen", method]))
+    if method != "hyperagents":
+        settings.pop("hyperagents_meta_modes", None)
+    if review is not None:
+        if experiment is not None:
+            raise ValidationError("Named experiments fix review semantics; use a full configuration for custom review")
+        if settings["profile"] != "seabench-controller":
+            raise ValidationError("Independent review requires a seabench-controller configuration")
+        settings["review"] = deepcopy(review)
+        settings["arms"] = ["native_only", "behavior_review"]
+    if settings["profile"] == "seabench-controller" and not any(k in settings for k in ("calibration", "frozen_evaluation")):
+        from rsi_lab.studies.risk_report import validate_spec
+        settings.setdefault("risk_report", validate_spec(None))
+    check_available(settings["methods"])
+    return settings
+
+
+def preflight(method, *, experiment=None, config=None, review=None, harness=None):
+    """Validate declarations and allocation, not native fidelity or judge accuracy."""
+    from rsi_lab.methods import method_capabilities, plugin_bindings
+    from rsi_lab.serialization import digest
+    settings = _evaluation_config(method, experiment=experiment, config=config, review=review, harness=harness)
+    if settings["profile"] in PLANNED:
+        plan = plan_experiment(settings)
+    else:
+        runner = _runner(settings["profile"])
+        settings = runner._validate(settings)
+        roots = runner._matrix(settings)
+        plan = {"protocol": settings["protocol"], "root_count": len(roots),
+                "roots": roots, "method_plugins": plugin_bindings(settings["methods"])}
+    return {"protocol": "rsi-preflight-v1", "method": method,
+            "config": settings, "config_sha256": digest(settings),
+            "plan": plan, "plan_sha256": digest(plan),
+            "capabilities": plan.get("method_capabilities") or
+                            {name: method_capabilities(name) for name in settings["methods"]},
+            "checks": {"declarations_and_allocation": "passed", "interface_execution": "not_run",
+                       "mechanism_controls": "not_run", "natural_calibration": "not_run"},
+            "platform_api_calls": 0}
+
+
+class EvaluationResult(dict):
+    """The existing summary mapping, with paths for locating an automatic run."""
+
+    def __init__(self, summary, output):
+        super().__init__(summary)
+        self.output = Path(output).resolve()
+        self.report_path = self.output / "report.md"
+
+
+def evaluate(method, output=None, *, experiment=None, config=None, review=None,
+             harness=None, resume=False):
+    """Run a registered method with a matched frozen reference.
+
+    Named experiments accept restricted runtime overrides. Without an experiment,
+    ``config`` retains the full-configuration API; without either, use the zero-API
+    local control. Completed resume without overrides reads the saved configuration.
+    """
+    if resume:
+        if output is None:
+            raise ValidationError("Resume requires the original output directory")
+        if config is None and review is None:
+            from rsi_lab.infra.records import read_record
+            from rsi_lab.methods import method as lookup
+            lookup(method)
+            settings = read_record(Path(output) / "manifest.json")["config"]
+            if settings["methods"] != list(dict.fromkeys(["frozen", method])):
+                raise ConflictError("Saved run belongs to a different method comparison")
+            if experiment is not None and settings.get("experiment", {}).get("id") != experiment:
+                raise ConflictError("Saved run belongs to a different experiment")
+            if harness is not None and settings.get("harness") != _harness_binding(harness):
+                raise ConflictError("Saved run belongs to a different Harness")
+        else:
+            settings = _evaluation_config(method, experiment=experiment, config=config, review=review, harness=harness)
+        return EvaluationResult(run_experiment(settings, output, resume=True), output)
+    checked = preflight(method, experiment=experiment, config=config, review=review, harness=harness)
+    settings = checked["config"]
+    if output is None:
+        from uuid import uuid4
+        label = settings.get("experiment", {}).get("id", settings["profile"])
+        output = Path("runs") / f"{method}-{label}-{uuid4().hex[:12]}"
+    plan = checked["plan"] if settings["profile"] in PLANNED else None
+    return EvaluationResult(run_experiment(settings, output, expected_plan=plan), output)
+
+
 def inspect_run(output):
-    from rsi_lab.engine.continuation import read_record
+    from rsi_lab.infra.records import read_record
 
     protocol = read_record(Path(output) / "manifest.json")["protocol"]
     for profile in PROFILES:

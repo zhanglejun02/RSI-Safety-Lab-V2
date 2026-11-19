@@ -4,11 +4,10 @@ from __future__ import annotations
 import ast
 import csv
 import hashlib
-from pathlib import Path
 
 from rsi_lab.agents.runtime import configuration, verify
 from rsi_lab.api import SystemSnapshot
-from rsi_lab.engine.continuation import read_record
+from rsi_lab.infra.records import read_record
 from rsi_lab.errors import IntegrityError
 from rsi_lab.serialization import decode_json, digest
 from . import frozen_profile
@@ -29,7 +28,7 @@ def _slots(output, root, search):
         result.append({"slot": index + 1, "status": slot["status"], "failure_kind": slot["failure_kind"],
                        "native_admitted": evidence.get("native_admitted"), "committed": slot["committed"],
                        "active_policy_changed": policy != old,
-                       "active_instructions_changed": configuration(policy) != configuration(old),
+                       "active_harness_resources_changed": configuration(policy) != configuration(old),
                        "meta_bytes_changed": meta != old_meta,
                        "meta_ast_changed": bool(meta and ast.dump(ast.parse(meta)) != ast.dump(ast.parse(old_meta))),
                        "parent_id": evidence.get("parent_id"), "selected_id": evidence.get("selected_id", evidence.get("active_program_id")),
@@ -62,11 +61,11 @@ def summarize(output, manifest, searches, deployments, verification):
             delta = None if a["attack_success"] is None or b["attack_success"] is None else int(b["attack_success"]) - int(a["attack_success"])
             paired.append({"task_id": case["task_id"], "attack_id": case["attack_id"],
                            "initial": a, "final": b, "attack_delta": delta,
-                           "identical_actor_instructions": identical,
+                           "identical_harness_resources": identical,
                            "interpretation": "sampling_difference_same_actor" if identical else "development_update_contrast"})
         roots.append({"root": root, "slots": _slots(output, root, search),
                       "initial": deployed["initial"], "final": deployed["final"], "paired": paired,
-                      "same_initial_final_instructions": identical,
+                      "same_initial_final_harness": identical,
                       "optimization_actor": search["optimization_actor_usage"], "editor": search["editor_usage"],
                       "optimization_episodes": search["public_episodes"], "deployment": deployed["usage"]})
     usage = {"optimization_actor": _usage([s["optimization_actor_usage"] for s in searches]),
@@ -115,7 +114,7 @@ def inspect(output):
 
 def render(output, summary):
     lines = ["# Banking H2 case-finding", "", f"Mode: {summary['mode']}; development repeats, not confirmation or a system ranking.",
-             "Initial/final use fresh executions even for identical instructions. Such differences are sampling variation, not update effects.",
+             "Initial/final use fresh executions even for identical Harness resources. Such differences are sampling variation, not update effects.",
              "", "| Root | Clean initial→final | Attacked utility initial→final | Attack successes initial→final | Known attack labels | Step-limit initial/final |",
              "|---|---:|---:|---:|---:|---:|"]
     pairs = []
@@ -125,7 +124,7 @@ def render(output, summary):
         lines.append(f"| {row['root']['root_id']} | {a['clean_utility']['sum']}/{a['clean_utility']['known']} → {b['clean_utility']['sum']}/{b['clean_utility']['known']} | {a['attacked_utility']['sum']}/{a['attacked_utility']['known']} → {b['attacked_utility']['sum']}/{b['attacked_utility']['known']} | {a['attack_successes']} → {b['attack_successes']} | {a['attack_labels_known']} / {b['attack_labels_known']} | {limits[0]} / {limits[1]} |")
         for pair in row["paired"]:
             pairs.append({"root_id": row["root"]["root_id"], "task_id": pair["task_id"], "attack_id": pair["attack_id"],
-                "same_instructions": pair["identical_actor_instructions"],
+                "same_harness_resources": pair["identical_harness_resources"],
                 **{f"{checkpoint}_{key}": pair[checkpoint][key] for checkpoint in ("initial", "final")
                    for key in ("utility", "attack_success", "attack_reached", "stop_reason", "actor_calls", "tool_calls", "known_tokens")}})
     lines += ["", "Native adoption, source/meta changes, selected parents and actual next-edit context matches are recorded per root in summary.json.",

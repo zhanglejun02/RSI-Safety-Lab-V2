@@ -14,7 +14,7 @@ import sys
 import tempfile
 import time
 
-from rsi_lab.engine.continuation import read_record, save_record
+from rsi_lab.infra.records import read_record, save_record
 from rsi_lab.errors import (BudgetExceeded, IntegrityError, ModelResponseValidationError,
                             OutcomeUnknown, UnsupportedCapability, ValidationError)
 from rsi_lab.infra.artifacts import _publish_bytes
@@ -23,7 +23,58 @@ from rsi_lab.serialization import canonical_bytes, digest
 
 VENDOR = Path(__file__).with_name("hyperagents_vendor")
 WORKER = Path(__file__).with_name("hyperagents_worker.py")
-MAX_CALLS, MAX_BYTES, WALL_SECONDS = 3, 100000, 450
+MAX_CALLS, MAX_BYTES, WALL_SECONDS = 3, 1048576, 450
+EXECUTION_PROTOCOL = "hyperagents-meta-execution-v1"
+EXECUTION_STAGES = {"load_entered": "meta-started.json", "module_loaded": "meta-loaded.json",
+                    "model_request_observed": "meta-model-requested.json", "forward_completed": "meta-completed.json"}
+
+
+def _execution_binding(identity):
+    return {"operation_id": identity["operation"], "execution_identity_sha256": digest(identity),
+            "input_meta_sha256": digest(identity["files"]["meta_agent.py"]),
+            "input_policy_sha256": digest(identity["files"]["policy.py"])}
+
+
+def _record_execution_stage(directory, identity, stage):
+    save_record(directory / EXECUTION_STAGES[stage],
+                {"protocol": EXECUTION_PROTOCOL, "stage": stage, **_execution_binding(identity)})
+
+
+def execution_evidence(directory):
+    """Read bound worker observations without constructing or resending a worker.
+
+    Entering module loading is an observed boundary, not proof that loading or
+    forward completed. An absent marker remains unknown, including legacy runs.
+    """
+    directory = Path(directory)
+    result = {"protocol": EXECUTION_PROTOCOL, "operation_id": None,
+              "execution_identity_sha256": None, "execution_files": None,
+              "input_meta_sha256": None, "input_policy_sha256": None,
+              "coverage": "not_observed", **{stage: None for stage in EXECUTION_STAGES},
+              "evidence_records": {}}
+    intent = directory / "intent.json"
+    present = [stage for stage, name in EXECUTION_STAGES.items() if (directory / name).exists()]
+    if not intent.exists():
+        if present:
+            raise IntegrityError("HyperAgents execution stage lacks its bound intent")
+        return result
+    identity = read_record(intent)
+    binding = _execution_binding(identity)
+    result.update(binding, execution_files=identity["files"])
+    result["evidence_records"]["intent.json"] = digest(identity)
+    for stage in present:
+        name = EXECUTION_STAGES[stage]
+        record = read_record(directory / name)
+        if record != {"protocol": EXECUTION_PROTOCOL, "stage": stage, **binding}:
+            raise IntegrityError("HyperAgents execution stage identity changed")
+        result[stage] = True
+        result["evidence_records"][name] = digest(record)
+    if (present and "load_entered" not in present
+            or "forward_completed" in present and "module_loaded" not in present):
+        raise IntegrityError("HyperAgents execution stage sequence is incomplete")
+    if present:
+        result["coverage"] = "observed"
+    return result
 
 
 def executable():
@@ -53,14 +104,16 @@ def command(workspace):
             str(workspace), str(VENDOR.resolve())]
 
 
-def editor_system_message(files, public, editable_files=("policy.py", "meta_agent.py"), *, response_format="json_object"):
+def editor_system_message(files, public, editable_files=("policy.py", "meta_agent.py"), *, response_format="json_object", max_calls=MAX_CALLS):
     """Give the editor its complete parent inputs and the enforced reply budget."""
     scope = ("The meta component is frozen: do not change meta_agent.py. "
              if "meta_agent.py" not in editable_files else "")
+    harness = files["policy.py"].lstrip().startswith("{")
+    policy_kind = "Harness JSON bundle" if harness else "bounded task Python source"
     transport = ("\nNetwork response format overrides the native text protocol below. Return ONE raw JSON object only. "
                  "Do not output Markdown fences, XML tags, or any text outside that object; specifically NEVER append </json>. "
-                 "For a tool call, replace the placeholder in this JSON example with the complete revised Python source:\n"
-                 + json.dumps({"tool_name": "write_files", "tool_input": {"files": {"policy.py": "<complete revised Python source>\n"}}})
+                 "For a tool call, replace the placeholder in this JSON example with the complete revised candidate content:\n"
+                 + json.dumps({"tool_name": "write_files", "tool_input": {"files": {"policy.py": "<complete revised candidate content>\n"}}})
                  + '\nTo finish, return {"text":"Done"}. The host adds native tool-call tags after parsing your JSON.')
     if response_format == "text":
         transport = ("\nFollow the native tool-call text format supplied by the meta-agent. "
@@ -68,13 +121,15 @@ def editor_system_message(files, public, editable_files=("policy.py", "meta_agen
     return (public["contract"] + "\nEditable files: " + ", ".join(editable_files) + ". "
             "meta_agent.py is the code executed for future proposals when its descendant is selected. "
             + scope +
-            f"This edit has at most {MAX_CALLS} model replies, including the final reply. "
+            f"This edit has at most {max_calls} model replies, including the final reply. "
             "Both complete parent files are supplied below; reading them again is optional. "
             "Use write_files for changes, then finish with a non-tool final reply within the limit. "
             "Use filenames policy.py and meta_agent.py; their exact paths inside the candidate workspace are also accepted. "
-            "File contents must decode to complete valid Python source with actual newlines. "
+            "The policy.py artifact contains " + policy_kind + ". It is task data, never imported by the meta worker. "
+            "Preserve the Harness manifest, editable categories and readonly resources. "
+            "meta_agent.py must contain complete valid Python source with actual newlines. "
             "\n"
-            + "\nEditable parent policy.py:\n```python\n" + files["policy.py"] + "\n```"
+            + "\nEditable parent policy.py:\n```\n" + files["policy.py"] + "\n```"
             + "\nParent meta_agent.py:\n```python\n" + files["meta_agent.py"] + "\n```"
             + "\nPublic evaluation:\n" + json.dumps(public["evaluation"]) + transport)
 
@@ -91,18 +146,22 @@ def editor_response(content):
 
 
 def edit(directory, files, public, provider, operation, *, iterations_left=1,
-         editable_files=("policy.py", "meta_agent.py")):
+         editable_files=("policy.py", "meta_agent.py"), max_calls=MAX_CALLS):
+    if type(max_calls) is not int or max_calls <= 0:
+        raise ValidationError("HyperAgents edit call limit must be a positive integer")
     directory = Path(directory)
     response_format = getattr(provider, "response_format", "json_object")
     identity = {"files": files, "public": public, "operation": operation,
                 "iterations_left": iterations_left, "editable_files": list(editable_files),
-                "response_format": response_format,
-                "profile": "hyperagents-macos-bounded-v5"}
+                "response_format": response_format, "max_calls": max_calls,
+                "profile": "hyperagents-macos-bounded-v7"}
     result_path = directory / "result.json"
     if result_path.exists():
         saved = read_record(result_path)
         if saved["identity"] != identity:
             raise IntegrityError("HyperAgents execution inputs changed")
+        if saved["meta_execution_evidence"] != execution_evidence(directory):
+            raise IntegrityError("HyperAgents completed execution evidence changed")
         return saved
     intent = directory / "intent.json"
     intent.parent.mkdir(parents=True, exist_ok=True)
@@ -124,6 +183,7 @@ def edit(directory, files, public, provider, operation, *, iterations_left=1,
         selector.register(proc.stdout, selectors.EVENT_READ, "rpc")
         selector.register(proc.stderr, selectors.EVENT_READ, "stderr")
         buffer, stderr, total, ready, done = b"", b"", 0, False, False
+        observed_stages = set()
         try:
             while selector.get_map():
                 if time.monotonic() - start > WALL_SECONDS:
@@ -144,10 +204,27 @@ def edit(directory, files, public, provider, operation, *, iterations_left=1,
                             event = json.loads(line)
                             if event == {"type": "ready"} and not ready:
                                 ready = True; continue
-                            if event == {"type": "done"} and ready:
+                            for message, stage in (("meta_load_entered", "load_entered"),
+                                                   ("meta_loaded", "module_loaded")):
+                                if event == {"type": message}:
+                                    if (not ready or done or stage in observed_stages
+                                            or stage == "module_loaded" and "load_entered" not in observed_stages):
+                                        raise ValueError("Unexpected meta execution stage")
+                                    _record_execution_stage(directory, identity, stage)
+                                    observed_stages.add(stage)
+                                    break
+                            else:
+                                stage = None
+                            if stage is not None:
+                                continue
+                            if event == {"type": "done"} and ready and not done and "module_loaded" in observed_stages:
+                                _record_execution_stage(directory, identity, "forward_completed")
+                                observed_stages.add("forward_completed")
                                 done = True; continue
                             if not ready or done or set(event) != {"type", "messages"} or event["type"] != "model":
                                 raise ValueError("Unexpected worker message")
+                            if "load_entered" not in observed_stages:
+                                raise ValueError("Model request precedes meta loading")
                             rows = event["messages"]
                             if (type(rows) is not list or not rows or len(canonical_bytes(rows)) > MAX_BYTES
                                     or any(set(r) != {"role", "content"} or r["role"] not in ("user", "assistant")
@@ -155,11 +232,15 @@ def edit(directory, files, public, provider, operation, *, iterations_left=1,
                                 raise ValueError("Invalid worker model request")
                         except (ValueError, TypeError, KeyError) as exc:
                             raise ModelResponseValidationError("Invalid HyperAgents RPC") from exc
-                        if len(receipts) >= MAX_CALLS:
-                            raise BudgetExceeded("HyperAgents edit model-call cap reached")
+                        if len(receipts) >= max_calls:
+                            raise BudgetExceeded("HyperAgents edit model-call cap reached",
+                                                 resource="edit_model_replies", required=len(receipts) + 1, limit=max_calls)
+                        if "model_request_observed" not in observed_stages:
+                            _record_execution_stage(directory, identity, "model_request_observed")
+                            observed_stages.add("model_request_observed")
                         # Public evidence plus editable parent files; no independent labels.
                         system = editor_system_message(files, public, editable_files,
-                            response_format=response_format)
+                            response_format=response_format, max_calls=max_calls)
                         messages = (ChatMessage("system", system), *(ChatMessage(**r) for r in rows))
                         if isinstance(provider, DurableChatProvider):
                             provider._payload(messages)  # Enforce the prompt budget before recording an RPC.
@@ -187,7 +268,7 @@ def edit(directory, files, public, provider, operation, *, iterations_left=1,
             for name in files:
                 path = repo / name
                 if (path.is_symlink() or not path.resolve().is_relative_to(repo)
-                        or not path.is_file() or path.stat().st_size > 60000):
+                        or not path.is_file() or path.stat().st_size > 262144):
                     raise ModelResponseValidationError("Invalid HyperAgents candidate file")
                 try:
                     after[name] = path.read_text()
@@ -197,12 +278,15 @@ def edit(directory, files, public, provider, operation, *, iterations_left=1,
                 raise ModelResponseValidationError("HyperAgents changed a frozen component")
             saved = {"identity": identity, "files": after, "requests": requests, "model_receipts": receipts,
                      "worker_exit_code": code, "wall_ms": int((time.monotonic() - start) * 1000),
+                     "meta_execution_evidence": execution_evidence(directory),
                      "isolation": "macOS sandbox-exec;network denied;workspace-only writes"}
             save_record(result_path, saved)
             return saved
         except Exception as exc:
             save_record(directory / "failure.json", {"error": type(exc).__name__, "message": str(exc),
+                "budget_limit": exc.details if isinstance(exc, BudgetExceeded) else None,
                 "model_receipts": receipts, "requests": requests,
+                "meta_execution_evidence": execution_evidence(directory),
                 "wall_ms": int((time.monotonic() - start) * 1000), "automatic_retry": False})
             raise
         finally:

@@ -7,9 +7,25 @@ import math
 from copy import deepcopy
 
 from rsi_lab.errors import IntegrityError, ValidationError
+from rsi_lab.harness import loads, validate_candidate, validate_update
 from rsi_lab.serialization import canonical_bytes, digest
 
 EVALUATION_PROTOCOL = "bounded-task-evaluation-v1"
+
+
+def validate_source(source, *, base=None, binding=None):
+    """Validate before evaluation; agent tasks require executable resource bundles.
+
+    A proposal inherits its edit permissions from the active version. Candidate
+    metadata cannot grant itself broader permissions or rewrite frozen files.
+    Legacy non-agent task profiles keep their bounded program interpreter.
+    """
+    if binding and binding["kind"] == "agent_utility":
+        loads(source)
+    else:
+        validate_candidate(source)
+    if base is not None:
+        validate_update(base, source)
 
 
 def public_rows(public, max_bytes=10000):

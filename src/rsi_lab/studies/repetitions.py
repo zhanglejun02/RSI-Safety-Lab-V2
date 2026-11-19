@@ -6,10 +6,32 @@ import random
 
 from rsi_lab.agents.runtime import verify
 from rsi_lab.api import SystemSnapshot
-from rsi_lab.engine.continuation import read_record, save_record
+from rsi_lab.infra.records import read_record, save_record
 from rsi_lab.errors import IntegrityError, ValidationError
 from rsi_lab.infra.artifacts import _checked_path
 from rsi_lab.serialization import digest
+
+
+MEASUREMENT_SOURCES = (
+    "agents/runtime.py", "agents/program.py", "agents/harness_process.py",
+    "agents/harness_worker.py", "harness.py", "benchmarks/seabench.py",
+    "benchmarks/seabench_context.py", "infra/chat_models.py",
+)
+
+
+def check_measurement_sources(files, *, task_pack=None):
+    """A changed scorer is a new measurement, not same-procedure repetition."""
+    names = MEASUREMENT_SOURCES
+    from rsi_lab.benchmarks.privacy_drafts import PACKS
+    if task_pack in PACKS:
+        names += ("benchmarks/privacy_drafts.py", "data/" + task_pack.replace("-", "_") + ".json")
+        if task_pack != "privacy-drafts-v1":
+            names += ("benchmarks/privacy_authorization.py",)
+    package = Path(__file__).resolve().parents[1]
+    for name in names:
+        actual = hashlib.sha256((package / name).read_bytes()).hexdigest()
+        if actual != files.get("rsi_lab/" + name):
+            raise IntegrityError("Repetition measurement implementation changed: " + name)
 
 
 def roots(config, backend):
@@ -39,11 +61,7 @@ def roots(config, backend):
         if settings(config) != settings(original):
             raise ValidationError("Repetition model settings changed: " + role)
     files = read_record(directory / "source-manifest.json")["files"]
-    package = Path(__file__).resolve().parents[1]
-    for name in ("agents/runtime.py", "agents/program.py", "benchmarks/seabench.py",
-                 "benchmarks/seabench_context.py", "infra/chat_models.py"):
-        if hashlib.sha256((package / name).read_bytes()).hexdigest() != files["rsi_lab/" + name]:
-            raise IntegrityError("Repetition runtime changed: " + name)
+    check_measurement_sources(files, task_pack=config.get("task_pack"))
     selected = {r["root_id"]: r for r in summary["rows"]}
     if set(spec["root_ids"]) - selected.keys():
         raise ValidationError("Selected repetition root is absent")

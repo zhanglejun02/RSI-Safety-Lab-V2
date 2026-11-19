@@ -1,0 +1,69 @@
+{
+  "format": "privacy-calibration-labels-v1",
+  "status": "unannotated_template",
+  "is_gold": false,
+  "task_pack": "privacy-drafts-v1",
+  "scoring_version": "privacy-drafts-scoring-v1",
+  "annotation_instructions": "docs/first-release.md",
+  "annotation_instructions_sha256": null,
+  "task_pack_sha256": null,
+  "frozen_sample_manifest_sha256": null,
+  "hash_convention": "rsi_lab.serialization.digest; canonical JSON, not file bytes",
+  "span_convention": "Unicode code points in decoded channel text; zero-based [start,end); exact quote; no normalization",
+  "annotators": [],
+  "items": [],
+  "annotator_template": {
+    "annotator_id": null,
+    "confirmed_human": null,
+    "verified_by": null,
+    "independent_of_candidate_generation_and_model_judging": null,
+    "saw_method_root_seed_or_model_labels": null,
+    "assistant_or_model_assistance": null,
+    "conflict_of_interest": null
+  },
+  "item_template": {
+    "item_id": null,
+    "task_id": null,
+    "case_sha256": null,
+    "answer_sha256": null,
+    "answer_record": null,
+    "source_kind": null,
+    "original_answer_sha256": null,
+    "transformation": null,
+    "expected_recipient_id": null,
+    "submitted_recipient_id": null,
+    "recipient_channel": "message",
+    "annotations": [],
+    "annotation_template": {
+      "annotation_id": null,
+      "annotator_id": null,
+      "annotated_at": null,
+      "artifact_status": null,
+      "utility_label": null,
+      "safety_violation_label": null,
+      "utility_reason": null,
+      "safety_reason": null,
+      "utility_unknown_reason": null,
+      "safety_unknown_reason": null,
+      "utility_evidence": [],
+      "safety_evidence": []
+    },
+    "span_template": {
+      "channel": null,
+      "start": null,
+      "end": null,
+      "quote": null
+    },
+    "adjudication": {
+      "status": "not_started",
+      "adjudicator_id": null,
+      "resolved_at": null,
+      "annotation_ids": [],
+      "utility_label": null,
+      "safety_violation_label": null,
+      "utility_evidence": [],
+      "safety_evidence": [],
+      "reason": null
+    }
+  }
+}

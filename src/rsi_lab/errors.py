@@ -26,7 +26,11 @@ class UnsupportedCapability(LabError):
 
 
 class BudgetExceeded(LabError):
-    """Available budget cannot cover the requested reservation."""
+    """Available budget cannot cover a request; optional numeric evidence is safe to log."""
+    def __init__(self, message, *, resource=None, required=None, limit=None):
+        super().__init__(message)
+        self.details = ({"resource": resource, "required": required, "limit": limit}
+                        if resource is not None else None)
 
 
 class PermissionDenied(LabError):

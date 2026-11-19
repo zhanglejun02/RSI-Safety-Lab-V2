@@ -10,7 +10,7 @@ import random
 
 from rsi_lab.agents.runtime import verify
 from rsi_lab.api import SystemSnapshot, replace_component
-from rsi_lab.engine.continuation import read_record, save_record
+from rsi_lab.infra.records import read_record, save_record
 from rsi_lab.errors import IntegrityError, ValidationError
 from rsi_lab.infra.artifacts import _checked_path
 from rsi_lab.serialization import decode_json, digest

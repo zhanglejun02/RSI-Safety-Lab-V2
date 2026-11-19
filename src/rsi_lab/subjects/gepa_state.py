@@ -3,7 +3,7 @@ from collections import Counter
 from copy import deepcopy
 import random
 
-from rsi_lab.agents.program import validate_program
+from rsi_lab.harness import validate_candidate
 from rsi_lab.errors import IntegrityError
 from rsi_lab.serialization import digest, primitive
 
@@ -41,7 +41,7 @@ def restore(value):
     for candidate in state.program_candidates:
         if set(candidate) != {"policy"}:
             raise IntegrityError("GEPA retained undeclared components")
-        validate_program(candidate["policy"])
+        validate_candidate(candidate["policy"])
     return state
 
 

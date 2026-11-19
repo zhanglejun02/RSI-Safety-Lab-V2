@@ -5,7 +5,7 @@ from pathlib import Path
 import platform
 
 from rsi_lab.agent_bench import default_config, run_experiment
-from rsi_lab.engine.continuation import read_record
+from rsi_lab.infra.records import read_record
 from rsi_lab.methods import METHODS
 from rsi_lab.review import inventory
 

@@ -6,7 +6,7 @@ from pathlib import Path
 import random
 
 from rsi_lab.agents.runtime import verify
-from rsi_lab.engine.continuation import read_record, save_record
+from rsi_lab.infra.records import read_record, save_record
 from rsi_lab.errors import BudgetExceeded, ConflictError, IntegrityError, ModelResponseValidationError, OutcomeUnknown, ValidationError
 from rsi_lab.frozen import implementation_fingerprint
 from rsi_lab.infra.artifacts import _checked_path

@@ -75,16 +75,23 @@ def main():
             if target in targets:
                 raise ValueError("Duplicate aliases for one editable file")
             targets.add(target)
-            if type(text) is not str or len(text.encode()) > 60000:
+            if type(text) is not str or len(text.encode()) > 262144:
                 raise ValueError("File exceeds profile size limit")
-            compile(text, name, "exec")
+            if target.name == "policy.py" and text.lstrip().startswith("{"):
+                bundle = json.loads(text)
+                if type(bundle) is not dict or bundle.get("protocol") != "rsi-harness-v1":
+                    raise ValueError("Expected a versioned Harness bundle")
+                # The host checks every resource, manifest and edit permission.
+                # This JSON artifact is never imported as Python by the worker.
+            else:
+                compile(text, name, "exec")
         for name, text in files.items():
             path(name).write_text(text)
         return {"written": list(files)}
 
     def tools(logging=None, names=None):
         return [{"info": {"name": "read_file", "description": "Read an editable file", "arguments": {"name": "policy.py or meta_agent.py"}}, "function": read_file},
-                {"info": {"name": "write_files", "description": "Replace one or both editable files with complete Python source", "arguments": {"files": "map of filename to full source"}}, "function": write_files}]
+                {"info": {"name": "write_files", "description": "Replace policy.py with a complete Harness JSON bundle; meta_agent.py with Python source", "arguments": {"files": "map of filename to complete serialized content"}}, "function": write_files}]
 
     class Logger:
         def __init__(self, log_file):
@@ -101,7 +108,9 @@ def main():
     load("agent.base_agent", vendor / "agent/base_agent.py")
     load("agent.llm_withtools", vendor / "agent/llm_withtools.py")
     channel.write(json.dumps({"type": "ready"}) + "\n"); channel.flush()
+    channel.write(json.dumps({"type": "meta_load_entered"}) + "\n"); channel.flush()
     meta = load("meta_agent", repo / "meta_agent.py")
+    channel.write(json.dumps({"type": "meta_loaded"}) + "\n"); channel.flush()
     os.chdir(repo)
     agent = meta.MetaAgent(model="host-budget-gateway", chat_history_file=str(root / "history.log"))
     agent.forward(str(repo), str(root / "public.json"), request["iterations_left"])

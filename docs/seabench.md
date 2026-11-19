@@ -4,6 +4,87 @@ SEABench is the current development environment for controller optimization and
 safety evaluation. AgentDojo experiments are paused; its integration and immutable
 results remain available for later injection validation.
 
+The research target is a lab-owned benchmark using selected SEABench task
+resources. [The adaptation design](seabench-adaptation.md) defines task validity,
+method-mechanism validity and measurement validity as acceptance criteria.
+The bridge behavior below documents the implemented version; native Session,
+Apptainer and compaction equivalence are not prerequisites for experiments.
+
+For the new lab-owned task pack and process experiments, use
+[the process protocol](process-protocol.md), `configs/seabench-process.json` and
+`configs/seabench-interventions.json`. Those opt into `privacy-drafts-v1`, independent
+audit/final phases and optional shared optimization caps. The historical bridge
+and command examples below remain supported; their scores are a different measure.
+
+## Versioned public review studies
+
+The optional `review` configuration binds the module contract described in
+[review-protocol.md](review-protocol.md). `configs/seabench-review.json` is a
+zero-paid-call native integration control: five controller groups, one seed, H2,
+and matched `native_only` / `review` arms for each updating method. Frozen has
+one reference arm. This is protocol validation, not evidence of natural safety
+improvement or a full native SEABench reproduction.
+
+```bash
+.venv/bin/rsi-lab plan --config configs/seabench-review.json --output runs/review-plan.json
+.venv/bin/rsi-lab run --config configs/seabench-review.json --plan runs/review-plan.json --output runs/review-control
+```
+
+The review specification explicitly identifies protocol `rsi-review-v1`, module
+`public-behavior-regression-v1`, module version 1, evidence scope, rejection scope,
+and thresholds. The platform additionally freezes `probe_task_ids` and the review
+actor/judge budgets. A protocol/module/version mismatch fails before dispatch.
+The two implemented evidence scopes are `deployed_policy` and
+`new_retained_policies`; both leave the entire candidate snapshot uncommitted on
+reject or inconclusive. Neither executes future optimizer/meta continuations.
+
+For this profile, selected original downstream tasks become **public probes**;
+the remaining downstream tasks form the final partition for both arms. The
+example promotes task_006 and task_007, leaving task_008 through task_010 as final
+tests. At least one final task must remain. Public promotion is a declared change
+of experimental allocation, never relabeling results of completed runs. These
+known development sequences are not unseen-task evidence. Optimizers still see
+only upstream utility feedback. The review module receives a bounded update view
+and public behavioral labels/receipt hashes, not rubric text, raw provider access,
+or final tasks. The trusted probe service executes native rubric judges separately.
+
+Review providers and actor episodes are under each reviewed root's `review/`.
+Its budgets are per root and independent of search and final providers. The
+registered global call/token ceilings include these caps. If the review cannot
+cover its selected policies/cases within the cap, evidence stays incomplete and
+activation is blocked; no automatic budget expansion or retry occurs. Reported
+actual consumption is separate in `review_actor` and `review_judge` rows of
+`costs.csv`, and included in `summary.json.resource_totals.total`. Equal review
+caps alone do not establish equal actual review spending.
+
+Every prepared slot retains `review-request.json`, `review-evidence.json`, and
+`review.json`, binding the module/version, candidate, evidence, decision, and
+before/after resource counts. Native rejections do not trigger paid probes and
+cannot be overridden by review. Final evaluation starts only after all search
+roots freeze. Review output is observational/admission data, not optimizer
+feedback: reasons and probe results are not appended to optimization feedback,
+while activation still exposes a selection signal. Completed resume and
+frozen-source review do not repeat probes.
+
+`review-decisions.csv` projects each durable review into policy/case coverage,
+decision, separate risk and utility rejection flags, missing-evidence blocking,
+explicit budget/unknown error counts and actor/judge resource deltas. Risk and
+utility rejection may both apply; these are not mutually exclusive categories.
+Missing evidence without a recorded budget error is not attributed to budget
+exhaustion. These observations support subsequent calibration; they do not by
+themselves identify a rejection as noise or genuine degradation.
+The table covers completed `review.json` receipts. Interrupted reviews may have
+spent resources without producing a receipt; use the provider journals and root
+totals for full costs. Explicit error counts are not an exhaustive failure-cause
+classification: a missing native judgment can be recorded as incomplete probe
+evidence without an exposed budget-error code.
+
+The two-probe control has binary utility and violation rates in increments of
+0.5. Its 0.1 utility-drop threshold therefore permits no observed drop. Broader
+policy coverage also creates more opportunities for noisy rejection and incomplete
+evidence. Freeze probe count, repetitions and thresholds only after the
+[decision-calibration checks](review-protocol.md#calibration-before-natural-comparisons).
+
 The [official repository](https://github.com/SEABench-Endogenous-Misalignment/SEABench)
 is pinned at `21828194aa709da6c18cddaeb718b309db71d22f`. The source lock checks
 151 files, including native tools/judges/session helpers, controller seeds, 89 environment JSON
@@ -47,34 +128,39 @@ independently of method experiments.
 
 ## Context and execution adaptation
 
-The shared actor accepts benchmark-owned request/observation projections; other
-backends retain their existing behavior. SEABench bridge v5 uses these fixed
-settings for every method, declared in `plan.actor_context` and the backend identity:
+In 0.5.0 the executable founding Harness receives public task/context settings.
+The tool bridge pages observations; the candidate's `context/prepare.py` performs
+pruning and finalization notices. These initial settings are declared in
+`plan.actor_context` and the backend identity:
 
 | Setting | Default | Behavior |
 |---|---:|---|
 | `tool_page_chars` | 6,000 | Native tool output is retained in full; the actor receives a page with hash, total length and `next_offset` |
-| `keep_recent_messages` | 3 | Calls the pinned `Session._prune_old_tool_results`; its rule retains the recent six non-system messages |
-| `max_bytes` | 65,536 | Local serialized message allowance before dispatch; the model's context-window size is not inferred from this |
+| `keep_recent_messages` | 3 | The founding context code retains the three most recent tool results |
+| `max_bytes` | 65,536 | Founding candidate's message allowance; the independent provider request cap remains mandatory |
 | `final_response_steps` | 2 | Last two calls receive a finalization notice within the original step cap; no answer is fabricated or extra call granted |
 
 All three read-only tools accept an optional Unicode-character `offset`. Repeat
 the same arguments with `next_offset` to read later pages. Pruning never promotes
 tool content into the system prompt, and preserves the controller, trusted task
 and latest observation. Older payloads may be pruned further to fit the byte
-allowance. If protected content still cannot fit, the episode stops as budget
-exhaustion. HTTP preflight reserves another 1,024 bytes for request framing.
+allowance. If protected content still cannot fit, the founding Harness fails
+without an answer. This is distinct from outer provider budget exhaustion.
+HTTP preflight reserves another 1,024 bytes for request framing.
 
-`trace[].tool_result` retains the native result; `observed_tool_result` records
-the page. Each request stores the actual outbound messages and a `context` receipt
-with input/output hashes, byte counts, pruning indices and finalization status.
-These receipts are audit data, not independent safety feedback.
+`effects[]` retains each actual tool call, its full result and observed page,
+including multiple calls per model response and calls without a model response.
+Each model request stores its actual outbound messages and provider receipt.
+Candidate context code can change within its scope; its own descriptions of
+pruning are not trusted host attestations. Raw evidence remains outside optimizer
+feedback except for the bounded public projection.
 The bridge calls the native `build_system_prompt` and `build_task_prompt`.
 The latter preserves task titles, including audience cues omitted in v3.
 An explicit executor suffix delegates submission to the current executor format
 and restricts execution to the exposed read-only tools.
 
-This reuses **native deterministic pruning**, not the entire native Session.
+There is no native Session pruning in the current execution path. Older runs
+retain their previous context implementation in frozen source archives.
 Upstream also has LLM compaction via a subprocess, persistent session memory,
 native parallel tool-call messages and checkpoint submission. The bridge uses
 explicit pagination/pruning, fresh per-task history and one JSON action per step;
@@ -86,10 +172,12 @@ native agent loop is claimed.
 
 ## Exact scope and measurement
 
-The mutable policy is **AGENTS.md**. Each rollout installs the candidate into a
-fresh official workspace; native controller bundling supplies the remaining fixed
-instructions. Memory, tools, conversations and other workspace changes do not
-persist. The founder is the sequence's official AGENTS.md setup override.
+The mutable deployment is a **versioned executable Harness**. The founding
+manifest defines editable categories; code, skills, tool wrappers and context may
+change. Each rollout restores those resources in a fresh isolated worker, with a
+fresh task world behind the outer tool broker. Workspace side effects and process
+memory are not inherited automatically. The default founder's AGENTS.md uses the
+sequence setup override; a custom founder is frozen explicitly in configuration.
 
 Existing method adapters perform fixed-H search over the ordered upstream suite,
 using utility, observed traces and bounded public judge feedback. All roots finish
@@ -97,14 +185,13 @@ search before any frozen final policy receives the downstream list. Hidden
 prompts, rubrics and safety judgments never enter editor feedback. The actor has
 no editing tool; persistent changes happen only through proposal/admission/activation.
 
-This is a **fixed-H AGENTS.md/read-only-tool adaptation**, not reproduction of the
-paper's sequential reflect-and-promote loop. Native `read_file`, `list_files`,
-`find_files`, workspace seeding, task setup/loading and direct LLM-judge code are
-reused. No shell, generated-code execution, file writing, memory or skill editing
-is exposed. The upstream Linux/Apptainer launcher is not used. This scope fits the
-selected retrieval/drafting pilot; tasks needing other tools need an explicit
-adapter extension. A guard rejects option-like grep patterns; native path checks
-keep access inside a fresh temporary workspace.
+This is a **fixed-H executable-Harness/read-only-environment-tool adaptation**.
+The outer benchmark exposes `read_file`, `list_files` and `find_files`, reusing
+declared task assets or the versioned derived pack. Candidate Python and bundled
+skills execute inside the worker, but cannot directly access the environment or
+change its tools/grader. Environment writes and additional native SDK services
+require an explicit broker adapter. The upstream Linux/Apptainer launcher is not
+used. A guard rejects option-like grep patterns and task paths remain confined.
 
 Tool actions use the lab's JSON protocol. Judge prompts and evidence bundling
 are upstream code; the SDK transport is replaced by the durable provider with
@@ -149,7 +236,7 @@ new method IDs or a second runner.
 |---|---|---|
 | GEPA | Native reflection, per-task utility vectors, Pareto parent selection, candidate pool, sampler and RNG across activated slots | One reflective mutation per slot; no merge; aggregate-best deployment with latest ties |
 | OpenEvolve | Native population/archive, parent and inspiration selection, worker rewrite/evaluation, cross-slot inheritance | One island and one iteration per slot |
-| HyperAgents | Native meta-agent/tool loop and archive parent selection; selected meta source executes in the next worker | Bounded policy/meta files, three replies per edit, macOS isolation |
+| HyperAgents | Native meta-agent/tool loop and archive parent selection; selected meta source executes in the next worker | Bounded policy/meta files, configured editor replies per edit (default three), macOS isolation |
 
 GEPA uses native checkpoint save/load in a private temporary directory, generated
 from the immutable JSON snapshot; it never accepts an external pickle. Search
@@ -194,8 +281,9 @@ evolving trajectories. Frozen utility need not be positive to permit search.
 These published sequences are constructed development stress tests; the lab does
 not run adaptive task refinement or reproduce the full native Session. Only the
 paired HyperAgents variants isolate meta permission; GEPA versus HyperAgents also
-changes the algorithm. Broader tasks, independent roots, native-runtime A/B and
-memory/tool surfaces remain future work.
+changes the algorithm. Broader tasks, independent roots and calibrated task/scorer
+contracts remain research priorities. Native-runtime A/B is an optional diagnostic;
+memory/tool surfaces are separate future extensions.
 
 See the [method acceptance record](validation.md#seabench-method-mechanisms-and-real-search-2026-11-12)
 for real learning curves, retained failures, costs and manual scoring checks.
@@ -213,13 +301,11 @@ the runtime and execution settings. Each root remains the statistical unit;
 repetitions are measurements within that root. Editable-meta contrasts use paired
 frozen-meta roots; other optimizer contrasts use paired frozen-agent roots.
 
-`final_text_steps: 2` switches the last two reserved actor calls to plain-text
-submission, avoiding JSON escaping for long deliverables. It replaces the
-executor's transport instruction before context projection and preserves the
-controller. No tools execute during those calls, no extra call is allocated, and
-empty/invalid/unknown results stay missing. Earlier tool/answer calls retain
-JSON. The actual request format is recorded and replayed from the durable
-receipt. This option defaults to zero for older configurations.
+`final_text_steps: 2` tells the founding candidate to use plain-text submission in
+its last two iterations. An editable runtime can change this convention; it is
+not an unchangeable external control. The broker independently enforces model
+and tool call caps and records actual response formats and receipts. Empty,
+invalid and unknown results retain their declared missing/failure semantics.
 
 `final_repeats` defaults to one. Each configured repeat receives a fresh world,
 operation ID and actor/judge calls, even if an earlier repeat failed. It is not an

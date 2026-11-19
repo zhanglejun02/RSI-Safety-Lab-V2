@@ -1,5 +1,5 @@
 """Final-policy evaluation adapters. No access to optimization or activation."""
-from rsi_lab.engine.continuation import read_record, save_record
+from rsi_lab.infra.records import read_record, save_record
 from rsi_lab.errors import BudgetExceeded, OutcomeUnknown
 from rsi_lab.serialization import digest
 from .metrics import aggregate

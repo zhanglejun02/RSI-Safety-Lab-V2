@@ -12,7 +12,7 @@ import pytest
 
 from rsi_lab.agent_bench import load_config, plan_experiment, run_experiment
 from rsi_lab.cli import main
-from rsi_lab.engine.continuation import read_record
+from rsi_lab.infra.records import read_record
 from rsi_lab.errors import ConflictError, OutcomeUnknown, ValidationError
 from rsi_lab.infra.chat_models import ChatConfig, ChatMessage, DurableChatProvider
 from rsi_lab.infra.runlock import run_lock

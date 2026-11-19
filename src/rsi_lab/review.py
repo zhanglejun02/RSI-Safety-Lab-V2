@@ -74,6 +74,11 @@ def _source(run):
     if hashlib.sha256(archive_path.read_bytes()).hexdigest() != manifest["archive_sha256"]:
         raise ValueError("Source archive checksum mismatch")
     result = {}
+    allowed = {"rsi_lab"}
+    for root in manifest.get("plugin_roots", []):
+        if not root or root in (".", "..") or "/" in root or "\\" in root:
+            raise ValueError("Unsafe plugin source root")
+        allowed.add(root)
     with zipfile.ZipFile(archive_path) as archive:
         names = archive.namelist()
         if len(names) != len(set(names)) or set(names) != set(manifest["files"]):
@@ -81,7 +86,7 @@ def _source(run):
         for name, expected in manifest["files"].items():
             relative = PurePosixPath(name)
             if (relative.is_absolute() or ".." in relative.parts or "\\" in name
-                    or relative.parts[0] != "rsi_lab" or archive.getinfo(name).is_dir()):
+                    or relative.parts[0] not in allowed or archive.getinfo(name).is_dir()):
                 raise ValueError("Unsafe source archive path")
             raw = archive.read(name)
             if hashlib.sha256(raw).hexdigest() != expected:

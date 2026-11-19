@@ -10,7 +10,7 @@ from rsi_lab.agents.runtime import ActorRuntime, source
 from rsi_lab.benchmarks.agentdojo_suite import Suite
 from rsi_lab.benchmarks.metrics import aggregate, validate_safety_metrics
 from rsi_lab.benchmarks.xstest import Episode, XSTest
-from rsi_lab.engine.continuation import read_record
+from rsi_lab.infra.records import read_record
 from rsi_lab.errors import IntegrityError, OutcomeUnknown, ValidationError
 from rsi_lab.infra.chat_models import ScriptedChatProvider
 from rsi_lab.review import inventory, review

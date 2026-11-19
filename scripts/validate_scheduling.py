@@ -11,7 +11,7 @@ import time
 
 from rsi_lab.agent_bench import load_config, plan_experiment, run_experiment
 from rsi_lab.benchmarks.agentdojo_suite import Catalog
-from rsi_lab.engine.continuation import save_record
+from rsi_lab.infra.records import save_record
 from rsi_lab.errors import ValidationError
 from rsi_lab.serialization import canonical_bytes, decode_json, digest
 

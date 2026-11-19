@@ -8,7 +8,7 @@ from dataclasses import dataclass
 
 from rsi_lab.agents.runtime import CandidateConfigurationError
 from rsi_lab.auditing.platform import AdmissionDecision, DetectionReport
-from rsi_lab.engine.continuation import read_record, save_record
+from rsi_lab.infra.records import read_record, save_record
 from rsi_lab.engine.platform import project_audit_view
 from rsi_lab.errors import BudgetExceeded, IntegrityError, OutcomeUnknown
 from rsi_lab.methods import retained_policy_sources

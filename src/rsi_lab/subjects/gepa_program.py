@@ -1,4 +1,4 @@
-"""Pinned GEPA reflection over bounded source, with explicit activation.
+"""Pinned GEPA resource-text reflection, with explicit activation.
 
 Agent benchmarks retain the native per-case Pareto pool across activated slots.
 Legacy bounded-program contracts keep their single-reflection epoch protocol.
@@ -9,15 +9,14 @@ from tempfile import TemporaryDirectory
 from rsi_lab.api import (ActivationCommand, CandidateDraft, Capabilities, Component,
     ExecutionReceipt, SystemDescriptor, SystemSnapshot, SystemVersion, replace_component)
 from rsi_lab.contracts import require_count, require_id
-from rsi_lab.engine.continuation import read_record, save_record
+from rsi_lab.infra.records import read_record, save_record
 from rsi_lab.errors import (BudgetExceeded, ConflictError, IntegrityError,
                             ModelResponseValidationError, OutcomeUnknown, ValidationError)
 from rsi_lab.infra.chat_models import ChatMessage, DurableChatProvider
-from rsi_lab.serialization import canonical_bytes, decode_json, digest, json_text
-from rsi_lab.agents.program import validate_program
+from rsi_lab.serialization import decode_json, digest, json_text
 from .gepa_support import GEPA_REVISION, GEPA_URL, _QuietLogger, require_gepa
 from .local import LocalSystemAdapter
-from .public_validation import task_candidate_valid, task_fitness, evaluation_binding, public_rows
+from .public_validation import task_candidate_valid, task_fitness, evaluation_binding, public_rows, validate_source
 
 SYSTEM_ID = "gepa-bounded-program"
 ADMISSION_PROTOCOL = "gepa-bounded-program-admission-v1"
@@ -27,7 +26,7 @@ MAX_METRIC_CALLS = 4
 
 def initial_snapshot(seed, source, tool_protocol, contract, *, evaluation=None):
     require_count(seed, "seed")
-    validate_program(source)
+    validate_source(source, binding=evaluation)
     if type(tool_protocol) is not str or not tool_protocol or type(contract) is not str or not contract:
         raise ValidationError("A declared bounded tool protocol and contract are required")
     task_contract = {"tool_protocol": tool_protocol, "text": contract,
@@ -60,7 +59,7 @@ def _reflection_example(public, binding=None):
 
 
 class GepaProgramAdapter(LocalSystemAdapter):
-    """Official text reflection/selection; generated source is interpreted only."""
+    """Official text reflection/selection over complete versioned candidate resources."""
 
     def __init__(self, directory, provider, initial_snapshot):
         require_gepa()
@@ -90,19 +89,21 @@ class GepaProgramAdapter(LocalSystemAdapter):
                 or type(contract["text"]) is not str or not contract["text"]
                 or type(contract["tool_protocol"]) is not str or not contract["tool_protocol"]):
             raise ValidationError("Invalid GEPA bounded-program contract")
-        validate_program(policy["source"])
+        validate_source(policy["source"], binding=bound)
         state = decode_json(snapshot.state_json)
         if set(state) not in ({"seed", "epoch"}, {"seed", "epoch", "search"}):
             raise ValidationError("Invalid GEPA bounded-program state")
         if state.get("search"):
             from .gepa_state import restore
-            restore(state["search"]["native"])
+            restored = restore(state["search"]["native"])
+            for candidate in restored.program_candidates:
+                validate_source(candidate["policy"], base=policy["source"], binding=bound)
         require_count(state["seed"], "seed")
         require_count(state["epoch"], "epoch")
 
     def describe(self):
         protocol = self.snapshot().version.component("task_contract")["tool_protocol"]
-        return SystemDescriptor(SYSTEM_ID, "GEPA (native bounded-source reflection)",
+        return SystemDescriptor(SYSTEM_ID, "GEPA (native resource-text reflection)",
             Capabilities(True, True, True, True, True, (protocol,), ("policy",)), GEPA_URL, GEPA_REVISION)
 
     def fork(self, snapshot, directory):
@@ -112,6 +113,9 @@ class GepaProgramAdapter(LocalSystemAdapter):
         if type(command) is not ActivationCommand:
             raise ValidationError("Expected controller activation command")
         self._check_snapshot(command.candidate)
+        base_source = self.snapshot().version.component("policy")["source"]
+        validate_source(command.candidate.version.component("policy")["source"],
+                        base=base_source, binding=evaluation_binding(self.snapshot()))
         if command.candidate.version.component("task_contract") != self.snapshot().version.component("task_contract"):
             raise IntegrityError("GEPA activation changed the task contract")
         matches = []
@@ -132,7 +136,7 @@ class GepaProgramAdapter(LocalSystemAdapter):
         snapshot = self.snapshot()
         result = tools.call("execute_program", snapshot.version.component("policy"), operation_id)
         return ExecutionReceipt(task.task_id, snapshot.version.sha256, result["complete"],
-            json_text({"runtime": "bounded_interpreter", "model_evidence": [], "execution": result}))
+            json_text({"runtime": "isolated_harness" if (evaluation_binding(snapshot) or {}).get("kind") == "agent_utility" else "bounded_interpreter", "model_evidence": [], "execution": result}))
 
     def propose(self, operation_id, evaluator):
         require_id(operation_id)
@@ -189,7 +193,7 @@ class GepaProgramAdapter(LocalSystemAdapter):
                     op = "gepa.program.public." + digest({"operation": operation_id, "index": len(evidence)})
                     validation_error = None
                     try:
-                        validate_program(source)
+                        validate_source(source, base=source_before, binding=evaluation_binding(base))
                     except ValidationError as exc:
                         validation_error = str(exc)
                     if validation_error:
@@ -219,16 +223,18 @@ class GepaProgramAdapter(LocalSystemAdapter):
                 raise BudgetExceeded("GEPA epoch allows only one reflection request")
             raw = prompt if type(prompt) is str else json_text({"messages": prompt})
             messages = (ChatMessage("system", base.version.component("task_contract")["text"] +
-                "\nThe GEPA text component named policy is the entire bounded Python program. "
-                "Follow the supplied reflection request and revise that program using only public evidence. " +
+                "\nThe GEPA text component named policy contains the complete candidate serialization. "
+                "For agent tasks it is a versioned Harness JSON bundle: preserve its manifest and readonly resources. "
+                "This is resource-text reflection; the bundle declares the editable scope. "
+                "Follow the supplied reflection request using only public evidence. " +
                 ("Preserve the declared contract and optimize its declared task objective. " if evaluation_binding(base) else
                  "Preserve the declared contract while improving the complete-correct cost objective. ") +
                 "Return a JSON object with exactly one key text. Its value must contain the complete "
-                "rewritten program inside a fenced code block, as requested by GEPA. "
+                "rewritten candidate inside a fenced code block, as requested by GEPA. "
                 "Return raw JSON, without an outer Markdown fence or commentary. Use JSON double quotes "
                 "and escape newlines, quotes and backslashes inside the text string; do not return a Python dict. "
                 "JSON format example (replace the placeholder with the complete revised program):\n" +
-                json_text({"text": "```python\n<complete revised program>\n```"})), ChatMessage("user", raw))
+                json_text({"text": "```\n<complete revised candidate>\n```"})), ChatMessage("user", raw))
             parent_source = search.parent["source"] if search and search.parent else source_before
             reflection_inputs.append({"request_id": request_id, "messages_sha256": digest(messages),
                 "upstream_prompt": raw, "parent_source_sha256": digest(parent_source),

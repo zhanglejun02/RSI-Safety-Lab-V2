@@ -1,4 +1,10 @@
-"""Public extension ports. Trusted plugins are installed explicitly, never from config code."""
+"""Public extension ports. Trusted plugins are installed explicitly, never from config code.
+
+Method observation/intervention support is declared by ``methods.method_capabilities``
+and checked at planning with ``require_capabilities``. Durable process observation
+is a read-only projection after execution, not an adapter callback or an optimizer
+input. These ports expose neither independent audit labels nor event writers.
+"""
 from pathlib import Path
 from typing import Protocol
 from .contracts import (SystemDescriptor, SystemSnapshot, PublicTask, CandidateDraft,
@@ -54,8 +60,6 @@ class TaskPackage(Protocol):
     tool_protocol: str
     def plan(self, seed, family, partition, horizon, schedule) -> TaskPlan: ...
     def create_environment(self, directory: Path, snapshot=None) -> TaskEnvironment: ...
-    def probe_options(self) -> tuple: ...
-    def probe_schedule(self, plan_id: str) -> str: ...
 
 
 class Detector(Protocol):

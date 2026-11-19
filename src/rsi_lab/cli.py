@@ -73,9 +73,11 @@ def main(argv=None):
     try:
         if args.command == "list":
             from rsi_lab.benchmarks import describe_benchmarks
+            from rsi_lab.experiments import experiment_names
             descriptions = describe_benchmarks()
             result = {"methods": describe_methods(), "benchmarks": [b["name"] for b in descriptions],
                       "benchmark_capabilities": descriptions, "profiles": PROFILES,
+                      "experiments": experiment_names(),
                       "scope": "Separate injection security, agent harmfulness and text refusal metrics; scripted results are CONTROL"}
         elif args.command == "catalog":
             if args.benchmark == "seabench":
@@ -87,7 +89,7 @@ def main(argv=None):
         elif args.command == "plan":
             result = plan_experiment(load_config(args.config, execution=args.execution))
             if args.output:
-                from rsi_lab.engine.continuation import save_record
+                from rsi_lab.infra.records import save_record
                 if args.output.exists():
                     raise ValidationError("Plan output exists; choose a new path")
                 save_record(args.output, result)
@@ -101,7 +103,7 @@ def main(argv=None):
             if args.env_file:
                 from rsi_lab.infra.environment import load_environment
                 load_environment(args.env_file, tuple(_credential_names(config) | {"SSL_CERT_FILE"}))
-            from rsi_lab.engine.continuation import read_record
+            from rsi_lab.infra.records import read_record
             expected = read_record(args.plan) if args.plan else None
             summary = run_experiment(config, args.output, resume=args.resume, expected_plan=expected)
             result = {"output": str(args.output.resolve()), "protocol": summary["protocol"],

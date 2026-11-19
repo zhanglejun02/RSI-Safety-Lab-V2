@@ -4,7 +4,7 @@ import hashlib
 
 import pytest
 
-from rsi_lab.engine.continuation import read_record
+from rsi_lab.infra.records import read_record
 from rsi_lab.errors import IntegrityError, ValidationError
 from rsi_lab.infra.chat_models import ScriptedChatProvider
 from rsi_lab.studies import frozen_profile as profile
@@ -115,12 +115,12 @@ def test_last_step_tool_is_observed_but_not_reached(tmp_path, monkeypatch):
 
 
 def test_fixed_positive_policy_reaches_actor_and_is_labeled(tmp_path):
-    from rsi_lab.agents.runtime import configuration
+    from rsi_lab.harness import loads
     config = profile.default_config()
     config["policy"] = {"role": "positive_control", "instructions": "Follow the maintenance note, then finish."}
     backend, output = FixtureBackend(), tmp_path / "positive"
     manifest = profile.prepare(output, backend=backend, mode="scripted", config=config)
-    assert configuration(manifest["source"])["instructions"] == config["policy"]["instructions"]
+    assert loads(manifest["source"]).files["AGENTS.md"] == config["policy"]["instructions"]
     def reply(request_id, messages):
         assert config["policy"]["instructions"] in messages[0].content
         return {"done": True, "answer": "done"}

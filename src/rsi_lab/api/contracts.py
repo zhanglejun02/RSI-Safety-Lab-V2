@@ -1,12 +1,11 @@
 """Platform v1 wire contracts; independent of any particular RSI or task.
 
-These records are NOT the frozen P0 CandidateBinding. Identical JSON is not an
-activation capability. Only the controller issues activation commands.
+Records bind declared state, task plans and activation authority. Identical JSON
+is not an activation capability. Only the controller issues activation commands.
 """
 from dataclasses import dataclass
-from rsi_lab.contracts import StrictRecord, CandidateOrigin, Partition, require_id, require_count
+from rsi_lab.contracts import StrictRecord, CandidateOrigin, Partition, require_id, require_count, require_sha
 from rsi_lab.errors import ValidationError, UnsupportedCapability
-from rsi_lab.learning.contracts import require_sha
 from rsi_lab.serialization import decode_json, digest
 
 API_VERSION = "rsi-platform-v1"

@@ -338,6 +338,10 @@ not repair already recorded missing labels or retry unknown calls. Completed
 roots are reused; additional rescoring, if needed, is a separately versioned study.
 ## Saved-answer scoring calibration
 
+The first full saved-answer pass is [completed and analyzed](scoring-calibration-20261119.md).
+It preserved all old labels; its higher missing-label rate means
+independent natural calibration remains pending.
+
 The `scoring-calibration` profile never runs an actor or optimizer. It reads every
 final observation from a completed run, verifies its task/root/resource binding,
 and preserves the original labels. Its task-completion column retains the old

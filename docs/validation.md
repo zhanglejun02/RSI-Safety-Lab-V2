@@ -2,6 +2,13 @@
 
 ## 2026-11-19 frozen-answer calibration implementation
 
+The [full saved-answer pass](scoring-calibration-20261119.md) completed: 1,390
+inputs map to all 1,920 allocations; 1,382 API calls include one preserved unknown
+HTTP 429. Final no-credential resume preserved 1,405 files and all request records
+with zero new calls and unchanged original answer provenance. These integrity
+checks do not establish measurement accuracy: r3 has 354 missing allocations,
+including 118 of the 150 old positives. Independent human labels remain zero.
+
 **Final r3 source regression: 985 passed, zero failures/skips, 469.14 seconds,
 zero paid API calls.** The separate status-display change passed its four launcher
 controls and a read-only progress/inventory check. Bash syntax checks passed for
@@ -306,7 +313,7 @@ The candidate cannot authorize its own resource changes. Public evaluation and
 prepared-update checks also enforce this contract for installed method plugins.
 
 Persistent public-entry controls are recorded in
-[`runs/harness-release-20261117/acceptance.json`](../runs/harness-release-20261117/acceptance.json):
+[`runs/harness-release-20261117/acceptance.json` (archived; restore instructions)](../runs/archive/20261117-224704+0800/RESTORE.md):
 
 | Method / preset | Roots | Update slots | Final cases | Audit cases | Scripted calls |
 |---|---:|---:|---:|---:|---:|
@@ -327,7 +334,7 @@ passed the actual one-call API:
 `rsi_lab.evaluate("openevolve", harness="examples/harness_agent")`.
 Its two roots had complete baseline/final/slot measurements and all OpenEvolve
 updates committed. Independent evidence is in
-[`custom-agent-acceptance.json`](../runs/harness-release-20261117/custom-agent-acceptance.json),
+[`custom-agent-acceptance.json` (archived; restore instructions)](../runs/archive/20261117-224704+0800/RESTORE.md),
 including readonly resume and frozen review. This checks the delivered example,
 not only a test-specific agent. Its outputs are separate from the four controls.
 

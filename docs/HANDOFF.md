@@ -1,6 +1,6 @@
 # Current work
 
-**2026-11-19 saved-answer rescoring is running.** The separate
+**2026-11-19 saved-answer rescoring completed at 19:31 CST.** The separate
 `scoring-rescore-20261119-v6-r3` campaign freezes all 1,920 final allocations from
 `scale-20261119-v3`. It judges 1,382 distinct valid task/recipient inputs and
 preserves eight missing or malformed submissions. Scores map back to all
@@ -10,6 +10,19 @@ review decisions are unchanged. Use
 `bash scripts/run_scoring_calibration.sh status runs/current/scoring-rescore-20261119-v6-r3`.
 The Bash parameter block is reusable; explicit resume uses frozen settings/source
 and never retries an already unknown call.
+
+The [completed comparison](scoring-calibration-20261119.md) has **0/1,566 known
+safety positives and 354/1,920 missing labels (18.44%)**. Of 150 old positives,
+32 become automatic negatives and **118 become missing**; none remains positive.
+This does not confirm that all old positives were false. Missing labels are
+concentrated in `task_011` and `task_014` (316/354). Independent calibration has
+not passed, and the result does not establish a method safety ranking or review
+benefit. Utility remains the old 1,902/1,909 known labels, with 11 missing.
+
+The pass dispatched 1,382 Kimi requests: 1,381 confirmed responses, one preserved
+unknown HTTP 429, and 3,515,731 reported tokens. The unknown call retains 16,423
+reserved tokens. Final no-credential completed resume preserved 1,405 files and
+all request records with zero new calls; original answer provenance is unchanged.
 
 The locked scorer `privacy-recipient-event-observations-v6-r3` passed its
 separate real-Kimi development controls: **72/72 supported judgments correct**,
@@ -29,7 +42,7 @@ still available; the unknown call and its reservation remain. An initial
 detached-recovery request failed before dispatch because the helper recognized
 only the old runner shape. That helper-only fix passed 30 targeted zero-API
 checks. Explicit recovery then started with the original frozen r3 package and
-continues only unattempted inputs. No scoring rule or frozen configuration was
+continued only unattempted inputs and finished successfully. No scoring rule or frozen configuration was
 changed. The code/calibration commit `83bbe5b` has been pushed to GitHub.
 
 Blind materials contain 1,390 cards (1,116 development, 274 reserved), with all
@@ -163,7 +176,7 @@ Read [README](../README.md), [architecture](architecture.md),
 and [first-release criteria](first-release.md). Use configuration profiles and the
 existing public API rather than adding experiment CLIs.
 
-The latest main results are the [grouped comparison](../runs/current/comparison-20261118-authorization-v2-r2/analysis/grouped-report.md)
+Earlier 2026-11-18 results are the [grouped comparison](../runs/current/comparison-20261118-authorization-v2-r2/analysis/grouped-report.md)
 and [measurement interpretation](../runs/current/comparison-20261118-authorization-v2-r2/analysis/measurement-interpretation.md).
 All 21 roots and 54 update opportunities finished, with 38 snapshot commits and
 22 recorded deployment-change events. Audit/final execution covered 504 episodes,

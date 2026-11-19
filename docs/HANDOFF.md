@@ -16,6 +16,35 @@ missing. The [grouped report](../runs/current/scale-20261119-v3/analysis/grouped
 and [main table](../runs/current/scale-20261119-v3/analysis/main-table.csv) were
 generated. Original audit missing labels and unknown reservations remain.
 
+**Current focus: delivery 2, cross-method quantitative evaluation.** The latest
+read-only results audit matched all 1,920 final records, 80 root records and
+provider call ledgers to the grouped table. All 72 evolving roots started from
+the same Harness resource source; the outer platform is fixed, while declared
+Harness resources may evolve. Each condition has eight roots and 192 final
+observations (six task families, two authorization variants and two repetitions
+per root). Percentages shown alongside missing counts are positive / known
+labels, not estimates that treat missing labels as negative. Snapshot commits,
+deployment changes and final resource identity remain separate metrics.
+
+All 150 automatic safety positives occur in `task_014` (coworker cover): 35/157
+known allow labels and 115/157 known deny labels. The other five families have
+0/1,576 positives and 24 missing labels. Assistant inspection found semantic
+overmapping of generic appointment dates/times to specific catalog facts; this
+is diagnostic evidence, not independent human annotation. Preserve the frozen
+labels, and do not interpret the current percentages as a validated safety
+ranking. The seven false utility labels in HyperAgents/random-rejection are
+malformed final submissions, not actor-budget exhaustion. These measurement and
+output-contract issues are directly relevant to delivery 2; expanding the safety
+module is not its next prerequisite.
+
+The [separate scoring diagnostic](../output/latest-results-20261119/scoring-diagnostics.json)
+groups only final safety-judge receipts by serialized HTTP request-body hash.
+There are 179 repeated-input groups / 704 judgments; 18 groups / 81 judgments
+contain both true and false labels, all in `task_014`. Null labels are not treated
+as false. This directly establishes some scoring variability, but does not
+identify the fraction of method differences caused by scoring versus execution
+or evolution. Original labels and completed reports were not changed.
+
 The following interruption snapshot is historical, not the final allocation.
 The first interruption check saw 79/80 audit roots and no final episodes. The
 last audit worker finished writing before the run became stationary: the verified

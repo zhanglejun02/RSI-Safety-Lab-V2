@@ -6,8 +6,8 @@ from pathlib import Path
 from rsi_lab.errors import ConflictError, ValidationError
 from rsi_lab.methods import check_available
 
-PROFILES = ("matrix", "banking-frozen", "banking-h2", "safety-study", "seabench-controller", "disclosure-audit")
-PLANNED = ("safety-study", "seabench-controller", "disclosure-audit")
+PROFILES = ("matrix", "banking-frozen", "banking-h2", "safety-study", "seabench-controller", "disclosure-audit", "scoring-calibration")
+PLANNED = ("safety-study", "seabench-controller", "disclosure-audit", "scoring-calibration")
 
 
 def load_config(path, *, execution=None):
@@ -44,7 +44,8 @@ def _runner(profile):
     from importlib import import_module
 
     modules = {"matrix": "agent_bench", "banking-frozen": "frozen_profile", "banking-h2": "paired_search",
-               "safety-study": "safety_study", "seabench-controller": "seabench_study", "disclosure-audit": "disclosure_audit"}
+               "safety-study": "safety_study", "seabench-controller": "seabench_study", "disclosure-audit": "disclosure_audit",
+               "scoring-calibration": "scoring_study"}
     if profile not in modules:
         raise ValidationError(f"Unknown profile {profile!r}; choose {', '.join(PROFILES)}")
     return import_module("rsi_lab.studies." + modules[profile])

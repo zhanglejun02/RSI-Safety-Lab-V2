@@ -1,6 +1,38 @@
 # Current work
 
-**2026-11-19 pre-commit validation:** fresh full regression passed **847 tests**,
+**2026-11-19 saved-answer rescoring is running.** The separate
+`scoring-rescore-20261119-v6-r3` campaign freezes all 1,920 final allocations from
+`scale-20261119-v3`. It judges 1,382 distinct valid task/recipient inputs and
+preserves eight missing or malformed submissions. Scores map back to all
+allocated observations; duplicate mappings are not independent judge repeats.
+There are no actor or optimizer calls, and original answers, labels and historical
+review decisions are unchanged. Use
+`bash scripts/run_scoring_calibration.sh status runs/current/scoring-rescore-20261119-v6-r3`.
+The Bash parameter block is reusable; explicit resume uses frozen settings/source
+and never retries an already unknown call.
+
+The locked scorer `privacy-recipient-event-observations-v6-r3` passed its
+separate real-Kimi development controls: **72/72 supported judgments correct**,
+zero FP/FN and no repeated-label or coverage flips. Three judgments of one
+predeclared unsupported relative-time example remain missing. There were
+75 calls / 180,439 reported tokens, with zero unknown calls. Earlier failing
+control versions are retained. These are 25 authored examples, not 75 independent
+examples or independent calibration of natural model answers.
+
+The final source passed **985 software tests, zero failures/skips, in 469.14s**
+with zero paid calls. Launcher status now reports scored/pending inputs, known
+and missing labels, and saved new-scoring unknown outcomes separately from the
+original experiment. See [validation](validation.md).
+
+Blind materials contain 1,390 cards (1,116 development, 274 reserved), with all
+independent human fields blank. The annotator-only ZIP is
+[available locally](../output/scoring-calibration-20261119/blind-annotation-kit.zip).
+The reserved split is not claimed historically unseen. Current deliverables are
+versioned automatic comparison and annotation materials; method-risk calibration
+and parent/child/withdrawal attribution remain pending. New cross-context tasks
+are a [design proposal](persistent-update-validation.md), not a launched batch.
+
+**Earlier 2026-11-19 pre-commit validation:** fresh full regression passed **847 tests**,
 zero failures/skips and zero paid API calls. Dependency and nine Bash syntax
 checks passed. See [validation](validation.md). The user's standing preference
 to commit and push after validated changes is recorded in `AGENTS.md`.

@@ -86,6 +86,8 @@ effects are outside this rollback boundary.
 | `studies/seabench_study.py`, `seabench_reporting.py` | SEABench-derived allocations, per-phase execution and reporting |
 | `studies/agent_bench.py`, `safety_study.py` | Matrix and paired method studies under the same outer execution contract |
 | `studies/disclosure_audit.py`, `repetitions.py`, `meta_ablation.py` | Saved-answer calibration materials and explicitly scoped diagnostic studies |
+| `studies/scoring_calibration.py`, `scoring_study.py` | Blinded references, versioned saved-answer scoring and paired risk changes; no actor or optimizer execution |
+| `benchmarks/privacy_evidence.py`, `privacy_event_observations.py` | Grounded fact evidence and local event/date/time precision checks; scorer versions are selected explicitly |
 | `infra/chat_models.py`, `dispatch.py`, `optimization_budget.py` | Durable calls, unknown reservations, concurrency and resource enforcement |
 | `infra/records.py`, `artifacts.py`, `review.py` | Immutable evidence, source archives and frozen verification |
 

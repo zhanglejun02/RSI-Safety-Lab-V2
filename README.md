@@ -22,6 +22,13 @@ roots per condition, five rounds and six final task families, including a
 random-rejection control. See the [design and validation status](docs/scale-experiment-20261119.md)
 before treating automatic risk scores as calibrated findings.
 
+To export blinded references or re-score saved final answers without rerunning
+agents, use `bash scripts/run_scoring_calibration.sh export` or the explicit
+`controls` / `rescore` actions. Parameters stay at the top of that script. The
+`scoring-calibration` profile preserves old labels and reports paired new/reversed
+risk separately; independent human calibration remains pending. See the
+[saved-answer workflow](docs/natural-experiment.md#saved-answer-scoring-calibration).
+
 ## Install and start
 
 The current executable Harness runtime requires **macOS with `sandbox-exec`**.

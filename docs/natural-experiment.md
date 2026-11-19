@@ -336,3 +336,63 @@ This records a separate recovery attempt under `background-recoveries/`, uses th
 original execution package and driver, and refuses concurrent dispatch. It does
 not repair already recorded missing labels or retry unknown calls. Completed
 roots are reused; additional rescoring, if needed, is a separately versioned study.
+## Saved-answer scoring calibration
+
+The `scoring-calibration` profile never runs an actor or optimizer. It reads every
+final observation from a completed run, verifies its task/root/resource binding,
+and preserves the original labels. Its task-completion column retains the old
+utility scorer; only recipient safety is re-scored.
+
+Edit the model, source run, concurrency and finite call/token limits at the top
+of `scripts/run_scoring_calibration.sh` for a new campaign:
+
+```bash
+bash scripts/run_scoring_calibration.sh export runs/current/blind-new
+bash scripts/run_scoring_calibration.sh controls runs/current/scoring-controls-new
+bash scripts/run_scoring_calibration.sh plan runs/current/scoring-rescore-new
+bash scripts/run_scoring_calibration.sh start runs/current/scoring-rescore-new
+bash scripts/run_scoring_calibration.sh status runs/current/scoring-rescore-new
+```
+
+`plan` and `export` make zero model calls. `controls` uses authored development
+examples, not independent human references. `start` runs the configured action
+with the archived implementation, allocation and model settings. `rescore` is the
+foreground alternative. An unresolved request stops further batches; up to the
+declared number of in-flight requests can finish. Do not automatically retry it.
+After inspecting an interruption, use explicit `resume` (foreground) or
+`resume-start` (for a detached attempt). Existing unknown outcomes stay recorded.
+`inspect` and completed resume verify artifacts without new scoring.
+
+Send annotators only `run/blind/annotator/`; `run/blind/private/` contains method,
+condition and old-label mappings and must stay separate. Copy the `record` array
+from the blank annotations file into a new JSON file for annotation; do not edit
+the frozen export. `scoring_calibration.validate_annotations` and
+`calibration_metrics` validate and summarize returned references. These functions
+cannot establish a person's independence; unfilled references remain pending.
+
+The automatic pass scores each distinct task/recipient-text input once and maps
+it back to every allocated observation. Private notes are excluded from this
+pass. Shared scores are not repeated independent judge measurements. New and old
+labels remain separately named, with paired new/reversed risk, missing pairs,
+root/family slices and leave-one-family-out counts in `run/summary.json`.
+Parent/child/withdrawal attribution is not inferred: its examined count is zero
+until that separate experiment is performed. See
+[persistent-update validation](persistent-update-validation.md) for the next
+acceptance stage and the boundary between development and independent validation.
+
+The opt-in evidence scorer separates temporal event observations from local
+catalog matching. The model sees event categories and the recipient text, rather
+than the protected target dates/times; trusted code checks event linkage and
+declared date/clock precision. Unsupported precision or unresolved linkage can
+remain missing. Exact identifiers retain their separate local checks. The
+ordinary experiment scorer is unchanged unless a new protocol is explicitly
+selected. Development controls and independent natural-answer calibration are
+different acceptance records: passing authored controls does not validate a
+method-risk ranking.
+
+The launcher defaults to three judgments per authored control and at most eight
+concurrent requests, capped at 60 requests per minute. The full saved-answer pass
+judges each distinct input once. Parameters are frozen per campaign; changing the
+script affects only a new campaign. An explicit `export`, `controls` or `rescore`
+action must match the existing campaign's action. Completed resume verifies the
+frozen artifacts without loading API credentials.

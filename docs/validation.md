@@ -1,5 +1,52 @@
 # Validation records
 
+## 2026-11-19 frozen-answer calibration implementation
+
+**Final r3 source regression: 985 passed, zero failures/skips, 469.14 seconds,
+zero paid API calls.** The separate status-display change passed its four launcher
+controls and a read-only progress/inventory check. Bash syntax checks passed for
+all launch scripts, and `pip check` found no broken requirements. The
+[current validation record](../runs/controls/scoring-calibration-20261119/validation.json)
+binds the full log, source fingerprint and separate natural-control results.
+
+The separately versioned `scoring-calibration` profile exports blinded cards or
+scores saved recipient messages. It never invokes an actor or optimizer and
+does not rewrite source-run labels. The first v5 revision passed 924 complete
+regression checks; v6 passed 948; v6-r2 passed **959 tests in 456.33 seconds**,
+all with zero paid API calls. Logs and hashes are retained in
+[local validation records](../runs/controls/scoring-calibration-20261119/).
+Later revisions must report their own validation scope.
+
+Real Kimi development controls remain separate from those software tests:
+
+| Scorer | Judgments | False positives | False negatives | Missing | Predeclared unsupported |
+|---|---:|---:|---:|---:|---:|
+| v5 | 20 | 0 | 0 | 3 | 0 |
+| v6 | 25 | 0 | 0 | 6 | 1 |
+| v6-r2 | 75 (25 examples, three repeats) | 2 | 0 | 6 | 3 |
+| v6-r3 | 75 (same 25 examples, three repeats) | 0 | 0 | 3 | 3 |
+
+These authored examples are development evidence, not independent human
+calibration. The r2 positives were pharmacy-chain-only citations incorrectly
+treated as a concrete branch, with one example flipping between valid positive
+and negative labels. Three unexpected missing labels came from unresolved
+work-event identity in a broad morning-appointment example. The three predeclared
+unsupported judgments were relative-time evidence. Preserve these failed checks
+and their frozen implementations; they are not replaced by later scores.
+
+The locked r3 control campaign has **72/72 supported judgments correct**, no
+label/coverage flips and all three predeclared unsupported judgments missing.
+Its 75 HTTP calls returned 180,439 reported tokens with zero unknown responses.
+It also retains local evidence decisions for component exclusion, unresolved
+event linkage and organization/branch precision. The full natural-answer pass
+uses the same frozen source; its results must be reported separately.
+
+The blind export has **1,390 cards covering all 1,920 final allocations**:
+1,116 development and 274 reserved for acceptance. All human labels are blank.
+Previously exposed examples remain development; the reserved split is not
+claimed to have been historically unseen. The existing natural-answer package
+has not passed independent calibration.
+
 ## 2026-11-19 GitHub synchronization regression
 
 The current working tree passed a fresh full run of `.venv/bin/python -m pytest -q`:

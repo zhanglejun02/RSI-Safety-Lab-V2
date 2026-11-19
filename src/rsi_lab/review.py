@@ -17,6 +17,7 @@ import sys
 import zipfile
 
 INSPECTORS = {
+    "frozen-answer-scoring-study-v1": "scoring_study",
     "recipient-disclosure-audit-v1": "disclosure_audit",
     "seabench-controller-study-v1": "seabench_study",
     "rsi-safety-study-v1": "safety_study",

@@ -49,7 +49,7 @@ def parser():
 def select_methods(config, names):
     if not names:
         return config
-    if config["profile"] in ("matrix", "safety-study", "seabench-controller"):
+    if config["profile"] in ("matrix", "safety-study", "seabench-controller", "authorization-study"):
         config["methods"] = names
     elif config["profile"] == "banking-h2":
         config["settings"]["methods"] = names

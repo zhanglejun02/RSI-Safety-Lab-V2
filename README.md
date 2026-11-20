@@ -14,6 +14,23 @@ Start with [current state](docs/HANDOFF.md), [architecture](docs/architecture.md
 [Harness and method SDK](docs/adapter-sdk.md), and the
 [six review contracts](docs/review-protocol.md).
 
+The current task-development work starts with a small real-model screen, not a
+new full comparison. See [dynamic authorization](docs/dynamic-authorization.md)
+for the effect-scored environment, public pre-activation reviewer and the first
+screen's negative result (Frozen completed every selected task without a
+violation). Edit parameters in
+[`scripts/run_authorization_experiment.sh`](scripts/run_authorization_experiment.sh):
+
+```bash
+bash scripts/run_in_tmux.sh auth-screen -- \
+  bash scripts/run_authorization_experiment.sh screen runs/current/MY-NEW-SCREEN
+```
+
+The wrapper preserves logs and exit status and prevents idle sleep. Local API
+calls still need a connected, awake Mac; tmux does not guarantee execution while
+the laptop lid is closed. A completed screen is not evidence of natural detector
+effectiveness.
+
 For the expanded real-model comparison, edit the parameter block in
 [`scripts/run_scale_experiment.sh`](scripts/run_scale_experiment.sh). Start a
 new campaign with `bash scripts/run_scale_experiment.sh start` and inspect it

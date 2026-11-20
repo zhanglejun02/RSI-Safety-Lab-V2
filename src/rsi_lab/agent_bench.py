@@ -6,8 +6,8 @@ from pathlib import Path
 from rsi_lab.errors import ConflictError, ValidationError
 from rsi_lab.methods import check_available
 
-PROFILES = ("matrix", "banking-frozen", "banking-h2", "safety-study", "seabench-controller", "disclosure-audit", "scoring-calibration")
-PLANNED = ("safety-study", "seabench-controller", "disclosure-audit", "scoring-calibration")
+PROFILES = ("matrix", "banking-frozen", "banking-h2", "safety-study", "seabench-controller", "disclosure-audit", "scoring-calibration", "authorization-study")
+PLANNED = ("safety-study", "seabench-controller", "disclosure-audit", "scoring-calibration", "authorization-study")
 
 
 def load_config(path, *, execution=None):
@@ -16,8 +16,8 @@ def load_config(path, *, execution=None):
     if not isinstance(config, dict):
         raise ValidationError("Configuration must be a JSON object")
     if execution is not None:
-        if config.get("profile") not in ("safety-study", "seabench-controller"):
-            raise ValidationError("Execution overlays require safety-study or seabench-controller")
+        if config.get("profile") not in ("safety-study", "seabench-controller", "authorization-study"):
+            raise ValidationError("Execution overlays require safety-study, seabench-controller or authorization-study")
         from rsi_lab.studies.scheduling import settings
         config["execution"] = json.loads(Path(execution).read_text())
         settings(config)
@@ -45,7 +45,7 @@ def _runner(profile):
 
     modules = {"matrix": "agent_bench", "banking-frozen": "frozen_profile", "banking-h2": "paired_search",
                "safety-study": "safety_study", "seabench-controller": "seabench_study", "disclosure-audit": "disclosure_audit",
-               "scoring-calibration": "scoring_study"}
+               "scoring-calibration": "scoring_study", "authorization-study": "authorization_study"}
     if profile not in modules:
         raise ValidationError(f"Unknown profile {profile!r}; choose {', '.join(PROFILES)}")
     return import_module("rsi_lab.studies." + modules[profile])
@@ -115,7 +115,7 @@ def _evaluation_config(method, *, experiment=None, config=None, review=None, har
         settings = experiment_config(experiment if experiment is not None else "local-control-v1", settings)
     if not isinstance(settings, dict):
         raise ValidationError("Configuration must be a JSON object")
-    if settings.get("profile") not in ("matrix", "safety-study", "seabench-controller"):
+    if settings.get("profile") not in ("matrix", "safety-study", "seabench-controller", "authorization-study"):
         raise ValidationError("evaluate requires a method-comparison profile")
     if harness is not None:
         binding = _harness_binding(harness)
@@ -130,8 +130,8 @@ def _evaluation_config(method, *, experiment=None, config=None, review=None, har
     if review is not None:
         if experiment is not None:
             raise ValidationError("Named experiments fix review semantics; use a full configuration for custom review")
-        if settings["profile"] != "seabench-controller":
-            raise ValidationError("Independent review requires a seabench-controller configuration")
+        if settings["profile"] not in ("seabench-controller", "authorization-study"):
+            raise ValidationError("Independent review requires a supported review study configuration")
         settings["review"] = deepcopy(review)
         settings["arms"] = ["native_only", "behavior_review"]
     if settings["profile"] == "seabench-controller" and not any(k in settings for k in ("calibration", "frozen_evaluation")):

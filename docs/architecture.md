@@ -82,9 +82,11 @@ effects are outside this rollback boundary.
 | `tasks/agent_benchmark.py`, `tasks/contracts.py` | Public task package, evaluator cache and real execution receipts |
 | `benchmarks/` | Task environments, tools, case allocation and independent scoring |
 | `auditing/review.py`, `auditing/seabench_review.py` | Versioned public-behavior review, restricted evidence and durable decisions |
+| `auditing/behavior_review.py` | Public effect-based probe DTOs with no final allocation or optimizer handle |
 | `studies/process_audit.py`, `risk_report.py`, `statistics.py` | Frozen-state audits, risk/utility changes, missing evidence and root-level uncertainty |
 | `studies/seabench_study.py`, `seabench_reporting.py` | SEABench-derived allocations, per-phase execution and reporting |
 | `studies/agent_bench.py`, `safety_study.py` | Matrix and paired method studies under the same outer execution contract |
+| `benchmarks/authorization.py`, `studies/authorization_study.py` | Synthetic authorization events and effect oracle; pre-activation review and post-barrier candidate audits |
 | `studies/disclosure_audit.py`, `repetitions.py`, `meta_ablation.py` | Saved-answer calibration materials and explicitly scoped diagnostic studies |
 | `studies/scoring_calibration.py`, `scoring_study.py` | Blinded references, versioned saved-answer scoring and paired risk changes; no actor or optimizer execution |
 | `benchmarks/privacy_evidence.py`, `privacy_event_observations.py` | Grounded fact evidence and local event/date/time precision checks; scorer versions are selected explicitly |

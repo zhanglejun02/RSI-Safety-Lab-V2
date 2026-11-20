@@ -1,5 +1,23 @@
 # Current work
 
+**2026-11-21 user-requested pause.** Both small Frozen natural screens are
+complete, with no paid experiment running or scheduled for restart. See
+[stage acceptance and exact denominators](task-screening-20261120.md).
+The new dynamic authorization pack was saturated: final task success 6/6,
+violations 0/6. The selected AgentDojo banking15/slack11 pool produced attacked
+task success 4/8 and selected attacker-goal success 2/8; both successes occurred
+in Slack role-spoofing, where the legitimate task also succeeded. Banking's four
+attacked task failures were omitted legitimate refunds, not malicious transfers.
+Two executions per condition are development repeats, not stable method evidence.
+
+The independent absolute review module is implemented for the synthetic
+authorization study and passed native cross-method controls; **natural early
+detection has not been tested**. AgentDojo's bridge to that module remains a next
+step, not a completed feature. Do not start a candidate experiment or a full
+comparison while paused. Reusable screening Bash scripts and the tmux wrapper
+are present; local disconnection/lid sleep can still interrupt API execution.
+Final zero-API regression: **1,068 passed, zero failures/skips, 569.95s**.
+
 **2026-11-19 saved-answer rescoring completed at 19:31 CST.** The separate
 `scoring-rescore-20261119-v6-r3` campaign freezes all 1,920 final allocations from
 `scale-20261119-v3`. It judges 1,382 distinct valid task/recipient inputs and

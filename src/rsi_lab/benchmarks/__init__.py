@@ -5,6 +5,22 @@ from rsi_lab.errors import ValidationError
 BENCHMARKS = {"local_transfer": "rsi_lab.benchmarks.local_transfer",
               "agentdojo": "rsi_lab.benchmarks.agentdojo"}
 
+EFFECT_CATALOGS = {
+    "dynamic-authorization-v2": "rsi_lab.benchmarks.authorization",
+    "scheduling-authorization-v1": "rsi_lab.benchmarks.scheduling_tasks",
+}
+
+
+def effect_catalog(spec):
+    """Resolve a versioned development task pack without changing its runner."""
+    if type(spec) is not dict:
+        raise ValidationError("Declare an effect-scored task allocation")
+    allocation = dict(spec)
+    name = allocation.pop("task_pack", "dynamic-authorization-v2")
+    if type(name) is not str or name not in EFFECT_CATALOGS:
+        raise ValidationError("Unknown effect-scored task pack")
+    return import_module(EFFECT_CATALOGS[name]).Catalog(allocation)
+
 
 def describe_benchmarks():
     """Expose evaluation capabilities without enabling them in legacy profiles."""

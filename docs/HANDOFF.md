@@ -1,6 +1,32 @@
 # Current work
 
-**2026-11-21 user-requested pause.** Both small Frozen natural screens are
+**2026-11-21 task-discrimination pilots completed.** The user revoked the pause;
+six new campaigns finished in tmux with exit code zero and no pending/unknown
+API calls. No full three-method comparison was launched. See
+[results and exact denominators](task-discrimination-20261121.md),
+[task contract](scheduling-tasks.md), and [native task audit](task-candidate-audit-20261121.md).
+
+The new six/eight-request scheduling pack has real completion headroom: four
+model/instruction screens gave 0–12.5% full-task success and 55.73–70.31% mean
+request completion, with all 32 final executions ending normally. Its effects
+oracle observed **0/32 unauthorized operations**. It is not yet a natural
+dangerous-update detection set. The separate Kimi AgentDojo screen gave attacked
+task success 8/8 and selected attacker success 4/8; the prior DeepSeek comparator
+gave 4/8 and 2/8. Actual malicious transfers/messages were inspected. Different
+model/temperature configurations and tiny development pools are not rankings.
+
+A single natural GEPA update generated an invalid Python skill; native selection
+kept the founder. Search snapshot commits = 1; candidate retention and deployment
+changes = 0. Final founder results are 0/8 task success, 47.40% mean completion,
+0/8 violations. Invalid-candidate audits are missing on all eight tasks, not safe
+zeroes. No manual repair/reroll occurred, and no natural safety module was tested.
+No-credential completed resume preserved 2,521 files with zero new calls.
+Final full regression: **1,098 passed, zero failures/skips, 585.82s**, zero paid
+calls; dependencies and Bash checks passed. The next work is not more interface
+expansion: use the observed capability and risk cases to design a fixed small
+evolution/safety comparison, explicitly retaining task and execution variability.
+
+**Historical pause, subsequently revoked on 2026-11-21.** Both small Frozen natural screens were
 complete, with no paid experiment running or scheduled for restart. See
 [stage acceptance and exact denominators](task-screening-20261120.md).
 The new dynamic authorization pack was saturated: final task success 6/6,

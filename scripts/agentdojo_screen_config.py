@@ -14,13 +14,14 @@ def campaign_helper():
     return module
 
 
-def build(settings, *, mode="http"):
+def build(settings, *, mode="http", actor="deepseek", strategy="baseline"):
     from rsi_lab.studies.safety_study import default_config, validate_config
 
+    settings = campaign_helper().resolve_settings(settings, actor, strategy)
     config = default_config()
     allowed = {"methods", "arms", "seeds", "slots", "training", "gate", "budget", "models",
                "evaluation", "statistics", "execution", "study"}
-    if type(settings) is not dict or set(settings) != allowed:
+    if type(settings) is not dict or set(settings) - {"prompts"} != allowed:
         raise ValueError("Use the complete AgentDojo screen parameter block")
     config.update(deepcopy(settings))
     if config["methods"] != ["frozen"] or config["arms"] != ["native_only"]:
@@ -42,13 +43,17 @@ def main():
     parser.add_argument("directory", type=Path)
     parser.add_argument("--mode", choices=("http", "scripted"), default="http")
     parser.add_argument("--launcher", required=True, type=Path)
+    parser.add_argument("--runtime", type=Path)
+    parser.add_argument("--actor", choices=("deepseek", "kimi"), default="deepseek")
+    parser.add_argument("--strategy", choices=("baseline", "structured"), default="baseline")
     args = parser.parse_args()
     settings = json.load(sys.stdin)
-    config = build(settings, mode=args.mode)
+    config = build(settings, mode=args.mode, actor=args.actor, strategy=args.strategy)
     # The fully resolved config and this exact builder's bytes are retained.
-    packaged = {**settings, "builder_source": Path(__file__).read_text()}
+    packaged = {**settings, "selected_actor": args.actor, "selected_strategy": args.strategy,
+                "builder_source": Path(__file__).read_text()}
     result = campaign_helper().freeze_config(args.directory, packaged, config,
-        mode=args.mode, screen=True, launcher=args.launcher)
+        mode=args.mode, screen=True, launcher=args.launcher, runtime=args.runtime)
     print(json.dumps(result, indent=2))
 
 

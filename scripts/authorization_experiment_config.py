@@ -10,11 +10,12 @@ import json
 from pathlib import Path
 import shutil
 import sys
+from urllib.parse import urlsplit
 
 
 FIELDS = {"methods", "arms", "seeds", "slots", "training", "review", "budget",
           "models", "statistics", "execution"}
-OPTIONAL = {"evaluation"}
+OPTIONAL = {"evaluation", "prompts"}
 FROZEN_FILES = ("settings.json", "config.json", "plan.json", "launch.sh",
                 "config-builder.py", "source-helper.py", "execution-source.json")
 
@@ -40,9 +41,49 @@ def _source_helper(path):
     return module
 
 
-def build(settings, *, mode="http", screen=False):
+def resolve_settings(settings, actor="deepseek", strategy="baseline"):
+    """Apply Bash-declared actor and strategy presets before freezing a new run."""
+    if type(settings) is not dict:
+        raise ValueError("Launcher settings must be an object")
+    resolved = deepcopy(settings)
+    presets = resolved.pop("actor_presets", None)
+    if presets is None:
+        if actor != "deepseek":
+            raise ValueError("Actor preset is not declared: " + actor)
+    else:
+        if type(presets) is not dict or actor not in presets or type(presets[actor]) is not dict:
+            raise ValueError("Actor preset is not declared: " + actor)
+        resolved["models"]["actor"].update(presets[actor])
+    strategies = resolved.pop("strategy_presets", None)
+    if strategy not in ("baseline", "structured"):
+        raise ValueError("Unknown screening strategy")
+    if strategies is None:
+        if strategy != "baseline":
+            raise ValueError("Structured strategy is not declared")
+    else:
+        if (type(strategies) is not dict or set(strategies) != {"baseline", "structured"}
+                or strategies["baseline"] != "" or type(strategies["structured"]) is not str
+                or not strategies["structured"].strip()):
+            raise ValueError("Declare an unchanged baseline and a nonempty structured suffix")
+        if strategy == "structured":
+            from rsi_lab.agents.runtime import DEFAULT_INSTRUCTIONS
+            prompts = resolved.setdefault("prompts", {})
+            if "initial_instructions" in prompts:
+                raise ValueError("Structured strategy appends to the common founder; omit an initial prompt override")
+            prompts["initial_instructions"] = DEFAULT_INSTRUCTIONS + "\n\n" + strategies[strategy]
+    for model in resolved["models"].values():
+        if (model and model.get("model") == "kimi-k2.6"
+                and urlsplit(model.get("base_url", "")).hostname in {"api.moonshot.cn", "api.moonshot.ai"}):
+            mode = model.get("thinking_mode")
+            if mode not in ("disabled", "enabled") or model.get("temperature") != (1.0 if mode == "enabled" else 0.6):
+                raise ValueError("Use the validated Kimi recipe: disabled/0.6 or enabled/1.0")
+    return resolved
+
+
+def build(settings, *, mode="http", screen=False, actor="deepseek", strategy="baseline"):
     from rsi_lab.studies.authorization_study import default_config, validate_config
 
+    settings = resolve_settings(settings, actor, strategy)
     if type(settings) is not dict or set(settings) - OPTIONAL != FIELDS:
         raise ValueError("Use the complete authorization launcher parameter block")
     if mode not in ("scripted", "http"):
@@ -59,12 +100,14 @@ def build(settings, *, mode="http", screen=False):
     return validate_config(config)
 
 
-def prepare(directory, settings, *, mode, screen, launcher):
-    config = build(settings, mode=mode, screen=screen)
-    return freeze_config(directory, settings, config, mode=mode, screen=screen, launcher=launcher)
+def prepare(directory, settings, *, mode, screen, launcher, actor="deepseek", strategy="baseline", runtime=None):
+    config = build(settings, mode=mode, screen=screen, actor=actor, strategy=strategy)
+    packaged = ({**settings, "selected_actor": actor, "selected_strategy": strategy}
+                if "actor_presets" in settings else settings)
+    return freeze_config(directory, packaged, config, mode=mode, screen=screen, launcher=launcher, runtime=runtime)
 
 
-def freeze_config(directory, settings, config, *, mode, screen, launcher):
+def freeze_config(directory, settings, config, *, mode, screen, launcher, runtime=None):
     """Shared immutable campaign packaging for an already resolved public profile."""
     from rsi_lab.agent_bench import plan_experiment
     from rsi_lab.infra.records import save_record
@@ -79,11 +122,15 @@ def freeze_config(directory, settings, config, *, mode, screen, launcher):
     shutil.copyfile(launcher, directory / "launch.sh")
     shutil.copyfile(__file__, directory / "config-builder.py")
     shutil.copyfile(Path(__file__).with_name("background_experiment.py"), directory / "source-helper.py")
+    frozen_files = list(FROZEN_FILES)
+    if runtime is not None:
+        shutil.copyfile(runtime, directory / "screen-runtime.sh")
+        frozen_files.append("screen-runtime.sh")
     _source_helper(directory / "source-helper.py").freeze_source(directory)
     write(directory / "campaign.json", {
         "protocol": "authorization-campaign-v1", "mode": mode, "screen": screen,
         "confirmatory": False, "automatic_retry": False,
-        "files": {name: sha(directory / name) for name in FROZEN_FILES},
+        "files": {name: sha(directory / name) for name in frozen_files},
     })
     return {"campaign": str(directory), "mode": mode, "screen": screen,
             "roots": len(plan["roots"]), "slots": config["slots"],
@@ -94,7 +141,7 @@ def verify(directory):
     directory = Path(directory).resolve()
     binding = read(directory / "campaign.json")
     if (binding.get("protocol") != "authorization-campaign-v1"
-            or set(binding.get("files", {})) != set(FROZEN_FILES)):
+            or set(binding.get("files", {})) not in (set(FROZEN_FILES), set(FROZEN_FILES) | {"screen-runtime.sh"})):
         raise ValueError("Invalid authorization campaign binding")
     for name, expected in binding["files"].items():
         path = directory / name
@@ -127,8 +174,8 @@ def status(directory):
 def load_credentials(directory, env_file):
     """Accept the existing shared provider file without weakening its parser.
 
-    Kimi is an authorized, unused provider in this task. Loading its variable
-    does not create a judge or dispatch a call. Unknown assignments still fail.
+    Both declared provider keys may share one private file. Loading a variable
+    does not create a provider or dispatch a call. Unknown assignments still fail.
     Completed resume never reads a credential file.
     """
     directory = Path(directory)
@@ -149,6 +196,9 @@ def main():
     parser.add_argument("--mode", choices=("scripted", "http"), default="http")
     parser.add_argument("--screen", action="store_true")
     parser.add_argument("--launcher", type=Path)
+    parser.add_argument("--runtime", type=Path)
+    parser.add_argument("--actor", choices=("deepseek", "kimi"), default="deepseek")
+    parser.add_argument("--strategy", choices=("baseline", "structured"), default="baseline")
     parser.add_argument("--env-file", type=Path)
     parser.add_argument("--cli-args", nargs=argparse.REMAINDER, default=[])
     action = parser.add_mutually_exclusive_group()
@@ -172,7 +222,8 @@ def main():
         if args.launcher is None:
             parser.error("--launcher is required when preparing a campaign")
         result = prepare(args.directory, json.load(sys.stdin), mode=args.mode,
-                         screen=args.screen, launcher=args.launcher)
+                         screen=args.screen, launcher=args.launcher, actor=args.actor,
+                         strategy=args.strategy, runtime=args.runtime)
     print(json.dumps(result, ensure_ascii=False, indent=2))
 
 

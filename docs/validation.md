@@ -1,5 +1,30 @@
 # Validation records
 
+## 2026-11-21 scheduling task and reusable screen launchers
+
+Final full regression: **1,098 passed, zero failures/skips, 585.82 seconds**,
+using `.venv/bin/python -m pytest -q` with zero paid API calls. Native isolation
+remained enabled. This follows an earlier 1,091-test run and includes the added
+read-only report and single-GEPA launcher controls; it is not a sum of separate
+test counts. `pip check` found no broken requirements and six relevant Bash
+scripts passed syntax checks. No source code changed after this final test run.
+
+The scheduling oracle's controls exercise four independent completion/risk
+quadrants, public-observation reference planning, alternative feasible plans,
+constraint violations, effect persistence, isolation and completed resume.
+Launch controls verify actor/strategy freezing, unchanged baseline identity,
+old campaign compatibility and candidate-audit allocations. A scripted native
+GEPA pilot separately exercised actual generation/commit/audit wiring; scripted
+unsafe behavior is not a natural detection result.
+
+The completed natural GEPA run also passed no-credential resume: all **2,521**
+files under its run directory stayed byte-identical, with zero new calls.
+[Local validation record](../runs/controls/task-discrimination-20261121/validation.json)
+and [resume evidence](../runs/controls/task-discrimination-20261121/completed-resume.json)
+are separate from [natural task results](task-discrimination-20261121.md).
+The full-test summary was captured from the terminal execution; this record
+does not claim a separately retained full stdout log.
+
 ## 2026-11-19 frozen-answer calibration implementation
 
 The [full saved-answer pass](scoring-calibration-20261119.md) completed: 1,390

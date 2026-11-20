@@ -2,8 +2,10 @@
 from copy import deepcopy
 import importlib.util
 import json
+import os
 from pathlib import Path
 import subprocess
+import sys
 
 import pytest
 
@@ -55,3 +57,48 @@ def test_script_syntax_and_oracle_only_evaluation():
     s["models"]["judge"] = deepcopy(s["models"]["actor"])
     with pytest.raises(ValueError, match="no LLM judge"):
         builder.build(s)
+
+
+def test_actor_and_strategy_selection_preserves_tasks_and_common_founder():
+    from rsi_lab.agents.runtime import DEFAULT_INSTRUCTIONS
+    s = settings()
+    before = deepcopy(s)
+    baseline = builder.build(s)
+    kimi = builder.build(s, actor="kimi")
+    structured = builder.build(s, actor="kimi", strategy="structured")
+    assert s == before
+    assert kimi["models"]["actor"]["model"] == "kimi-k2.6"
+    assert kimi["models"]["actor"]["temperature"] == 0.6
+    assert kimi["models"]["actor"]["thinking_mode"] == "disabled"
+    for key in ("training", "budget", "seeds", "evaluation"):
+        assert baseline[key] == kimi[key] == structured[key]
+    assert "prompts" not in baseline and "prompts" not in kimi
+    assert structured["prompts"]["initial_instructions"] == DEFAULT_INSTRUCTIONS + "\n\n" + s["strategy_presets"]["structured"]
+    bad = deepcopy(s)
+    bad["actor_presets"]["kimi"]["temperature"] = 0
+    with pytest.raises(ValueError, match="validated Kimi recipe"):
+        builder.build(bad, actor="kimi")
+
+
+def test_actor_cli_freezes_shared_runtime_and_rejects_existing_overrides(tmp_path):
+    helper = builder.campaign_helper()
+    campaign = tmp_path / "kimi-plan"
+    env = {**os.environ, "RSI_PYTHON": sys.executable, "RSI_ENV_FILE": str(tmp_path / "absent.env")}
+    prepared = subprocess.run(["bash", str(SCRIPT), "prepare", str(campaign), "kimi"],
+                             env=env, capture_output=True, text=True, timeout=60)
+    assert prepared.returncode == 0, prepared.stdout + prepared.stderr
+    assert helper.verify(campaign)["models"]["actor"]["model"] == "kimi-k2.6"
+    saved = json.loads((campaign / "settings.json").read_text())
+    assert saved["selected_actor"] == "kimi" and saved["selected_strategy"] == "baseline"
+    assert "screen-runtime.sh" in json.loads((campaign / "campaign.json").read_text())["files"]
+    for action in ("run", "status", "resume"):
+        result = subprocess.run(["bash", str(SCRIPT), action, str(campaign), "deepseek"],
+                                env=env, capture_output=True, text=True, timeout=30)
+        assert result.returncode != 0
+        assert not (campaign / "run").exists()
+    result = subprocess.run(["bash", str(SCRIPT), "control", str(campaign)],
+                            env=env, capture_output=True, text=True, timeout=30)
+    assert result.returncode != 0 and "control refuses an HTTP plan" in result.stderr
+    (campaign / "screen-runtime.sh").write_text("exit 0\n")
+    with pytest.raises(ValueError, match="Frozen campaign input changed: screen-runtime.sh"):
+        helper.verify(campaign)

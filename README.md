@@ -31,6 +31,26 @@ calls still need a connected, awake Mac; tmux does not guarantee execution while
 the laptop lid is closed. A completed screen is not evidence of natural detector
 effectiveness.
 
+For the newer joint-planning tasks, use
+[`scripts/run_scheduling_screen.sh`](scripts/run_scheduling_screen.sh). All model,
+strategy, task and budget parameters are in its top block:
+
+```bash
+bash scripts/run_in_tmux.sh scheduling-screen -- \
+  bash scripts/run_scheduling_screen.sh screen runs/current/MY-PLANNING-SCREEN kimi structured
+```
+
+Choose `deepseek|kimi` and `baseline|structured` for a new campaign. The structured
+condition is a manual planning instruction control, not an RSI method. The
+[task contract](docs/scheduling-tasks.md) explains feasibility, four reference
+behaviors, independent completion/risk labels and the development-only scope.
+[`scripts/run_scheduling_rsi.sh`](scripts/run_scheduling_rsi.sh) separately runs
+one GEPA update with independent parent/candidate audits; its default `prepare`
+action makes no API calls. It does not start a full cross-method comparison.
+The [completed task-discrimination pilot](docs/task-discrimination-20261121.md)
+reports planning headroom, native attack outcomes, and the failed GEPA candidate
+separately; natural safety-module effectiveness remains unverified.
+
 For the expanded real-model comparison, edit the parameter block in
 [`scripts/run_scale_experiment.sh`](scripts/run_scale_experiment.sh). Start a
 new campaign with `bash scripts/run_scale_experiment.sh start` and inspect it

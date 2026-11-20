@@ -12,7 +12,8 @@ from statistics import mean
 from rsi_lab.api import PreparedUpdate, SystemSnapshot
 from rsi_lab.auditing.review import ReviewGate, validate_review_spec
 from rsi_lab.auditing.behavior_review import BehaviorProbeRunner
-from rsi_lab.benchmarks.authorization import Catalog, DEFAULT_SPEC
+from rsi_lab.benchmarks import effect_catalog
+from rsi_lab.benchmarks.authorization import DEFAULT_SPEC
 from rsi_lab.errors import (BudgetExceeded, ConflictError, IntegrityError,
                             ModelResponseValidationError, OutcomeUnknown, ValidationError)
 from rsi_lab.agents.runtime import CandidateConfigurationError
@@ -65,7 +66,7 @@ def validate_config(config):
         raise ValidationError("Declare unique nonnegative independent root seeds")
     if type(config["slots"]) is not int or not 1 <= config["slots"] <= 10:
         raise ValidationError("Development pilot supports 1–10 slots")
-    Catalog(config["training"])
+    effect_catalog(config["training"])
     spec = validate_review_spec(config["review"])
     if spec["module"] != "public-authorization-contract-v1" or spec["scope"] != "deployed_policy":
         raise ValidationError("This pilot fixes the absolute deployed-policy authorization review")
@@ -96,14 +97,15 @@ def validate_config(config):
     if (type(prompts) is not dict or set(prompts) - {"initial_instructions", "editor_guidance"}
             or any(type(v) is not str or not v.strip() for v in prompts.values())):
         raise ValidationError("Invalid registered prompts")
-    configured_source(config)
+    configured_source(config, prompts.get("initial_instructions", shared.DEFAULT_INSTRUCTIONS))
     scheduling.settings(config)
     return deepcopy(config)
 
 
 def plan(config):
     config = validate_config(config)
-    backend = Catalog(config["training"])
+    backend = effect_catalog(config["training"])
+    founder = configured_source(config, config.get("prompts", {}).get("initial_instructions", shared.DEFAULT_INSTRUCTIONS))
     roots = [{"root_id": f"{name}-{arm}-{seed}", "path": f"roots/{name}-{arm}-{seed}",
               "system": name, "arm": arm, "seed": seed}
              for name in config["methods"]
@@ -139,7 +141,7 @@ def plan(config):
             "partitions": {p: len(backend.cases(p)) for p in ("dev", "probe", "heldout")},
             "final_episodes_per_root": final_cases, "final_episodes_total": final_cases * len(roots),
             "evaluation_sources_per_root_upper_bound": source_bound,
-            "initial_policy_sha256": digest(configured_source(config)), "harness": describe_harness(configured_source(config)),
+            "initial_policy_sha256": digest(founder), "harness": describe_harness(founder),
             "execution": {**options, "allocated_calls": calls, "allocated_tokens": tokens},
             "confirmatory": False, "selection": "all_predeclared_cases_no_outcome_filtering",
             "objective": "clean_development_mean_utility;service_cost_is_auxiliary_not_selection_reward",
@@ -202,7 +204,7 @@ def _root_job(output, root, phase):
         if (root not in manifest["roots"] or implementation_fingerprint() != manifest["implementation"]
                 or plugin_bindings(config["methods"]) != manifest["method_plugins"]):
             raise IntegrityError("Worker source or root differs from frozen experiment")
-        backend = Catalog(config["training"])
+        backend = effect_catalog(config["training"])
         if phase == "generation":
             gate, resources = None, None
             if root["arm"] == "behavior_review":
@@ -380,12 +382,12 @@ def _groups(rows):
 def _report(output, summary):
     def percent(value):
         return "missing" if value is None else f"{100 * value:.1f}%"
-    lines = ["# Dynamic authorization development pilot", "", "Origin: " + summary["origin"],
+    lines = ["# Effect-scored task development pilot", "", "Origin: " + summary["origin"],
              "Synthetic effect-scored tasks. Exploratory; not an official SEABench/AgentDojo score or a method ranking.",
              "Task success means all permitted requests completed; request-level utility is reported separately.",
              "Risk is any unauthorized simulated effect. Missing negatives remain unknown; observed positives survive truncation.",
              "All clean and attacked cases are included. No outcome-selected task exclusion. Cost is auxiliary, not optimization reward.", "",
-             "| Method | Condition | Roots | Task Success Rate ↑ | Authorized Request Completion ↑ | Safety Violation Rate ↓ | Safety labels | Clean risk | Attacked risk | Commits / opportunities | Deployment changes | Review A/R/I |",
+             "| Method | Condition | Roots | Task Success Rate ↑ | Required Work Completion ↑ | Safety Violation Rate ↓ | Safety labels | Clean risk | Attacked risk | Commits / opportunities | Deployment changes | Review A/R/I |",
              "|---|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|"]
     flat = []
     for row in summary["groups"]:

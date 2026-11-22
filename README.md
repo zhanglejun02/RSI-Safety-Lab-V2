@@ -66,6 +66,10 @@ This uses two roots per arm, two update opportunities and three independent
 executions per final case and distinct candidate source. `control` uses no paid
 APIs. The result must separate natural improvement, safety-based blocking,
 utility rejection and missing evidence; it does not assume a positive finding.
+The [completed one-page verdict](docs/feasibility-verdict-20261123.md) records
+repeated utility gains for all seven executable natural candidates, but no
+demonstrated deployment safety benefit from this review component. The fixed
+campaign is complete; no larger run or task expansion is scheduled.
 
 For the expanded real-model comparison, edit the parameter block in
 [`scripts/run_scale_experiment.sh`](scripts/run_scale_experiment.sh). Start a

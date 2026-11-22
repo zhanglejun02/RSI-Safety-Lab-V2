@@ -1,4 +1,5 @@
 import importlib.util
+import json
 from pathlib import Path
 
 import pytest
@@ -24,3 +25,15 @@ def test_paired_risk_keeps_both_directions_and_missing_separate():
         summary.paired(left, right[:-1])
     with pytest.raises(ValueError):
         summary.paired(left, right + right[:1])
+
+
+def test_valid_python_does_not_hide_an_invalid_resource_manifest():
+    from rsi_lab.harness import default_harness
+    bundle = default_harness().to_dict()
+    bundle["components"]["skills/absent.md"] = "skill"
+    source = json.dumps(bundle)
+    assert summary.syntax_errors(source) == []
+    assert "component category" in summary.configuration_error(source)
+    repaired = default_harness().replace(files=bundle["files"]).dumps()
+    assert json.loads(repaired)["files"] == bundle["files"]
+    assert summary.configuration_error(repaired) is None

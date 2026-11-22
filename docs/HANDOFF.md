@@ -1,23 +1,49 @@
 # Current work
 
-**2026-11-23 bounded feasibility experiment in progress.** The user requested one
-existing safety component + one RSI on a fixed small pack, followed by a one-page
-decision, not another task expansion. GEPA uses four clean development cases;
-`public-full-validation-v1` adapts Safety Must Survive's full public validation
-component. Scheduling / banking / Slack supply eight public probes and eight
-independent cases. Two roots per arm, two slots, three independent executions per
-source; no manual repair or adaptive task/seed replacement. See
-[frozen protocol and stopping rule](feasibility-20261123.md).
+**2026-11-23 bounded feasibility experiment completed.** Read the
+[one-page verdict](feasibility-verdict-20261123.md) and
+[frozen protocol](feasibility-20261123.md). GEPA + the full-public-validation
+component ran two roots per arm, two slots, four clean development cases, eight
+public probes and eight independent cases repeated three times per source. No
+task/seed replacement, manual natural-candidate repair or automatic API retry
+occurred. `runs/current/feasibility-20261123-v1` finished in tmux with exit zero.
+An earlier launcher race stopped before any run or API dispatch.
 
-`runs/current/feasibility-20261123-v1` runs in tmux session
-`feasibility-20261123-run-v1`. An initial launcher race stopped before any run or
-API dispatch; the prepared campaign was verified before this execution. Do not
-restart it automatically. Its script, package, config, plan, protocol and analysis
-script are saved. The matching zero-API control completed: native final risk
-36/48, review final risk 0/48, both task success 48/48 and complete labels; all
-four review decisions were safety-based rejections. These are scripted controls,
-not natural efficacy. Related native/protocol tests: 124 passed; new launcher and
-paired-analysis tests: 3 passed. Full zero-API regression is running separately.
+All eight proposals parse as Python; seven have valid resource manifests and
+execute. Every executable candidate improves founder-relative mean utility in
+all three repeat blocks (+7.64–21.88 percentage points overall). Only one of the
+two native-only roots changes final deployment, so the preregistered two-root
+deployment-benefit criterion is not met. Native final success = 21/48, risk =
+4/47 with one missing label; review final success = 19/48, risk = 6/45 with three
+missing labels. Review rejects four times (three safety+utility, one utility
+only), retaining the founder in both roots. Two safety detections concern the
+unchanged deployment source. Do not call this early detection of new harmful
+updates or a safety improvement.
+
+The source with two orphan skill declarations accounts for 24 of 288 allocated
+independent records; all are missing, not safe. Eight other records stop at the
+step limit. A separate **zero-API** manifest control uses the existing SDK to
+regenerate metadata, preserves every resource byte and completes 8/8 execution
+paths. This is not a repaired natural success. An offline replay of the existing
+absolute-risk/nonregression module would accept one of four targets; that target
+still has 2/23 independently observed violations. Neither this nor rejection of
+an unsafe incumbent establishes a new methodological gap beyond existing work.
+
+Source-level metrics and execution counts are in
+`output/feasibility-20261123/metrics.json` and `metrics.csv`, reproducible with
+`scripts/summarize_feasibility.py`. Original frozen artifacts are unchanged.
+Cost: 6,142 API calls, 19,694,663 reported tokens, zero unknown calls, including
+602 review calls under the nested `resources.review.actor` ledger. The task pack
+has only four final task instances and limited native harmful-effect predicates.
+No larger natural experiment or new task search is scheduled.
+
+Validation: full zero-API regression **1,111 passed**, 641.39s; final
+paired-statistics/resource-manifest analysis checks **2 passed**. Completed
+resume without API credentials made zero new calls and preserved all 31,575
+files byte-for-byte. The frozen
+four-root scripted control also completed, with both arms at 48/48 success,
+native risk 36/48 versus review 0/48, no missing labels and four safety-based
+rejections. Those are plumbing controls, not natural efficacy.
 
 **2026-11-21 task-discrimination pilots completed.** The user revoked the pause;
 six new campaigns finished in tmux with exit code zero and no pending/unknown

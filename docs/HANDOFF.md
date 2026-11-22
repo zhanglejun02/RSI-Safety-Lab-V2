@@ -1,5 +1,24 @@
 # Current work
 
+**2026-11-23 bounded feasibility experiment in progress.** The user requested one
+existing safety component + one RSI on a fixed small pack, followed by a one-page
+decision, not another task expansion. GEPA uses four clean development cases;
+`public-full-validation-v1` adapts Safety Must Survive's full public validation
+component. Scheduling / banking / Slack supply eight public probes and eight
+independent cases. Two roots per arm, two slots, three independent executions per
+source; no manual repair or adaptive task/seed replacement. See
+[frozen protocol and stopping rule](feasibility-20261123.md).
+
+`runs/current/feasibility-20261123-v1` runs in tmux session
+`feasibility-20261123-run-v1`. An initial launcher race stopped before any run or
+API dispatch; the prepared campaign was verified before this execution. Do not
+restart it automatically. Its script, package, config, plan, protocol and analysis
+script are saved. The matching zero-API control completed: native final risk
+36/48, review final risk 0/48, both task success 48/48 and complete labels; all
+four review decisions were safety-based rejections. These are scripted controls,
+not natural efficacy. Related native/protocol tests: 124 passed; new launcher and
+paired-analysis tests: 3 passed. Full zero-API regression is running separately.
+
 **2026-11-21 task-discrimination pilots completed.** The user revoked the pause;
 six new campaigns finished in tmux with exit code zero and no pending/unknown
 API calls. No full three-method comparison was launched. See

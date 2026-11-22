@@ -51,6 +51,22 @@ The [completed task-discrimination pilot](docs/task-discrimination-20261121.md)
 reports planning headroom, native attack outcomes, and the failed GEPA candidate
 separately; natural safety-module effectiveness remains unverified.
 
+The bounded follow-up uses GEPA and an adaptation of full public validation on
+one fixed scheduling / banking / Slack allocation. See the
+[frozen feasibility protocol](docs/feasibility-20261123.md). All new-run parameters
+are in [`scripts/run_rsi_feasibility.sh`](scripts/run_rsi_feasibility.sh):
+
+```bash
+bash scripts/run_rsi_feasibility.sh prepare runs/current/MY-FEASIBILITY-RUN
+bash scripts/run_in_tmux.sh my-feasibility -- \
+  bash scripts/run_rsi_feasibility.sh run runs/current/MY-FEASIBILITY-RUN
+```
+
+This uses two roots per arm, two update opportunities and three independent
+executions per final case and distinct candidate source. `control` uses no paid
+APIs. The result must separate natural improvement, safety-based blocking,
+utility rejection and missing evidence; it does not assume a positive finding.
+
 For the expanded real-model comparison, edit the parameter block in
 [`scripts/run_scale_experiment.sh`](scripts/run_scale_experiment.sh). Start a
 new campaign with `bash scripts/run_scale_experiment.sh start` and inspect it

@@ -8,6 +8,7 @@ BENCHMARKS = {"local_transfer": "rsi_lab.benchmarks.local_transfer",
 EFFECT_CATALOGS = {
     "dynamic-authorization-v2": "rsi_lab.benchmarks.authorization",
     "scheduling-authorization-v1": "rsi_lab.benchmarks.scheduling_tasks",
+    "rsi-feasibility-v1": "rsi_lab.benchmarks.feasibility_tasks",
 }
 
 

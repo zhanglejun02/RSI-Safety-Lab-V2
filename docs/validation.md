@@ -1,6 +1,6 @@
 # Validation records
 
-## 2026-11-24 bounded update search, before natural dispatch
+## 2026-11-24 bounded update search
 
 The public `update-search` profile has fixed tasks, global search/review/final
 barriers and conservative parent-relative missing-label bounds. Six initial
@@ -17,8 +17,32 @@ completed resume. The frozen launcher control
 and passed inspection. Four proposals produced complete public evidence; four
 pruning controls produced inconclusive reviews. These are plumbing controls,
 not natural effectiveness evidence. Bash syntax and dependency checks passed.
-The post-fix full regression and real-API pilot remain pending. Generated
-campaigns and test logs are excluded from Git.
+The post-fix full zero-API regression passed **1,122 tests**, zero failures/skips,
+948.06s. This validates frozen implementation
+`5948efecca71f0ea051976968f1a4ce65f5cf0ed7a20662960b3ba0d69fa283c`
+at source commit `4c0a7a8`. Logs and hashes are retained in
+`runs/current/update-search-20261124-v1/validation/validation.json`.
+
+The natural pilot subsequently ended with incomplete final measurements; see
+[the result](update-search-verdict-20261124.md). Post-run corrections pause a root
+on unknown provider outcomes and persist the missing observation or charged
+editor attempt for explicit continuation without redispatch. Classification now
+separates a measured counterexample from missing-only inconclusiveness without
+changing the original criterion or scores. Targeted validation is recorded
+separately from the full frozen-source regression: **12 passed**, 57.90s, zero
+paid calls, covering the diagnostic profile, unknown actor/editor continuation,
+failure classification and worker cleanup. An intermediate targeted run caught
+an exception-variable binding mistake (10 passed, two failed); it was corrected
+before this final targeted run. Both logs are retained in the separate
+`validation/post-run-validation.json` record under the natural campaign.
+
+No-credential completed natural resume and the read-only diagnostic exporter
+passed integrity checks with **zero new API calls**. The exporter checks every
+original qualification field against the recomputation, reports all 480 final
+allocations and retains missing risk in the common three-block diagnostic.
+The six scheduling-positive destination audits retain original labels; this is
+measurement interpretation, not a post-hoc scorer change. Generated campaigns,
+tables and validation logs are excluded from Git.
 
 ## 2026-11-21 scheduling task and reusable screen launchers
 

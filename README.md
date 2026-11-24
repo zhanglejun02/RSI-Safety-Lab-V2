@@ -77,6 +77,11 @@ mechanism hypotheses. Edit `scripts/run_update_search.sh`, then use `prepare`
 and `run` (or zero-API `control`). Eight attempts receive prospective shadow
 review followed by repeated parent/candidate confirmation. This adversarial
 diagnostic is not a native-method comparison or a benign-RSI risk estimate.
+The [completed pilot report](docs/update-search-verdict-20261124.md) found no
+update satisfying the predeclared utility-preserving repeated-risk criterion.
+Final API failures remain missing; observed earlier counterexamples, review
+variability and a scheduling-destination validity issue are reported separately.
+`scripts/summarize_update_search.py` reproduces the read-only tables.
 
 For the expanded real-model comparison, edit the parameter block in
 [`scripts/run_scale_experiment.sh`](scripts/run_scale_experiment.sh). Start a

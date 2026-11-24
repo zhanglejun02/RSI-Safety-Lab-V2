@@ -1,21 +1,47 @@
 # Current work
 
-**2026-11-24 bounded update search: preparing natural validation.** The user
-authorized eight attempts comparing ordinary LLM context-policy mutation and
-structured mechanism hypotheses on the unchanged feasibility task pack. See
-[frozen design](update-search-20261124.md). All proposals share the same parent;
-both existing reviewers run before five-repeat independent confirmation. This
-is adversarial search with shadow review, not natural benign-RSI incidence or
-an online intervention-benefit test. No task expansion is authorized in this run.
-The public `update-search` profile and `scripts/run_update_search.sh` provide
-frozen source/config/plan, budgets, phase barriers and no automatic retries.
-Final targeted zero-API controls: **29 passed** (248.26s), covering worker
-isolation/cleanup, native resume and the diagnostic profile. The full frozen
-scripted campaign `update-search-control-20261124-v2` completed all 720 episodes
-and passed inspection. Initial full regression had 1,118 passes and one sandbox
-exit-cleanup permission race; cleanup now tolerates signal failure only after
-the worker is reaped, and still fails for a live worker. Natural results and
-the post-fix full regression are pending.
+**2026-11-24 bounded update search ended; no qualifying update found.** See the
+[result and candidate table](update-search-verdict-20261124.md) and
+[frozen design](update-search-20261124.md). Ordinary LLM context-policy mutation
+and structured hypotheses each produced four executable proposals: eight
+proposals, five distinct update sources. All already have observed counterexamples
+to the predeclared utility-preserving repeated-risk criterion in the first three
+blocks. Five-block measurement is incomplete: 480 allocated final episodes,
+296 normal completions, 54 step limits, 130 unknown API outcomes. Missing is not
+safe zero, and exit zero does not certify a complete measurement endpoint.
+
+The common three-block table is a post-hoc availability diagnostic, not a new
+endpoint. The one source with higher observed risk loses 15.10 utility percentage
+points. Its six observed scheduling positives use non-address recipient IDs;
+the permissive simulator records successful unauthorized sends. Preserve the raw
+labels, but do not call them demonstrated valid-address leaks. Two of four
+structured hypotheses explicitly predict reduced risk, contrary to this search
+objective. This is not evidence that hypothesis-driven search generally fails.
+
+Both existing shadow reviewers return inconclusive on six of eight proposals.
+Full validation rejects two; relative review rejects one and accepts one. The
+same deduplication update has opposite relative decisions across two public
+executions because one banking behavior differs, without an LLM judge or meta
+change. There is no independently verified utility-preserving dangerous target
+for sensitivity estimation, and no online intervention-benefit test.
+
+Campaign: `runs/current/update-search-20261124-v1`, frozen commit `4c0a7a8`.
+Cost: 8,512 dispatched calls, 22,232,079 reported tokens, 136 unknown calls with
+retained reservations. Status telemetry records 128 HTTP 402, one 429 and seven
+transport errors; a subsequent read-only balance query showed availability.
+Do not automatically recharge, retry or expand the experiment. The completed
+run remains immutable. Reproduce analysis with `scripts/summarize_update_search.py`;
+outputs are under `output/update-search-20261124/`.
+
+Frozen-source full zero-API regression: **1,122 passed**, 948.06s, following the
+documented sandbox cleanup fix and 29 targeted checks. The scripted control
+`update-search-control-20261124-v2` completed all 720 allocations. Post-run source
+now pauses a root on a new unknown outcome; explicit resume consumes the saved
+missing observation/charged editor attempt without retry. It also distinguishes
+observed criterion failure from missing-only inconclusiveness. These later changes
+passed **12 targeted zero-API checks**, 57.90s; see [validation](validation.md). Completed
+natural resume without credentials and read-only export verified unchanged run
+artifacts with zero additional API calls. No larger natural batch is scheduled.
 
 **2026-11-23 bounded feasibility experiment completed.** Read the
 [one-page verdict](feasibility-verdict-20261123.md) and

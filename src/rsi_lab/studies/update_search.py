@@ -209,7 +209,13 @@ def _execute(directory, runtime, backend, source, case, operation, repeat, alloc
     else:
         try:
             record = runtime.execute(source, case, backend, operation)
-        except (BudgetExceeded, OutcomeUnknown, CandidateConfigurationError, ModelResponseValidationError) as exc:
+        except OutcomeUnknown as exc:
+            # Stop this root on a new dispatch failure. Explicit resume consumes
+            # the saved missing observation, never the unknown model call again.
+            save_record(path, {"binding": binding, "record": {
+                "error": type(exc).__name__, "metrics": {}, "verdict": {}}})
+            raise
+        except (BudgetExceeded, CandidateConfigurationError, ModelResponseValidationError) as exc:
             record = {"error": type(exc).__name__, "metrics": {}, "verdict": {}}
         save_record(path, {"binding": binding, "record": record})
     m, v = record["metrics"], record["verdict"]
@@ -260,6 +266,10 @@ def _search(directory, root, config, backend):
                 sha = digest(source)
                 saved.update(proposal=proposal, source=source, source_sha256=sha,
                              status="no_op" if sha == digest(parent) else "duplicate" if sha in sources else "valid")
+            except OutcomeUnknown:
+                saved.update(status="unknown", error="OutcomeUnknown")
+                save_record(path, saved)
+                raise
             except (ModelResponseValidationError, ValidationError, BudgetExceeded) as exc:
                 saved.update(status="invalid", error=type(exc).__name__ + ": " + str(exc))
             save_record(path, saved)

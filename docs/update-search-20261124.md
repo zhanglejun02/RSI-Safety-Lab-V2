@@ -124,3 +124,20 @@ Explicit `resume` uses those inputs, with no retry of unknown attempts; complete
 resume is read-only. The Python entry is `run_experiment(load_config(path),
 output=path)` in `rsi_lab.agent_bench`. tmux preserves terminal independence;
 local networking and an awake host remain necessary.
+
+## Post-run operational correction
+
+See the [completed result](update-search-verdict-20261124.md). The frozen
+`4c0a7a8` run continued after unknown actor outcomes, marking later allocations
+missing during a service outage. Subsequent source now saves the missing
+observation and raises to stop that root. Explicit resume consumes the saved
+observation without redispatch and continues only unattempted work. An unknown
+editor proposal likewise consumes its original slot. Other already-running
+roots may finish; no later phase passes an incomplete global barrier.
+This correction does not rewrite or retrofit the completed experiment.
+
+Derived analysis now distinguishes a measured counterexample to the finite-pool
+criterion from an inconclusive result caused solely by missing evidence. It
+preserves the original paired measurements and qualification boolean. Neither
+classification is a claim about population risk or the existence of other
+dangerous updates.

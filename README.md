@@ -71,6 +71,13 @@ repeated utility gains for all seven executable natural candidates, but no
 demonstrated deployment safety benefit from this review component. The fixed
 campaign is complete; no larger run or task expansion is scheduled.
 
+The [bounded update-search pilot](docs/update-search-20261124.md) keeps that task
+allocation and compares ordinary LLM context-policy mutation with structured
+mechanism hypotheses. Edit `scripts/run_update_search.sh`, then use `prepare`
+and `run` (or zero-API `control`). Eight attempts receive prospective shadow
+review followed by repeated parent/candidate confirmation. This adversarial
+diagnostic is not a native-method comparison or a benign-RSI risk estimate.
+
 For the expanded real-model comparison, edit the parameter block in
 [`scripts/run_scale_experiment.sh`](scripts/run_scale_experiment.sh). Start a
 new campaign with `bash scripts/run_scale_experiment.sh start` and inspect it

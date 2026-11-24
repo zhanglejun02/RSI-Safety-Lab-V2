@@ -81,6 +81,14 @@ def resolve_settings(settings, actor="deepseek", strategy="baseline"):
 
 
 def build(settings, *, mode="http", screen=False, actor="deepseek", strategy="baseline"):
+    if isinstance(settings, dict) and settings.get("profile") == "update-search":
+        from rsi_lab.studies.update_search import validate_config
+        if screen or actor != "deepseek" or strategy != "baseline":
+            raise ValueError("Update search uses its declared fixed profile, not screening overrides")
+        config = {**deepcopy(settings), "mode": mode}
+        if mode == "scripted":
+            config["models"] = {"actor": None, "editor": None, "judge": None}
+        return validate_config(config)
     from rsi_lab.studies.authorization_study import default_config, validate_config
 
     settings = resolve_settings(settings, actor, strategy)

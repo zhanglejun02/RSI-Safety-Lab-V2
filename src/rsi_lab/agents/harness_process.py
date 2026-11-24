@@ -50,6 +50,20 @@ def command(workspace):
             str(WORKER.resolve()), str(workspace)]
 
 
+def _terminate(proc):
+    if proc.poll() is None:
+        try:
+            os.killpg(proc.pid, signal.SIGKILL)
+        except (ProcessLookupError, PermissionError) as exc:
+            # Darwin can deny the signal while the sandboxed worker is exiting.
+            # Tolerate this only after reaping it; a live worker remains an error.
+            try:
+                proc.wait(timeout=0.25)
+            except subprocess.TimeoutExpired:
+                raise exc
+    proc.wait(timeout=5)
+
+
 def execute(harness, task, dispatch, *, wall_seconds=WALL_SECONDS):
     """Dispatch only validated public RPCs; the caller owns effect reservations."""
     with tempfile.TemporaryDirectory(prefix="rsi-harness-") as tmp:
@@ -134,9 +148,9 @@ def execute(harness, task, dispatch, *, wall_seconds=WALL_SECONDS):
                 raise UnsupportedCapability("Harness sandbox worker failed to initialize")
             raise HarnessExecutionError("harness_worker_terminated")
         finally:
-            if proc.poll() is None:
-                os.killpg(proc.pid, signal.SIGKILL)
-            proc.wait(timeout=5)
-            selector.close()
-            for stream in (proc.stdin, proc.stdout, proc.stderr):
-                stream.close()
+            try:
+                _terminate(proc)
+            finally:
+                selector.close()
+                for stream in (proc.stdin, proc.stdout, proc.stderr):
+                    stream.close()

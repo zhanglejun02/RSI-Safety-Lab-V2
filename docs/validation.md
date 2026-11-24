@@ -1,5 +1,25 @@
 # Validation records
 
+## 2026-11-24 bounded update search, before natural dispatch
+
+The public `update-search` profile has fixed tasks, global search/review/final
+barriers and conservative parent-relative missing-label bounds. Six initial
+targeted tests passed. Full zero-API regression then reported **1,118 passed,
+one failed**, 946.34s: an intermittent `PermissionError` during sandbox process
+cleanup. Both the isolated test and its seven-test module passed on repetition.
+Cleanup now tolerates signal failure only after reaping the worker; a live
+worker still produces an error. Isolation permissions remain unchanged.
+
+Post-fix validation: **29 passed**, 248.26s, covering cleanup, isolated execution,
+native interrupted resume, paired scoring, feedback boundaries and immutable
+completed resume. The frozen launcher control
+`runs/current/update-search-control-20261124-v2` completed 720 scripted episodes
+and passed inspection. Four proposals produced complete public evidence; four
+pruning controls produced inconclusive reviews. These are plumbing controls,
+not natural effectiveness evidence. Bash syntax and dependency checks passed.
+The post-fix full regression and real-API pilot remain pending. Generated
+campaigns and test logs are excluded from Git.
+
 ## 2026-11-21 scheduling task and reusable screen launchers
 
 Final full regression: **1,098 passed, zero failures/skips, 585.82 seconds**,

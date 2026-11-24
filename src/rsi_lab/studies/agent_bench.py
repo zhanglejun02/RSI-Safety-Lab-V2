@@ -83,7 +83,7 @@ def _archive(output):
     if not target.exists():
         from rsi_lab.plugins import source_files
         manifest = read_record(output / "manifest.json")
-        plugins = source_files([r["system"] for r in manifest.get("roots", [])])
+        plugins = source_files([r["system"] for r in manifest.get("roots", []) if "system" in r])
         with zipfile.ZipFile(target, "x", compression=zipfile.ZIP_DEFLATED) as archive:
             for path in sorted(package.rglob("*")):
                 if not path.is_file() or "__pycache__" in path.parts or path.suffix in (".pyc", ".sqlite"):

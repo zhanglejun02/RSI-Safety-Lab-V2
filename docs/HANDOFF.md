@@ -1,5 +1,22 @@
 # Current work
 
+**2026-11-24 bounded update search: preparing natural validation.** The user
+authorized eight attempts comparing ordinary LLM context-policy mutation and
+structured mechanism hypotheses on the unchanged feasibility task pack. See
+[frozen design](update-search-20261124.md). All proposals share the same parent;
+both existing reviewers run before five-repeat independent confirmation. This
+is adversarial search with shadow review, not natural benign-RSI incidence or
+an online intervention-benefit test. No task expansion is authorized in this run.
+The public `update-search` profile and `scripts/run_update_search.sh` provide
+frozen source/config/plan, budgets, phase barriers and no automatic retries.
+Final targeted zero-API controls: **29 passed** (248.26s), covering worker
+isolation/cleanup, native resume and the diagnostic profile. The full frozen
+scripted campaign `update-search-control-20261124-v2` completed all 720 episodes
+and passed inspection. Initial full regression had 1,118 passes and one sandbox
+exit-cleanup permission race; cleanup now tolerates signal failure only after
+the worker is reaped, and still fails for a live worker. Natural results and
+the post-fix full regression are pending.
+
 **2026-11-23 bounded feasibility experiment completed.** Read the
 [one-page verdict](feasibility-verdict-20261123.md) and
 [frozen protocol](feasibility-20261123.md). GEPA + the full-public-validation

@@ -57,9 +57,9 @@ EXPERIMENT_SETTINGS=$(cat <<'JSON'
       "base_url": "https://api.deepseek.com",
       "model": "deepseek-flash",
       "api_key_env": "DEEPSEEK_API_KEY",
-      "temperature": 0,
+      "temperature": 0.0,
       "thinking_mode": "disabled",
-      "timeout_seconds": 120,
+      "timeout_seconds": 120.0,
       "max_prompt_bytes": 131072,
       "max_output_tokens": 2048,
       "max_total_tokens": 1000000
@@ -70,7 +70,7 @@ EXPERIMENT_SETTINGS=$(cat <<'JSON'
       "api_key_env": "DEEPSEEK_API_KEY",
       "temperature": 0.6,
       "thinking_mode": "disabled",
-      "timeout_seconds": 120,
+      "timeout_seconds": 120.0,
       "max_prompt_bytes": 262144,
       "max_output_tokens": 12288,
       "max_total_tokens": 256000

@@ -24,6 +24,13 @@ read-only exporter and no-credential completed resume preserved all **2,520**
 run files with zero new calls. Both launchers pass Bash syntax and `pip check`
 reports no broken requirements. Candidate and meta isolation remain enabled.
 
+HTTP preparation additionally passed a dedicated zero-call launcher test (1/1,
+0.15s). It caught and fixed JSON integer literals for actor temperature and
+provider timeout, which the strict ChatConfig requires as floats; the failed
+preparation created no campaign and dispatched no calls. The corrected frozen
+natural plan records implementation
+`5a25128aeeb6c70d2a3247be6956dcead84c25e22a9e98ea76815e892335f489`.
+
 The normal test invocation could not initialize nested macOS sandboxing; native
 checks were run outside the outer execution sandbox while retaining the
 project's own isolated workers. No unsandboxed candidate fallback was used.

@@ -1,5 +1,20 @@
 # Current work
 
+**2026-11-26 small first-party benchmark pilot prepared.** The user authorized
+constructing a small subset of three-layer safety tasks and testing it. See
+[the frozen design](improvement-safety-pilot.md). Two templates, four final
+normal/boundary conditions, two repeats; Frozen, GEPA and bounded HyperAgents,
+one root each and two update opportunities. Native zero-API controls and matched
+meta-continuation tests passed; see [validation](validation.md). Natural results
+must be reported separately from these controls.
+
+Run through `scripts/run_improvement_pilot.sh`. The conditional third-layer
+launcher `scripts/run_improvement_meta.sh` selects the first actual edited-meta
+execution checkpoint, never a favorable safety outcome. If none exists, report
+that layer unavailable. The read-only exporter is `scripts/summarize_improvement.py`.
+No new safety algorithm, broad benchmark validity or natural degradation is
+established by this implementation.
+
 **2026-11-24 bounded update search ended; no qualifying update found.** See the
 [result and candidate table](update-search-verdict-20261124.md) and
 [frozen design](update-search-20261124.md). Ordinary LLM context-policy mutation

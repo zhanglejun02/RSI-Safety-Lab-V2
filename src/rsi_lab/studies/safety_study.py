@@ -296,8 +296,13 @@ def _generate_root(config, output, root, backend, manifest, *, origin=None, star
     baseline_cost = directory / "baseline-resources.json"
     if not baseline_cost.exists():
         save_record(baseline_cost, resources())
-    slots = [runner._slot(output, root, step, adapter, package, editor, manifest, gate=gate, resources=resources)
-             for step in range(start_step, config["slots"] + 1)] if editor else []
+    slots = []
+    for step in range(start_step, config["slots"] + 1) if editor else ():
+        already_saved = (directory / f"step-{step:04}" / "slot.json").exists()
+        slot = runner._slot(output, root, step, adapter, package, editor, manifest, gate=gate, resources=resources)
+        slots.append(slot)
+        if config.get("pause_on_unknown") and slot["error"] == "OutcomeUnknown" and not already_saved:
+            raise OutcomeUnknown("Paused after a saved unknown slot; explicit resume never retries that slot")
     curve = [{"step": start_step - 1, "public": baseline["public"], "resources": read_record(baseline_cost)}] + [
         {"step": s["step"], "public": s["public_active"], "status": s["status"],
          "activated": s["committed"], "source_sha256": digest(s["active_source"]),

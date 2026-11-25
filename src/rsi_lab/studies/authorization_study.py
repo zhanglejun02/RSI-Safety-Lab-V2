@@ -50,7 +50,7 @@ def default_config():
 
 def validate_config(config):
     default = default_config()
-    if (type(config) is not dict or set(config) - {"harness", "prompts"} != set(default)
+    if (type(config) is not dict or set(config) - {"harness", "prompts", "public_rollout_cache", "meta_ablation", "pause_on_unknown"} != set(default)
             or config.get("profile") != default["profile"] or config.get("protocol") != PROTOCOL):
         raise ValidationError("Start with the authorization-study configuration")
     for key, allowed in (("methods", METHODS), ("arms", ("native_only", "behavior_review"))):
@@ -99,6 +99,13 @@ def validate_config(config):
             or any(type(v) is not str or not v.strip() for v in prompts.values())):
         raise ValidationError("Invalid registered prompts")
     configured_source(config, prompts.get("initial_instructions", shared.DEFAULT_INSTRUCTIONS))
+    if "public_rollout_cache" in config and type(config["public_rollout_cache"]) is not bool:
+        raise ValidationError("public_rollout_cache must be boolean")
+    if "pause_on_unknown" in config and type(config["pause_on_unknown"]) is not bool:
+        raise ValidationError("pause_on_unknown must be boolean")
+    if "meta_ablation" in config and (config["methods"] != ["hyperagents"]
+            or config["arms"] != ["native_only"] or config.get("public_rollout_cache") is not True):
+        raise ValidationError("Meta continuations require cached native-only HyperAgents")
     scheduling.settings(config)
     return deepcopy(config)
 
@@ -112,6 +119,9 @@ def plan(config):
              for name in config["methods"]
              for arm in (["native_only"] if name == "frozen" else config["arms"])
              for seed in config["seeds"]]
+    if "meta_ablation" in config:
+        from .meta_ablation import effect_roots
+        roots = effect_roots(config, backend)
     final_cases = len(backend.cases("heldout")) * config["evaluation"]["repeats"]
     # Origin, generated children and native selected policies; exact source reuse
     # within a root is disclosed and never treated as independent repetition.
@@ -145,7 +155,7 @@ def plan(config):
             "initial_policy_sha256": digest(founder), "harness": describe_harness(founder),
             "execution": {**options, "allocated_calls": calls, "allocated_tokens": tokens},
             "confirmatory": False, "selection": "all_predeclared_cases_no_outcome_filtering",
-            "objective": "clean_development_mean_utility;service_cost_is_auxiliary_not_selection_reward",
+            "objective": backend.describe().get("objective", "clean_development_mean_utility;service_cost_is_auxiliary_not_selection_reward"),
             "api_calls": 0})
 
 
@@ -214,7 +224,13 @@ def _root_job(output, root, phase):
                 probes = BehaviorProbeRunner(runtime, backend, root_id=root["root_id"])
                 resources = lambda: {"actor": provider.summary()}
                 gate = ReviewGate(config["review"], probes, usage=resources, mode="behavior_review")
-            shared._generate_root(config, output, root, backend, manifest, review_gate=gate, review_resources=resources)
+            continuation = {}
+            if "continuation" in root:
+                from .meta_ablation import stage
+                origin, start_step = stage(directory, root)
+                continuation = {"origin": origin, "start_step": start_step}
+            shared._generate_root(config, output, root, backend, manifest, review_gate=gate,
+                                  review_resources=resources, **continuation)
         elif phase == "evaluation":
             barrier = read_record(output / "generation_complete.json")
             expected = {r["root_id"]: digest(read_record(output / r["path"] / "root.json")) for r in manifest["roots"]}
@@ -269,6 +285,9 @@ def _evaluate(config, directory, root, backend):
                         record = runtime.execute(program, case, backend, operation)
                     except (BudgetExceeded, OutcomeUnknown, CandidateConfigurationError, ModelResponseValidationError) as exc:
                         record = {"error": type(exc).__name__, "metrics": {}, "verdict": {}}
+                        if isinstance(exc, OutcomeUnknown) and config.get("pause_on_unknown"):
+                            save_record(path, record)
+                            raise
                     save_record(path, record)
                 metric, verdict = record["metrics"], record["verdict"]
                 # Retain an observed violation even if the actor later truncates;
@@ -292,7 +311,7 @@ def _evaluate(config, directory, root, backend):
         row["assessment_scope"] = "any_observed_violation_on_selected_heldout_suite;not_universal_safety"
     cases = evaluated[final_sha]["cases"]
     metrics = _metrics(cases)
-    row = {"root_id": root["root_id"], "method": root["system"], "arm": root["arm"], "seed": root["seed"],
+    row = {"root_id": root["root_id"], "method": root.get("comparison", root["system"]), "arm": root["arm"], "seed": root["seed"],
            "benchmark": backend.describe()["version"], "final_source_sha256": final_sha,
            "final_matches_founder": final_sha == digest(SystemSnapshot.from_dict(saved["origin"]).version.component("policy")["source"]),
            "cases": cases, "metrics": metrics,

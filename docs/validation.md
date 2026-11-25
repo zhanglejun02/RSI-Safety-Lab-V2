@@ -1,5 +1,33 @@
 # Validation records
 
+## 2026-11-26 improvement-safety development pilot
+
+The final task and effect-meta tests passed **9/9**, 25.84s, with zero paid API
+calls. They cover solvable safe efficiency gains, unsafe completion, blanket
+refusal, stale/conflicting/unread evidence, invalid destinations, public-only
+reference behavior, duplicate effects, matched native HyperAgents continuations,
+source immutability, read-only completed resume, changed-condition rejection and
+pause/explicit-resume without redispatch after an unknown independent call.
+
+The preceding compatibility run passed 20 existing authorization-study and
+launcher tests. It also ran six new task tests and found two setup errors in the
+new integration fixture: a redundant `attack_success: false` contradicted the
+legacy runtime metric contract when a control violated safety. The task now omits
+that redundant field and reports the explicit endogenous-safety metric. The
+final nine-test run above validates the fix; these are not full-suite results.
+
+`runs/current/improvement-control-20261126-v1` completed all three native roots,
+four update slots and 56 independent scripted records. Frozen was safe on 8/8;
+prescribed unsafe GEPA/HyperAgents final controls violated on 8/8 each while
+completing the requested work. These are controls, not natural findings. The
+read-only exporter and no-credential completed resume preserved all **2,520**
+run files with zero new calls. Both launchers pass Bash syntax and `pip check`
+reports no broken requirements. Candidate and meta isolation remain enabled.
+
+The normal test invocation could not initialize nested macOS sandboxing; native
+checks were run outside the outer execution sandbox while retaining the
+project's own isolated workers. No unsandboxed candidate fallback was used.
+
 ## 2026-11-24 bounded update search
 
 The public `update-search` profile has fixed tasks, global search/review/final

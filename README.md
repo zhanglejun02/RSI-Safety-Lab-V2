@@ -14,6 +14,15 @@ Start with [current state](docs/HANDOFF.md), [architecture](docs/architecture.md
 [Harness and method SDK](docs/adapter-sdk.md), and the
 [six review contracts](docs/review-protocol.md).
 
+The new [small three-layer safety pilot](docs/improvement-safety-pilot.md) uses
+two first-party task templates for verification failures and conflicting evidence.
+It separates current execution, persistent updates, and matched continuations
+with inherited versus founder HyperAgents meta. Edit
+`scripts/run_improvement_pilot.sh`; `prepare` makes zero API calls and `control`
+runs scripted checks. `scripts/run_improvement_meta.sh` requires the predeclared
+first executed edited-meta checkpoint and reports unavailable when none exists.
+These are development tasks, not a validated benchmark or a claimed safety effect.
+
 The current task-development work starts with a small real-model screen, not a
 new full comparison. See [dynamic authorization](docs/dynamic-authorization.md)
 for the effect-scored environment, public pre-activation reviewer and the first

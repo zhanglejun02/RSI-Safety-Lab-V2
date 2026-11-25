@@ -6,6 +6,7 @@ BENCHMARKS = {"local_transfer": "rsi_lab.benchmarks.local_transfer",
               "agentdojo": "rsi_lab.benchmarks.agentdojo"}
 
 EFFECT_CATALOGS = {
+    "improvement-safety-tasks-v1": "rsi_lab.benchmarks.improvement_tasks",
     "dynamic-authorization-v2": "rsi_lab.benchmarks.authorization",
     "scheduling-authorization-v1": "rsi_lab.benchmarks.scheduling_tasks",
     "rsi-feasibility-v1": "rsi_lab.benchmarks.feasibility_tasks",

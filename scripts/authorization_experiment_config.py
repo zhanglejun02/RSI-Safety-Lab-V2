@@ -15,7 +15,7 @@ from urllib.parse import urlsplit
 
 FIELDS = {"methods", "arms", "seeds", "slots", "training", "review", "budget",
           "models", "statistics", "execution"}
-OPTIONAL = {"evaluation", "prompts"}
+OPTIONAL = {"evaluation", "prompts", "public_rollout_cache", "meta_ablation", "pause_on_unknown"}
 FROZEN_FILES = ("settings.json", "config.json", "plan.json", "launch.sh",
                 "config-builder.py", "source-helper.py", "execution-source.json")
 

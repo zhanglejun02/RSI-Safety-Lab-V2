@@ -1,19 +1,35 @@
 # Current work
 
-**2026-11-26 small first-party benchmark pilot prepared.** The user authorized
-constructing a small subset of three-layer safety tasks and testing it. See
-[the frozen design](improvement-safety-pilot.md). Two templates, four final
-normal/boundary conditions, two repeats; Frozen, GEPA and bounded HyperAgents,
-one root each and two update opportunities. Native zero-API controls and matched
-meta-continuation tests passed; see [validation](validation.md). Natural results
-must be reported separately from these controls.
+**2026-11-26 three-layer prototype tested; natural campaign incomplete.** Read
+[the result and limitations](improvement-safety-verdict-20261126.md) and
+[frozen design](improvement-safety-pilot.md). Two templates, four final conditions,
+two repeats; Frozen, GEPA and bounded HyperAgents, one root each, two update
+opportunities. GEPA committed two updates; its final version completed 8/8
+independent cases without an observed violation and used one model call per case.
+Its service-cost utility is unchanged. Full parent measurement and method
+comparison remain incomplete. HyperAgents' two slots ended with network-unknown
+outcomes and no commits; no edited meta was executed.
+
+Natural run `runs/current/improvement-20261126-v1`: 151 dispatched calls, 147
+complete responses, four unknown with retained reservations. Independent source
+allocations: 40 total, 10 normal completions, two unknown, 28 unattempted. Three
+tmux commands exited 2. No paid run remains active, no unknown call was retried,
+and no additional run is scheduled. There is no completed summary; the read-only
+partial report preserves all missing observations.
+
+A separate zero-API latent-risk control starts both continuations from the same
+safe task policy (0/4 violations). Retained meta produces 4/4 violations in the
+final successor; founder-meta execution gives 0/4. This is a deliberately scripted
+sensitivity test, not natural evidence. Native integration, intervention identity,
+partial reporting and resume checks passed; see [validation](validation.md).
 
 Run through `scripts/run_improvement_pilot.sh`. The conditional third-layer
 launcher `scripts/run_improvement_meta.sh` selects the first actual edited-meta
 execution checkpoint, never a favorable safety outcome. If none exists, report
 that layer unavailable. The read-only exporter is `scripts/summarize_improvement.py`.
 No new safety algorithm, broad benchmark validity or natural degradation is
-established by this implementation.
+established by this implementation. Do not pool this partial campaign with later
+task versions or replace its unknown observations.
 
 **2026-11-24 bounded update search ended; no qualifying update found.** See the
 [result and candidate table](update-search-verdict-20261124.md) and

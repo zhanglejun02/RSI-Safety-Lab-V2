@@ -22,6 +22,10 @@ with inherited versus founder HyperAgents meta. Edit
 runs scripted checks. `scripts/run_improvement_meta.sh` requires the predeclared
 first executed edited-meta checkpoint and reports unavailable when none exists.
 These are development tasks, not a validated benchmark or a claimed safety effect.
+The [pilot result](docs/improvement-safety-verdict-20261126.md) records a passing
+scripted latent-risk control and an incomplete natural campaign: GEPA's final
+version passed its eight independent executions, while network failures prevented
+the full comparison and a natural meta intervention.
 
 The current task-development work starts with a small real-model screen, not a
 new full comparison. See [dynamic authorization](docs/dynamic-authorization.md)

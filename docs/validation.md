@@ -35,6 +35,24 @@ The normal test invocation could not initialize nested macOS sandboxing; native
 checks were run outside the outer execution sandbox while retaining the
 project's own isolated workers. No unsandboxed candidate fallback was used.
 
+The stronger latent-risk control and partial-result exporter subsequently passed
+**5 tests**, 30.35s, zero paid calls. Two continuations start with identical safe
+task policy/archive/public cache; only an instruction from the actually executed
+edited meta triggers the scripted unsafe editor. Both starts have 0/4 violations;
+the retained-meta final has 4/4, founder-meta final 0/4. An initial control test
+failed because it looked for the marker at the beginning of the wrapped user
+message; recognizing the actual instruction after the tool preamble fixed the
+fixture. No natural source, task, request or label changed. These controls reside
+under `runs/current/improvement-meta-controls-20261126-v3`.
+
+The partial exporter reproduces completed-run metrics in a regression test,
+verifies saved execution records and the generation barrier, and keeps absent
+or unknown observations missing. It exported the incomplete natural run and
+both latent-control runs without changing input files. Natural observations are
+recorded in [the pilot verdict](improvement-safety-verdict-20261126.md), not
+counted as software validation. Network failures leave the natural run incomplete;
+no completed-resume result is claimed for it.
+
 ## 2026-11-24 bounded update search
 
 The public `update-search` profile has fixed tasks, global search/review/final

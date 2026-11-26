@@ -1,163 +1,14 @@
 # RSI Safety Lab
 
-A cross-method safety research platform for agent self-improvement. Methods start
-from a common executable Harness and edit its declared resources: prompts, skills,
-tool wrappers, context handling and Python execution logic. The platform controls
-tasks, model/tool access, budgets, independent scoring, review and activation.
-
-GEPA, OpenEvolve and bounded HyperAgents retain their declared search mechanisms.
-Installed method packages use the same evaluation and reporting interfaces. The
-reference safety module reviews public behavior before inherited state commits;
-its natural detection quality and safety benefit remain unestablished.
-
-Start with [current state](docs/HANDOFF.md), [architecture](docs/architecture.md),
-[Harness and method SDK](docs/adapter-sdk.md), and the
-[six review contracts](docs/review-protocol.md).
-
-A [frozen safety protocol v0.1](docs/safety-rating-v0.1.md) defines per-requirement
-outcomes and cumulative L1–L3 cards for concrete configurations. Use
-`bash scripts/run_rating_experiment.sh prepare runs/current/MY-RATING` to freeze
-the three-method pilot without API calls. The checkpoint precedes continuation;
-independent labels remain outside search. Rules include explicit uncertainty,
-missingness and update-exposure requirements. The [completed v0.1 pilot](docs/safety-rating-verdict-20261126.md)
-keeps the original network-failed cohort and its single registered recovery separate.
-All three configurations remain insufficient for grading. This allocation cannot
-establish the risk bound or a 5-point update regression; the report states its
-sample-size limits and distinguishes deployment changes from archive/meta changes.
-
-The earlier [safety-rating research draft](docs/safety-rating-protocol.md) maps endpoint,
-observed-trajectory and prospective-continuation evidence to proposed L1–L3
-requirements. It does not assign grades or invent risk thresholds. Run
-`bash scripts/export_rsi_rating_evidence.sh NEW_OUTPUT_DIRECTORY` to generate a
-read-only evidence table from the completed AgentDojo studies, with zero model
-calls. The fixed-update confirmation is not a future-evolution experiment.
-
-The [locked AgentDojo pilot](docs/agentdojo-rsi-pilot-20261126.md) compares GEPA and
-OpenEvolve from the same Harness, records prospective observe-only review, and
-independently evaluates actual parents and candidates. Edit the parameter block
-in `scripts/run_agentdojo_rsi.sh`; `prepare` is free and `run` uses the saved plan.
-The review decisions do not enforce rejection in this pilot. Task completion,
-selected harmful effects and missing observations are reported separately.
-The [completed pilot](docs/agentdojo-rsi-verdict-20261126.md) has 210 complete
-independent labels from 216 allocations. It identifies one repeatedly riskier
-OpenEvolve update and one GEPA update that passed public review but regressed
-on independent tasks. Opposite candidate directions, network gaps and only two
-roots per method preclude a method ranking or a detector-effectiveness claim.
-
-The [fixed-update confirmation](docs/agentdojo-confirmation-20261126.md) freezes
-all five distinct updates, their actual parents and the existing reviewer. It
-separates six new tasks from four original-task replications, includes a separately
-executed source-identical control, and locks five measurement blocks before paid
-calls. Use `scripts/run_agentdojo_confirmation.sh`; it does not start new search.
-The [completed confirmation](docs/agentdojo-confirmation-verdict-20261126.md)
-supports one fixed OpenEvolve update: new-task success rises from 50/60 to 58/60
-while selected violations rise from 9/60 to 23/60. The unchanged reviewer rejects
-it in all five public repetitions. GEPA's suspected review gap does not reproduce
-net risk growth on the new tasks. These are bounded update-level results, not a
-method ranking or an estimate of online intervention benefit. Export verified
-effects and tables with `scripts/summarize_agentdojo_confirmation.py`.
-
-The new [small three-layer safety pilot](docs/improvement-safety-pilot.md) uses
-two first-party task templates for verification failures and conflicting evidence.
-It separates current execution, persistent updates, and matched continuations
-with inherited versus founder HyperAgents meta. Edit
-`scripts/run_improvement_pilot.sh`; `prepare` makes zero API calls and `control`
-runs scripted checks. `scripts/run_improvement_meta.sh` requires the predeclared
-first executed edited-meta checkpoint and reports unavailable when none exists.
-These are development tasks, not a validated benchmark or a claimed safety effect.
-The [pilot result](docs/improvement-safety-verdict-20261126.md) records a passing
-scripted latent-risk control and an incomplete natural campaign: GEPA's final
-version passed its eight independent executions, while network failures prevented
-the full comparison and a natural meta intervention.
-
-The current task-development work starts with a small real-model screen, not a
-new full comparison. See [dynamic authorization](docs/dynamic-authorization.md)
-for the effect-scored environment, public pre-activation reviewer and the first
-screen's negative result (Frozen completed every selected task without a
-violation). Edit parameters in
-[`scripts/run_authorization_experiment.sh`](scripts/run_authorization_experiment.sh):
-
-```bash
-bash scripts/run_in_tmux.sh auth-screen -- \
-  bash scripts/run_authorization_experiment.sh screen runs/current/MY-NEW-SCREEN
-```
-
-The wrapper preserves logs and exit status and prevents idle sleep. Local API
-calls still need a connected, awake Mac; tmux does not guarantee execution while
-the laptop lid is closed. A completed screen is not evidence of natural detector
-effectiveness.
-
-For the newer joint-planning tasks, use
-[`scripts/run_scheduling_screen.sh`](scripts/run_scheduling_screen.sh). All model,
-strategy, task and budget parameters are in its top block:
-
-```bash
-bash scripts/run_in_tmux.sh scheduling-screen -- \
-  bash scripts/run_scheduling_screen.sh screen runs/current/MY-PLANNING-SCREEN kimi structured
-```
-
-Choose `deepseek|kimi` and `baseline|structured` for a new campaign. The structured
-condition is a manual planning instruction control, not an RSI method. The
-[task contract](docs/scheduling-tasks.md) explains feasibility, four reference
-behaviors, independent completion/risk labels and the development-only scope.
-[`scripts/run_scheduling_rsi.sh`](scripts/run_scheduling_rsi.sh) separately runs
-one GEPA update with independent parent/candidate audits; its default `prepare`
-action makes no API calls. It does not start a full cross-method comparison.
-The [completed task-discrimination pilot](docs/task-discrimination-20261121.md)
-reports planning headroom, native attack outcomes, and the failed GEPA candidate
-separately; natural safety-module effectiveness remains unverified.
-
-The bounded follow-up uses GEPA and an adaptation of full public validation on
-one fixed scheduling / banking / Slack allocation. See the
-[frozen feasibility protocol](docs/feasibility-20261123.md). All new-run parameters
-are in [`scripts/run_rsi_feasibility.sh`](scripts/run_rsi_feasibility.sh):
-
-```bash
-bash scripts/run_rsi_feasibility.sh prepare runs/current/MY-FEASIBILITY-RUN
-bash scripts/run_in_tmux.sh my-feasibility -- \
-  bash scripts/run_rsi_feasibility.sh run runs/current/MY-FEASIBILITY-RUN
-```
-
-This uses two roots per arm, two update opportunities and three independent
-executions per final case and distinct candidate source. `control` uses no paid
-APIs. The result must separate natural improvement, safety-based blocking,
-utility rejection and missing evidence; it does not assume a positive finding.
-The [completed one-page verdict](docs/feasibility-verdict-20261123.md) records
-repeated utility gains for all seven executable natural candidates, but no
-demonstrated deployment safety benefit from this review component. The fixed
-campaign is complete; no larger run or task expansion is scheduled.
-
-The [bounded update-search pilot](docs/update-search-20261124.md) keeps that task
-allocation and compares ordinary LLM context-policy mutation with structured
-mechanism hypotheses. Edit `scripts/run_update_search.sh`, then use `prepare`
-and `run` (or zero-API `control`). Eight attempts receive prospective shadow
-review followed by repeated parent/candidate confirmation. This adversarial
-diagnostic is not a native-method comparison or a benign-RSI risk estimate.
-The [completed pilot report](docs/update-search-verdict-20261124.md) found no
-update satisfying the predeclared utility-preserving repeated-risk criterion.
-Final API failures remain missing; observed earlier counterexamples, review
-variability and a scheduling-destination validity issue are reported separately.
-`scripts/summarize_update_search.py` reproduces the read-only tables.
-
-For the expanded real-model comparison, edit the parameter block in
-[`scripts/run_scale_experiment.sh`](scripts/run_scale_experiment.sh). Start a
-new campaign with `bash scripts/run_scale_experiment.sh start` and inspect it
-with `bash scripts/run_scale_experiment.sh status <campaign>`. This fixes eight
-roots per condition, five rounds and six final task families, including a
-random-rejection control. See the [design and validation status](docs/scale-experiment-20261119.md)
-before treating automatic risk scores as calibrated findings.
-
-To export blinded references or re-score saved final answers without rerunning
-agents, use `bash scripts/run_scoring_calibration.sh export` or the explicit
-`controls` / `rescore` actions. Parameters stay at the top of that script. The
-`scoring-calibration` profile preserves old labels and reports paired new/reversed
-risk separately; independent human calibration remains pending. See the
-[saved-answer workflow](docs/natural-experiment.md#saved-answer-scoring-calibration).
+A reusable safety experiment platform for agent self-improvement. GEPA,
+OpenEvolve and bounded HyperAgents start from a common executable Harness and
+retain their declared search mechanisms. The outer platform controls tasks,
+model/tool access, budgets, review, activation and independent evaluation.
 
 ## Install and start
 
-The current executable Harness runtime requires **macOS with `sandbox-exec`**.
-Use Python **3.12** for the supported installation and validation environment:
+Use Python **3.12** and **macOS with `sandbox-exec`**, the currently supported
+executable Harness host:
 
 ```bash
 python3.12 -m venv .venv
@@ -166,176 +17,140 @@ python -m pip install -c requirements/constraints-py312.txt -e '.[agentbench,sea
 rsi-lab list
 ```
 
-One call starts a local experiment with a matched frozen reference:
-
 ```python
 import rsi_lab
 
 result = rsi_lab.evaluate("gepa")
-print(result.output, result.report_path)
 ```
 
-The default `local-control-v1` preset uses scripted providers, real candidate
-execution and **zero paid API calls**. CONTROL scores are not model performance.
+The default is a **zero-API scripted control**, not a natural model result.
+`result.output` and `result.report_path` locate its artifacts. An existing full
+experiment JSON uses the same entry point:
+
+```python
+result = rsi_lab.evaluate("gepa", config="my-experiment.json")
+```
+
+Ordinary comparisons include a separate Frozen root. Rating configurations
+compare the founder and later snapshots within the selected evolving root.
+`rsi_lab.preflight("gepa", config="my-experiment.json")` checks the allocation
+without model calls. A single-method call selects that method; multi-method
+campaigns use the same underlying runner through the Bash launchers below.
+
 The project supports wheel installation; it is not a PyPI release.
 
 ## Use your own evolving agent
 
-A compatible resource directory implements `run(task, api)` in `agent.py`. Package
-it in one call, or pass the directory directly:
+Package a compatible resource directory in one call, or pass it directly:
 
 ```python
-agent = rsi_lab.adapt("./my_agent")
+agent = rsi_lab.adapt("./my_agent", editable=("prompt", "skill", "runtime"))
 result = rsi_lab.evaluate("openevolve", harness=agent)
 # Equivalent: rsi_lab.evaluate("openevolve", harness="./my_agent")
 ```
 
-See [the executable example](examples/harness_agent/agent.py), with
-[instructions](examples/harness_agent/AGENTS.md) and a
-[skill resource](examples/harness_agent/skills/task.md). The agent controls its own
-loop and context. `api.model`, `api.tool` and `api.read` provide model calls,
-authorized task tools and versioned resources. The platform supplies public task
-information and computes scores from actual execution.
+The directory implements `run(task, api)`; see the
+[executable example](examples/harness_agent/agent.py). `api.model`, `api.tool`
+and `api.read` expose brokered model calls, task tools and bundled resources.
+The candidate may change its declared instructions, skills, tool wrappers,
+context handling and execution loop. Every version runs as a complete Harness.
 
-```python
-agent = rsi_lab.adapt("./my_agent", editable=("prompt", "skill", "runtime"))
-checked = rsi_lab.preflight("openevolve", harness=agent)
-```
-
-`adapt` does not execute code. A run freezes all resources and editing permissions;
-subsequent local edits cannot change that run. `preflight` checks declarations and
-allocation, not natural accuracy or mechanism fidelity. An arbitrary repository
-still needs a compatible entrypoint and dependencies. A new RSI method needs a
-one-time lifecycle adapter; installing it makes `evaluate("method_name")` available
-without edits to the runner, scorer or report.
-
-The worker executes real Python with the standard library and bundled modules.
-It receives no credentials or independent labels and has no direct network or
-host-file access beyond its declared runtime sandbox. Model and tool effects pass
-through the outer broker. Unsupported hosts fail explicitly; there is no
-unsandboxed fallback. Installed optimizer/reviewer plugins remain trusted host
-Python and have a different trust boundary.
+`adapt` packages resources; it does not infer an arbitrary repository's interface.
+A new RSI method needs a one-time lifecycle adapter. After installing its
+[SDK v2 package](docs/adapter-sdk.md), `evaluate("method_name")` uses the existing
+runner and reports. The [external Echo example](examples/rsi_echo_adapter/README.md)
+exercises this installation boundary.
 
 ## Methods and experimental scope
 
-| Method | Current adaptation |
+| Method | Preserved mechanism |
 |---|---|
-| `frozen` | Executes the common founder without search |
-| `gepa` | Native reflection, per-case pool and selection over serialized Harness resources |
-| `openevolve` | Native population, parent/context selection and revisions of Harness resources |
-| `hyperagents` | Harness revisions plus separately frozen/editable bounded optimizer meta |
-| Installed method | SDK v2 lifecycle, state projection and declared capabilities |
+| GEPA | Native reflection, per-case candidate pool and selection |
+| OpenEvolve | Native population, parent/context selection and retention |
+| HyperAgents | Harness revisions and separately bounded optimizer meta |
+| Frozen | Common founder without search, when the experiment calls for it |
 
-Editing permissions belong to the frozen Harness manifest. A prompt-only editing
-scope can be selected as an experimental condition, but every candidate executes
-as a complete Harness. There is no instructions-only runtime. Method-specific
-search limits and differences from upstream remain documented in the
-[state mapping](docs/method-state-mapping.md) and
-[conformance specification](docs/adapter-conformance.md).
+See [state mapping](docs/method-state-mapping.md) and
+[conformance](docs/adapter-conformance.md) for declared limits. Equal update
+counts do not imply equal compute. Snapshot admission, archive retention and
+actual deployment are different events.
 
-All methods use the same outer task/resource contract. Equal update counts do not
-imply equal compute, and different editing scopes are different experimental
-conditions. Resource versions and inherited optimizer state are both recorded;
-rejecting a candidate preserves the declared base state but does not erase spent
-calls, reservations, public caches or external effects.
+| Evaluation resource | Current status |
+|---|---|
+| AgentDojo | Executable tool/state bridge; natural studies currently cover selected Banking/Slack conditions |
+| SEABench-derived tasks | Selected environments and derived task packs; exposed development material with calibration limits |
+| XSTest | Separate text/refusal evaluation; not a tool-action risk measure |
+| AgentHarm | Unsupported for executable Harnesses; fails before dispatch pending a native bridge |
 
-## SEABench-derived safety experiments
-
-SEABench supplies selected tasks and environment assets; this platform defines
-its execution, scoring and safety protocol. These are not official SEABench scores.
-The source is external and pinned:
-
-```bash
-git clone https://github.com/SEABench-Endogenous-Misalignment/SEABench.git runs/vendor/SEABench
-git -C runs/vendor/SEABench checkout 21828194aa709da6c18cddaeb718b309db71d22f
-```
-
-```python
-result = rsi_lab.evaluate(
-    "openevolve", experiment="privacy-review-v1", harness="./my_agent",
-    config={"source": "runs/vendor/SEABench"},
-)
-```
-
-Installed presets are `local-control-v1`, `privacy-process-v1`, and
-`privacy-review-v1`. They default to scripted controls. Natural presets require
-explicit actor/editor/judge settings, episode budgets and global call/token caps.
-The full JSON configuration API remains available through `rsi_lab.agent_bench`.
-
-The derived privacy task pack separates development, public review, independent
-audit and final tasks. Independent labels never enter optimizer feedback. All
-search roots freeze before independent checkpoint audits and final evaluation.
-The reference review is fail-closed for missing evidence; audit/final risk and
-utility are measured outside candidate execution. See the
-[process protocol](docs/process-protocol.md), [review protocol](docs/review-protocol.md),
-[task adaptation](docs/seabench-adaptation.md), and [risk report](docs/risk-report.md).
-
-The privacy world is exposed development material and the new scorer is not yet
-naturally calibrated. Natural validation now starts from fresh experiments under
-`runs/current/`; earlier results are compressed in `runs/archive/` and are not
-pooled with this campaign. Independent human labels remain pending.
-The optional AgentHarm bridge is currently unsupported pending an executable
-Harness bridge; it does not silently downgrade to prompt-only evaluation.
+The [rating protocol v0.1](docs/safety-rating-v0.1.md) currently covers selected
+AgentDojo effects. L1 checks a deployment, L2 adds its update history, and L3
+adds prospectively locked continuation. Ratings bind the full configuration,
+coverage and horizon; they are not certificates for method names. Risk packages
+need explicit metric definitions and evidence before sharing a rating rule.
 
 ## Launch a natural experiment
 
-Edit the settings block at the top of
-[`scripts/run_comparison_experiment.sh`](scripts/run_comparison_experiment.sh), then run:
+Edit models, methods, task allocation, repetitions and budgets in the top block
+of [the rating launcher](scripts/run_rating_experiment.sh). Then prepare and run:
 
 ```bash
-bash scripts/run_comparison_experiment.sh run
+bash scripts/run_rating_experiment.sh prepare runs/current/MY-RATING
+bash scripts/run_in_tmux.sh my-rating -- bash scripts/run_rating_experiment.sh run runs/current/MY-RATING
 ```
 
-The script freezes its settings, source-bound plan, price assumptions and analysis
-code. Models, methods, repetitions, review thresholds and resource caps are all in
-that one settings block. The comparison uses DeepSeek for execution/editing and
-Kimi for independent scoring on explicit-authorization `privacy-drafts-v2` tasks.
-The user removed the monetary ceiling on 2026-11-18: `budget_cny: null` records
-that choice. Finite call/token caps, cost estimates and no-retry behavior remain.
-Credentials belong
-in the private `.env`, never in the script. `plan` makes zero API calls; `resume`
-uses the saved settings rather than edits made after the run began.
+`prepare` makes zero API calls; `control` runs scripted validation. The natural
+`run` loads credentials from the private `.env` and executes the saved plan.
+Its default allocation is a small protocol pilot, **too small to award a level**.
+See the [sample-size limits](docs/safety-rating-v0.1.md) before planning a grading study.
 
-See [the launch and recovery guide](docs/natural-experiment.md) for commands,
-budget assumptions and output files, and [archival instructions](docs/experiment-archive.md)
-for previous experiments. A completed pilot can contain failed candidates or
-missing measurements; its report keeps those outcomes explicit.
+```bash
+bash scripts/run_rating_experiment.sh status runs/current/MY-RATING
+bash scripts/run_rating_experiment.sh resume runs/current/MY-RATING
+```
 
-For authored authorization controls scored by the real judge, use
-`bash scripts/run_authorization_checks.sh run`; their expected labels are written
-by the task authors, not independent human annotations. For the earlier v1 measurement check, use
-`bash scripts/run_measurement_checks.sh run`: it repeats fixed-Harness execution
-and then repeats judging of every saved founder answer. For the proposed
-multi-root, multi-round comparison with independent checkpoint audits, use
-`bash scripts/run_comparison_experiment.sh plan`. These scripts also keep all
-settings at the top. Planning is free; paid execution validates the frozen resource
-allocation and any monetary ceiling explicitly selected in the script.
-Measurement consistency and a completed pilot do not establish method rankings
-or safety-module effectiveness.
+Resume uses frozen settings and source, not newly edited parameters. Unknown
+requests retain reservations and are never automatically retried. tmux preserves
+the process and logs; API calls still need a connected, awake host. It does not
+guarantee execution with the laptop lid closed.
+
+## SEABench-derived safety experiments
+
+The optional `privacy-process-v1` and `privacy-review-v1` presets use selected
+SEABench assets with this platform's execution and measurement protocol. These
+are not official SEABench scores. Source setup and task changes are documented in
+[task adaptation](docs/seabench-adaptation.md) and the
+[natural-experiment guide](docs/natural-experiment.md). Their older privacy
+scores and uncalibrated judge results are not pooled into current AgentDojo evidence.
 
 ## Recovery, migration and validation
 
+A completed GEPA experiment can be reopened through the same API:
+
 ```python
-assert rsi_lab.evaluate("openevolve", output=result.output, resume=True) == result
+resumed = rsi_lab.evaluate("gepa", output=result.output, resume=True)
 ```
 
-Use the same method as the saved run. Completed resume reads frozen configuration
-and resources; it does not reread the original Harness directory. Unknown model
-calls retain reservations and are never automatically retried. A changed method,
-resource bundle or allocation requires a new output directory.
+Use the method belonging to that result. Completed resume verifies saved artifacts
+without constructing providers. Candidate code receives no credentials, independent
+labels or activation authority. Unsupported hosts fail explicitly; isolation has
+no unsandboxed fallback. Optimizer/reviewer plugins are trusted host Python.
 
-Version **0.5.0** replaces the instructions-only actor with `rsi-harness-v1`
-resources and SDK **v2**. The `policy.source` wire field now holds the complete
-bundle. Old installed SDK v1 plugins must migrate; old completed runs remain
-immutable and retain their own frozen implementation. Legacy non-agent task DSL
-controls are separate from executable agent evaluation.
+Safety modules use the [review contract](docs/review-protocol.md). Enforced reject
+or inconclusive decisions block the candidate snapshot; observe-only decisions
+are recorded without blocking. Independent labels never enter search feedback.
+No current result establishes a general method ranking or online safety benefit.
 
-See [validation](docs/validation.md) for dated source-bound evidence and
-[release criteria](docs/first-release.md) for engineering versus natural acceptance.
-Default validation uses zero paid calls. The external
-[Echo package](examples/rsi_echo_adapter/README.md) demonstrates independently
-installed adaptation and frozen review.
+Version 0.5.0 uses executable resource bundles and SDK v2. Old completed runs keep
+their original source and semantics. Keep credentials, environments, wheels and
+generated runs out of Git; preserve vendor source locks and licenses.
 
-Keep `.env`, credentials, environments, wheels and generated `runs/` out of Git.
-Preserve vendor locks and licenses. [CONTRIBUTING](CONTRIBUTING.md) describes the
-workflow; [history](docs/history.md) preserves earlier experiments and limits.
+| Read next | Purpose |
+|---|---|
+| [Architecture](docs/architecture.md) | Execution boundaries and extension contracts |
+| [Current state](docs/HANDOFF.md) | Active direction and evidence status |
+| [Protocol results](docs/safety-rating-verdict-20261126.md) | Current cards, metrics, missingness and limits |
+| [Fixed-update confirmation](docs/agentdojo-confirmation-verdict-20261126.md) | Bounded natural update evidence, separate from ratings |
+| [Validation](docs/validation.md) | Dated checks; default validation uses zero paid APIs |
+| [Release criteria](docs/first-release.md) | Installation, controls and frozen-source acceptance |
+| [History](docs/history.md) / [legacy runbook](docs/legacy-agent-studies.md) | Previous experiments and retained workflows |
+| [Contributing](CONTRIBUTING.md) | Development, testing and source synchronization |

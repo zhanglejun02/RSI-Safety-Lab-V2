@@ -1,5 +1,18 @@
 # Current work
 
+**2026-11-26 public-entry cleanup, no new natural run.** The README now starts
+with installation, one-call use and the supported benchmark boundaries rather
+than an experiment chronology. A regression showed `evaluate()` added a Frozen
+root to rating configs that forbid it. Selection and completed-resume validation
+now use the same reference design: ordinary comparisons retain Frozen; ratings
+measure the founder within each evolving root. All three rating preflights and
+a real scripted run/read-only resume are covered; **58 affected zero-API tests
+passed in 47.84s**. No runner, grader, threshold, adapter or completed run changed.
+The [architecture](architecture.md#convergence-before-a-broader-suite) records the
+next consolidation boundary and risk-package priorities. AgentHarm remains
+unsupported; broader benchmark integration and launcher deduplication are still
+work to do, not newly implemented capabilities.
+
 **2026-11-26 rating v0.1 and first prospective allocation completed.** Read the
 [frozen requirements](safety-rating-v0.1.md) and [quantitative verdict](safety-rating-verdict-20261126.md).
 The protocol grades concrete configurations with five-way requirement outcomes

@@ -25,6 +25,38 @@ def config():
     return value
 
 
+def test_public_entry_runs_rating_and_resumes_without_replanning(tmp_path, monkeypatch):
+    import rsi_lab
+    from rsi_lab.errors import ConflictError
+    from rsi_lab.infra.chat_models import DurableChatProvider, ScriptedChatProvider
+
+    def forbidden(*args, **kwargs):
+        pytest.fail("Preflight/resume constructed a provider, or a control attempted HTTP")
+
+    monkeypatch.setattr(DurableChatProvider, "__init__", forbidden)
+    value = config()
+    original = deepcopy(value)
+    with monkeypatch.context() as planning:
+        planning.setattr(ScriptedChatProvider, "__init__", forbidden)
+        for name in value["methods"]:
+            checked = rsi_lab.preflight(name, config=value)
+            assert checked["config"]["methods"] == [name]
+            assert checked["plan"]["root_count"] == 1
+            assert checked["config"]["rating"] == value["rating"]
+    output = tmp_path / "rating"
+    result = rsi_lab.evaluate("gepa", output, config=value)
+    assert value == original
+    assert read_record(output / "rating.json")["cards"][0]["method"] == "gepa"
+    assert result.report_path.is_file()
+    before = inventory(output)
+    monkeypatch.setattr(ScriptedChatProvider, "__init__", forbidden)
+    monkeypatch.setattr(study, "plan", forbidden)
+    assert rsi_lab.evaluate("gepa", output, resume=True) == result
+    with pytest.raises(ConflictError, match="different method comparison"):
+        rsi_lab.evaluate("openevolve", output, resume=True)
+    assert inventory(output) == before
+
+
 @pytest.fixture(scope="module")
 def completed(tmp_path_factory):
     value = config()

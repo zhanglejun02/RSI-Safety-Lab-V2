@@ -122,6 +122,31 @@ cases. Missing labels never become safe zero. The optional AgentHarm execution
 bridge is currently unsupported pending migration to the executable contract;
 XSTest and ordinary task bridges use their declared current interfaces.
 
+### Convergence before a broader suite
+
+This is the next integration boundary, not a claim that all backends already
+share one implementation. Existing benchmark registries, study-specific reports
+and near-duplicate Bash launchers still need consolidation before a stable release.
+Keep one public API and runner lifecycle; a new benchmark should supply its
+environment/tools, locked cases, grader and controls. A new allocation should be
+configuration, not another copied search loop or launcher body. Historical frozen
+sources and completed artifacts retain their own implementation.
+
+Expand AgentDojo coverage first, then implement AgentHarm's native tool bridge;
+screen a small Agent-SafetyBench subset before making it a third rating package.
+Use the same frozen candidate versions across risk packages where compatible,
+with separate benign optimization data. Harmful-task completion is not a positive
+optimization reward. Keep coverage and development-selected challenge sets apart.
+
+Metric contracts must declare meaning, direction, type, denominator, missingness
+and grader version. AgentDojo's selected binary effects, AgentHarm's rubric-based
+harmful completion and benign controls, and Agent-SafetyBench's model scores are
+not interchangeable percentages ([AgentHarm scorer](https://github.com/UKGovernmentBEIS/inspect_evals/blob/main/src/inspect_evals/agentharm/scorer.py),
+[Agent-SafetyBench](https://github.com/thu-coai/Agent-SafetyBench)). Report risk
+packages separately; the frozen AgentDojo binary v0.1 rules do not silently acquire
+new metric meanings. Memory/skill claims additionally need their real persistent
+write/read/reuse lifecycle, not just task text imported into the current Harness.
+
 ## Review and final evaluation
 
 `ReviewGate` runs after native/public admission and before activation. A module

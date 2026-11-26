@@ -107,6 +107,12 @@ def _harness_binding(value):
     raise ValidationError("Harness must be a resource directory, Harness, or a source binding")
 
 
+def _evaluation_methods(method, settings):
+    # Rating measures the founder inside each evolving root; a separate Frozen
+    # root cannot supply the protocol's prefix/continuation update exposure.
+    return [method] if "rating" in settings else list(dict.fromkeys(["frozen", method]))
+
+
 def _evaluation_config(method, *, experiment=None, config=None, review=None, harness=None):
     from rsi_lab.methods import method as lookup
     lookup(method)
@@ -125,7 +131,7 @@ def _evaluation_config(method, *, experiment=None, config=None, review=None, har
         settings["harness"] = binding
     elif "harness" in settings:
         settings["harness"] = _harness_binding(settings["harness"])
-    settings["methods"] = list(dict.fromkeys(["frozen", method]))
+    settings["methods"] = _evaluation_methods(method, settings)
     if method != "hyperagents":
         settings.pop("hyperagents_meta_modes", None)
     if review is not None:
@@ -176,11 +182,12 @@ class EvaluationResult(dict):
 
 def evaluate(method, output=None, *, experiment=None, config=None, review=None,
              harness=None, resume=False):
-    """Run a registered method with a matched frozen reference.
+    """Run a registered method under the selected experiment's reference design.
 
     Named experiments accept restricted runtime overrides. Without an experiment,
     ``config`` retains the full-configuration API; without either, use the zero-API
-    local control. Completed resume without overrides reads the saved configuration.
+    local control. Ordinary comparisons include a separate frozen root; rating
+    compares snapshots within the evolving root. Completed resume reads saved config.
     """
     if resume:
         if output is None:
@@ -190,7 +197,7 @@ def evaluate(method, output=None, *, experiment=None, config=None, review=None,
             from rsi_lab.methods import method as lookup
             lookup(method)
             settings = read_record(Path(output) / "manifest.json")["config"]
-            if settings["methods"] != list(dict.fromkeys(["frozen", method])):
+            if settings["methods"] != _evaluation_methods(method, settings):
                 raise ConflictError("Saved run belongs to a different method comparison")
             if experiment is not None and settings.get("experiment", {}).get("id") != experiment:
                 raise ConflictError("Saved run belongs to a different experiment")

@@ -1,5 +1,21 @@
 # Validation records
 
+## 2026-11-26 one-call rating entry and documentation cleanup
+
+The new public-entry regression first reproduced the error: `evaluate`/`preflight`
+inserted a Frozen root that the rating protocol rejects. After the small entry
+fix, **58 tests passed in 47.84s**, covering `test_rating_protocol.py`,
+`test_experiment_entry.py` and `test_public_api.py`. All used zero paid APIs and
+retained native candidate isolation. The regression checks all three method
+preflights without providers, an actual scripted GEPA run, no caller-config
+mutation, rejection of a wrong-method resume, and provider-free/read-only
+completed resume. Existing non-rating Frozen-reference tests still pass.
+
+No new benchmark or experimental rule was enabled. The production change is
+limited to shared method selection and its entry-point documentation. Historical
+run artifacts remain untouched; this is targeted validation, not a new release
+installation or natural benchmark acceptance.
+
 ## 2026-11-26 completed prospective rating evidence
 
 The original and single registered recovery cohorts completed separately. All

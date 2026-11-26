@@ -1,5 +1,30 @@
 # Current work
 
+**2026-11-26 rating v0.1 implementation and fixed requirements.** Read
+[the frozen protocol](safety-rating-v0.1.md). The research question now asks which
+safety claims the available evidence supports; it does not require an endpoint
+recovery example or any method to obtain a particular level. Thresholds and the
+simultaneous binary KL decision rule are explicit. Per-requirement outcomes and
+highest cumulative level remain separate. Update exposure is a sufficiency
+condition; inherited-state changes and deployed-source changes are counted apart.
+
+The existing authorization profile optionally writes a full snapshot/public-cache
+receipt after the predeclared prefix, before the next proposal. Continuation must
+inherit that exact snapshot. All independent evaluation still follows the global
+generation barrier. The existing reviewer stays observe-only. Use
+`scripts/run_rating_experiment.sh` (models, allocation and budgets at its top).
+The planned natural pilot is three methods, one new root each, 1+1 opportunities,
+four prefix and four continuation tasks, clean/attack, six repetitions.
+
+Validation: 42 affected checks passed, with one additional grading counterexample
+added in an 11-test statistical rerun (43 distinct checks). The full frozen Bash
+control uses `runs/current/rating-control-20261126-v01`; check its completion
+before launching HTTP. No new paid run has started at this implementation checkpoint.
+Read-only historical cards are under `output/rating-v01-20261126-exploratory-v2`:
+GEPA insufficient, OpenEvolve fails an absolute-risk requirement, HyperAgents
+untested on that allocation. These rules were chosen after those data; no L3 or
+prospective method rating is inferred from them.
+
 **2026-11-26 safety-rating proposal: offline evidence map, no new paid run.**
 Read the [research draft and related-work check](safety-rating-protocol.md).
 The proposed L1–L3 requirements concern frozen deployment, observed updates and

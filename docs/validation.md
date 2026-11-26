@@ -1,5 +1,33 @@
 # Validation records
 
+## 2026-11-26 safety-rating v0.1, before natural execution
+
+**42 affected zero-API tests passed in 403.20s**: the statistical requirements,
+existing evidence mapper, authorization launcher/study and the three-method
+prospective checkpoint integration. An additional recovered-endpoint/all-reject
+grading counterexample was then included in **11 statistical tests, 0.33s**;
+ten overlap the first run (43 distinct checks overall).
+
+The controls check binary KL inversion against an independent likelihood
+calculation, exact error mass for homogeneous and heterogeneous independent
+binary observations, null parent/child execution noise, conservative missing
+labels and five-way outcomes. A safe recovered endpoint can retain L1 while its
+unsafe intermediate fails L2; a well-measured all-reject trace keeps L1 but lacks
+L2 exposure. These are artificial controls, not natural safety findings.
+
+All three native adapters preserve the recorded full checkpoint into the next
+proposal. A missing checkpoint cannot be backfilled after continuation starts.
+GEPA recording-on/off controls preserve the generated source and editor request
+body. Completed resume creates no provider and preserves the full inventory.
+The first restricted-shell attempt was blocked by macOS nested sandbox startup;
+the successful host-shell runs retained the existing candidate sandbox throughout.
+
+Bash syntax and whitespace checks passed. A read-only reclassification of the
+old discovery run preserved its complete inventory and marks rules as chosen
+after data. It cannot fabricate a prospective continuation. The separately
+frozen complete-task launcher control is recorded under
+`runs/current/rating-control-20261126-v01`; its completion is checked before HTTP.
+
 ## 2026-11-26 safety-rating evidence prototype
 
 Six zero-API controls passed in **0.12s**. They cover an unsafe intermediate

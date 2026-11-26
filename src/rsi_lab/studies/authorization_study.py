@@ -50,7 +50,7 @@ def default_config():
 
 def validate_config(config):
     default = default_config()
-    if (type(config) is not dict or set(config) - {"harness", "prompts", "public_rollout_cache", "meta_ablation", "pause_on_unknown"} != set(default)
+    if (type(config) is not dict or set(config) - {"harness", "prompts", "public_rollout_cache", "meta_ablation", "pause_on_unknown", "rating"} != set(default)
             or config.get("profile") != default["profile"] or config.get("protocol") != PROTOCOL):
         raise ValidationError("Start with the authorization-study configuration")
     for key, allowed in (("methods", METHODS), ("arms", ("native_only", "behavior_review", "observe_only"))):
@@ -108,6 +108,9 @@ def validate_config(config):
     if "meta_ablation" in config and (config["methods"] != ["hyperagents"]
             or config["arms"] != ["native_only"] or config.get("public_rollout_cache") is not True):
         raise ValidationError("Meta continuations require cached native-only HyperAgents")
+    if "rating" in config:
+        from .rating_protocol import validate
+        validate(config, effect_catalog(config["training"]))
     scheduling.settings(config)
     return deepcopy(config)
 
@@ -146,6 +149,10 @@ def plan(config):
     for key, bound in (("max_total_calls", calls), ("max_total_tokens", tokens)):
         if options[key] is not None and bound > options[key]:
             raise ValidationError(key + " does not cover all provider reservations")
+    rating = {}
+    if "rating" in config:
+        from .rating_protocol import allocation
+        rating = {"rating": allocation(config, backend, len(roots))}
     return primitive({"protocol": PROTOCOL, "version": "authorization-allocation-v1", "config_sha256": digest(config),
             "implementation": implementation_fingerprint(), "roots": roots, "root_count": len(roots),
             "method_plugins": plugin_bindings(config["methods"]),
@@ -158,7 +165,7 @@ def plan(config):
             "execution": {**options, "allocated_calls": calls, "allocated_tokens": tokens},
             "confirmatory": False, "selection": "all_predeclared_cases_no_outcome_filtering",
             "objective": backend.describe().get("objective", "clean_development_mean_utility;service_cost_is_auxiliary_not_selection_reward"),
-            "api_calls": 0})
+            "api_calls": 0, **rating})
 
 
 def run(config, output, *, resume=False, expected_plan=None):
@@ -199,6 +206,12 @@ def run(config, output, *, resume=False, expected_plan=None):
                    "statistics": summarize(rows, seed=config["statistics"]["seed"], samples=config["statistics"]["bootstrap_samples"]),
                    "manifest_sha256": digest(manifest), "plan_sha256": digest(compiled)}
         _report(output, summary)
+        if "rating" in config:
+            from .safety_rating import rate_run, markdown
+            summary["rating"] = rate_run(output, rows)
+            save_record(output / "rating.json", summary["rating"])
+            report = output / "report.md"
+            report.write_text(report.read_text() + "\n" + markdown(summary["rating"]))
         summary["verified_records"] = {str(p.relative_to(output)): digest(read_record(p))
                                        for p in sorted(output.rglob("*.json"))}
         from rsi_lab.review import inventory
@@ -232,7 +245,9 @@ def _root_job(output, root, phase):
                 origin, start_step = stage(directory, root)
                 continuation = {"origin": origin, "start_step": start_step}
             shared._generate_root(config, output, root, backend, manifest, review_gate=gate,
-                                  review_resources=resources, **continuation)
+                                  review_resources=resources,
+                                  after_slot=(lambda slot: _rating_checkpoint(directory, slot, manifest))
+                                  if "rating" in config else None, **continuation)
         elif phase == "evaluation":
             barrier = read_record(output / "generation_complete.json")
             expected = {r["root_id"]: digest(read_record(output / r["path"] / "root.json")) for r in manifest["roots"]}
@@ -241,6 +256,11 @@ def _root_job(output, root, phase):
             _evaluate(config, directory, root, backend)
         else:
             raise ValidationError("Unknown authorization phase")
+
+
+def _rating_checkpoint(directory, slot, manifest):
+    from .rating_protocol import checkpoint
+    checkpoint(directory, slot, manifest)
 
 
 def _sources(saved, directory, audit):

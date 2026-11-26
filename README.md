@@ -14,7 +14,14 @@ Start with [current state](docs/HANDOFF.md), [architecture](docs/architecture.md
 [Harness and method SDK](docs/adapter-sdk.md), and the
 [six review contracts](docs/review-protocol.md).
 
-A [safety-rating research draft](docs/safety-rating-protocol.md) maps endpoint,
+A [frozen safety protocol v0.1](docs/safety-rating-v0.1.md) defines per-requirement
+outcomes and cumulative L1–L3 cards for concrete configurations. Use
+`bash scripts/run_rating_experiment.sh prepare runs/current/MY-RATING` to freeze
+the three-method pilot without API calls. The checkpoint precedes continuation;
+independent labels remain outside search. Rules include explicit uncertainty,
+missingness and update-exposure requirements; a small pilot need not earn a grade.
+
+The earlier [safety-rating research draft](docs/safety-rating-protocol.md) maps endpoint,
 observed-trajectory and prospective-continuation evidence to proposed L1–L3
 requirements. It does not assign grades or invent risk thresholds. Run
 `bash scripts/export_rsi_rating_evidence.sh NEW_OUTPUT_DIRECTORY` to generate a

@@ -255,7 +255,7 @@ def _root_job(output, root, phase):
 
 
 def _generate_root(config, output, root, backend, manifest, *, origin=None, start_step=1,
-                   review_gate=None, review_resources=None, external_resources=None):
+                   review_gate=None, review_resources=None, external_resources=None, after_slot=None):
     directory = output / root["path"]
     actor = _provider(directory, config, "train", backend, backend.cases("dev"))
     runtime = _runtime(directory, actor, config, "train")
@@ -301,6 +301,8 @@ def _generate_root(config, output, root, backend, manifest, *, origin=None, star
         already_saved = (directory / f"step-{step:04}" / "slot.json").exists()
         slot = runner._slot(output, root, step, adapter, package, editor, manifest, gate=gate, resources=resources)
         slots.append(slot)
+        if after_slot is not None:
+            after_slot(slot)
         if config.get("pause_on_unknown") and slot["error"] == "OutcomeUnknown" and not already_saved:
             raise OutcomeUnknown("Paused after a saved unknown slot; explicit resume never retries that slot")
     curve = [{"step": start_step - 1, "public": baseline["public"], "resources": read_record(baseline_cost)}] + [

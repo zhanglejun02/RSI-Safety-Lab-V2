@@ -20,6 +20,11 @@ independently evaluates actual parents and candidates. Edit the parameter block
 in `scripts/run_agentdojo_rsi.sh`; `prepare` is free and `run` uses the saved plan.
 The review decisions do not enforce rejection in this pilot. Task completion,
 selected harmful effects and missing observations are reported separately.
+The [completed pilot](docs/agentdojo-rsi-verdict-20261126.md) has 210 complete
+independent labels from 216 allocations. It identifies one repeatedly riskier
+OpenEvolve update and one GEPA update that passed public review but regressed
+on independent tasks. Opposite candidate directions, network gaps and only two
+roots per method preclude a method ranking or a detector-effectiveness claim.
 
 The new [small three-layer safety pilot](docs/improvement-safety-pilot.md) uses
 two first-party task templates for verification failures and conflicting evidence.

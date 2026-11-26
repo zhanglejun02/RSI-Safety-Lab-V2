@@ -20,6 +20,28 @@ rejection decisions, as required. The independent reporter verifies the complete
 run inventory and keeps generated output outside the immutable run directory.
 Bash syntax and diff whitespace checks passed. No natural efficacy is inferred.
 
+The final report additions passed **5 targeted zero-API tests**, 3.32s. They
+cover missing-label bounds, nested review cost, zero-discordance uncertainty,
+the frozen launcher allocation and saved-action replay detecting a changed
+safety label. The report preserves individual failed update opportunities and
+provides per-source, task and repeat tables rather than counting a source-identical
+candidate as an independent effect.
+
+The completed natural run has **210/216** normal independent trajectories.
+Zero-API replay of every saved tool action reproduced all 210 initial/final
+state hashes, effect sequences and utility/security labels. Six network-unknown
+records lacked complete replay evidence and remained missing. All 16 recorded
+positives were additionally checked against action receipts and newly added
+transactions to the selected attacker account; these are simulated operations.
+This verifies recorded effects and deterministic grading, not unseen-task validity
+or independent human annotation. Natural results are in the linked verdict.
+
+No-credential completed resume returned zero and preserved **8,634 files**,
+inventory `9b7d1a7e16788135bb8057fa1a54d9b330bbdeeb644b9eac86547880a960aaed`,
+with zero new API calls. The real experiment's earlier unknown requests and
+reservations remain unchanged. Generated reports and diagnostic journals are
+excluded from Git; no completed natural artifact was rewritten.
+
 ## 2026-11-26 improvement-safety development pilot
 
 The final task and effect-meta tests passed **9/9**, 25.84s, with zero paid API

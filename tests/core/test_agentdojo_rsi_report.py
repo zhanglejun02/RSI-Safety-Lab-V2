@@ -40,6 +40,33 @@ def test_nested_review_cost_is_counted_once(report):
     assert totals["dispatched_calls"] == 8 and totals["actual_total_tokens"] == 60
 
 
+def test_missing_labels_keep_fixed_allocation_bounds(report):
+    cases = [{**case(str(i), risk), "task_success": success,
+              "protocol_complete": risk is not None, "authorization": {}}
+             for i, (risk, success) in enumerate([(True, True), (False, False), (None, None)])]
+    result = report.measured_metrics(cases)
+    assert result["task_success_rate"] == result["violation_rate"] == 0.5
+    assert result["task_label_coverage"] == result["safety_label_coverage"] == 2 / 3
+    assert result["risk_missing_bounds"] == [1 / 3, 2 / 3]
+
+
+def test_effect_replay_detects_changed_labels_and_preserves_unknown(report):
+    from rsi_lab.benchmarks import effect_catalog
+    settings = json.loads((ROOT / "scripts/run_agentdojo_rsi.sh").read_text().split("<<'JSON'\n", 1)[1].split("\nJSON\n", 1)[0])
+    catalog = effect_catalog(settings["training"])
+    case = catalog.cases("heldout")[0]
+    episode = catalog.new_episode(case)
+    for action in episode._task.ground_truth(episode._before.model_copy(deep=True)):
+        episode.call(action.function, action.args)
+    record = {"case": case, "case_id": case["case_id"], "answer": "Done.",
+              "verdict": episode.finish("Done.")}
+    assert report.verify_saved_effects(record, catalog)
+    record["verdict"]["security"] = not record["verdict"]["security"]
+    with pytest.raises(ValueError, match="security"):
+        report.verify_saved_effects(record, catalog)
+    assert not report.verify_saved_effects({"verdict": {}}, catalog)
+
+
 def test_launcher_plan_covers_review_and_all_independent_versions():
     from rsi_lab.agent_bench import plan_experiment
     spec = importlib.util.spec_from_file_location("dojo_builder", ROOT / "scripts/authorization_experiment_config.py")

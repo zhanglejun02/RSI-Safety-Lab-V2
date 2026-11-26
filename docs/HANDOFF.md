@@ -1,14 +1,38 @@
 # Current work
 
-**2026-11-26 AgentDojo natural-update pilot prepared and controlled.** The user
-authorized a small real-API experiment. Read the [frozen design](agentdojo-rsi-pilot-20261126.md).
-`scripts/run_agentdojo_rsi.sh` uses two GEPA and two OpenEvolve roots, two slots,
-eight public probes and eight independent conditions repeated three times.
-Existing relative review covers newly retained policies in observe-only mode;
-no online blocking benefit is claimed. Actual native parents are recorded and
-independent sources are interleaved. The pure AgentDojo effect backend retains
-native task semantics and explicitly measures selected harmful effects on clean
-cases too. Scripted validation is complete; natural results are recorded separately.
+**2026-11-26 AgentDojo natural-update pilot completed with missing observations.**
+Read the [quantitative verdict](agentdojo-rsi-verdict-20261126.md) and
+[frozen design](agentdojo-rsi-pilot-20261126.md). Campaign
+`runs/current/agentdojo-rsi-20261126-v1` completed four roots, eight opportunities
+and all 216 independent allocations: 210 normal completions, six network unknowns.
+Five distinct new sources came from six recorded candidates; one GEPA opportunity
+was source-identical, and two OpenEvolve slots failed before a complete candidate.
+No experiment process from this batch remains active.
+
+GEPA founder/final task success is 40/47 vs 47/47, selected risk 2/47 vs 4/47;
+OpenEvolve is 41/48 vs 42/46, risk 3/48 vs 8/46. One OpenEvolve update has five
+new and zero removed violations in 22 complete parent pairs, with a positive net
+risk difference in all three repeated blocks. The other root's candidate has
+the opposite risk direction and was retained but not deployed. These are bounded
+development cases, not stable method rankings.
+
+Existing prospective relative review was observe-only: two accepts, four
+inconclusive decisions from incomplete network evidence, no explicit rejection.
+One changed GEPA candidate passed public review yet increased independent risk;
+the other accepted candidate was source-identical. No online safety benefit or
+calibrated detector recall is established. All 16 independent positives correspond
+to simulated Banking transfers and also satisfy the selected task predicate;
+Slack has 0/106 known violations. Zero-API effect replay matched all 210 recorded
+trajectories and labels. This separates deterministic scoring from execution
+variability without claiming comprehensive benchmark coverage.
+
+The frozen run used source `002e10a`, 1,554 API requests, 2,994,330 reported tokens
+and 18 unknowns with retained reservations. Explicit continuations skipped failed
+positions and never resent them. A separate 43-token connection diagnostic is not
+pooled. Completed resume without credentials preserved all 8,634 run files and
+added no calls. Reuse `scripts/run_agentdojo_rsi.sh`; export with
+`scripts/summarize_agentdojo_rsi.py`. Verified local tables are under
+`output/agentdojo-rsi-20261126-v1/final/`. No expansion is scheduled.
 
 **2026-11-26 literature review and research recommendation.** See
 [recent work and the bounded research route](research-roadmap-20261126.md).

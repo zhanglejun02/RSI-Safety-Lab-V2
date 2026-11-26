@@ -8,6 +8,7 @@ import random
 from statistics import mean
 
 from rsi_lab.api import SystemSnapshot
+from rsi_lab.benchmarks import effect_catalog
 from rsi_lab.infra.records import read_record
 from rsi_lab.review import inventory
 from rsi_lab.serialization import digest
@@ -37,7 +38,8 @@ def pair_report(before, after):
         rng, keys = random.Random(1729), sorted(groups)
         draws = sorted(mean(v for k in rng.choices(keys, k=len(keys)) for v in groups[k]) for _ in range(2000))
         ci = [draws[49], draws[1949]]
-    result.update(risk_task_cluster_ci95=ci, interval_scope="exploratory_four_task_pack;no_multiplicity_correction",
+    result.update(risk_task_cluster_ci95=ci, task_clusters=len(groups),
+                  interval_scope="exploratory_task_cluster;no_multiplicity_correction",
                   interval_unavailable_reason=None if ci else "insufficient_cluster_or_discordance_variation")
     return result
 
@@ -54,18 +56,62 @@ def usage_totals(value):
     return total
 
 
+def measured_metrics(cases):
+    result = _metrics(cases)
+    allocated = result["allocated"]
+    result.update(
+        task_label_coverage=result["task_known"] / allocated if allocated else None,
+        safety_label_coverage=result["risk_known"] / allocated if allocated else None,
+        # Logical bounds over the fixed allocation, not a confidence interval.
+        risk_missing_bounds=[result["violations"] / allocated,
+                             (result["violations"] + result["risk_missing"]) / allocated]
+                            if allocated else None)
+    return result
+
+
+def verify_saved_effects(record, catalog):
+    """Replay simulated tools, never the agent/model, against saved state hashes."""
+    verdict = record["verdict"]
+    if not verdict:
+        return False  # Unknown calls have no complete effect evidence to replay.
+    episode = catalog.new_episode(record["case"])
+    for effect in verdict["effects"]:
+        episode.call(effect["tool"], effect["arguments"])
+    replay = episode.finish(record["answer"])
+    for key in ("initial_state_sha256", "final_state_sha256", "effects", "utility", "security"):
+        if replay[key] != verdict[key]:
+            raise ValueError(f"Saved AgentDojo effect replay differs: {record['case_id']} / {key}")
+    return True
+
+
 def collect(run):
     before = inventory(run)
     summary = inspect(run)
     manifest = read_record(run / "manifest.json")
     if manifest["config"]["training"]["task_pack"] != "agentdojo-effects-v1":
         raise ValueError("Requires the locked AgentDojo effect allocation")
-    rows, candidates, reviews, grouped = [], [], [], {}
+    if manifest["config"]["arms"] != ["observe_only"]:
+        raise ValueError("This report describes prospective observe-only review")
+    catalog = effect_catalog(manifest["config"]["training"])
+    effect_replay = Counter()
+    rows, candidates, reviews, sources, slots, grouped = [], [], [], [], [], {}
     for row in summary["rows"]:
         directory = run / "roots" / row["root_id"]
         saved = read_record(directory / "root.json")
         founder = digest(SystemSnapshot.from_dict(saved["origin"]).version.component("policy")["source"])
         assessments = row["candidate_assessments"]
+        for sha, assessment in assessments.items():
+            cases = assessment["cases"]
+            for case in cases:
+                record = read_record(directory / case["record_path"])
+                effect_replay["matched" if verify_saved_effects(record, catalog) else "unavailable"] += 1
+            sources.append({"root_id": row["root_id"], "source_sha256": sha,
+                "founder": sha == founder, "final": sha == row["final_source_sha256"],
+                "metrics": measured_metrics(cases), "execution": execution_metrics(cases, directory),
+                "by_task": {task: measured_metrics([c for c in cases if c["pair_id"] == task])
+                            for task in sorted({c["pair_id"] for c in cases})},
+                "by_repeat": {str(rep): measured_metrics([c for c in cases if c["repeat"] == rep])
+                              for rep in sorted({c["repeat"] for c in cases})}})
         for role, sha in (("founder", founder), ("final", row["final_source_sha256"])):
             cases = assessments[sha]["cases"]
             item = {"root_id": row["root_id"], "method": row["method"], "role": role, "source_sha256": sha,
@@ -76,6 +122,10 @@ def collect(run):
             rows.append(item)
             grouped.setdefault((row["method"], role), []).extend(cases)
         for slot in saved["slots"]:
+            slots.append({"root_id": row["root_id"], "method": row["method"],
+                          **{k: slot.get(k) for k in ("step", "committed", "error", "failure_kind")},
+                          "candidate_count": len(slot["candidate_sources"]),
+                          "deployment_changed": slot["active_source"] != slot["base_source"]})
             review = next((r for r in row["review_decisions"] if r["step"] == slot["step"]), None)
             for candidate in slot["candidate_sources"]:
                 child, parent = candidate["source_sha256"], candidate.get("parent_source_sha256")
@@ -109,15 +159,22 @@ def collect(run):
                     "complete": sum(r["complete"] is True for r in p["rows"]),
                     "violations": sum(r["safety_violation"] is True for r in p["rows"])}
                     for p in record["evidence"]["policies"]]})
-    table = [{"method": method, "role": role, **_metrics(cases),
+    table = [{"method": method, "role": role, **measured_metrics(cases),
               "attacked": _metrics([c for c in cases if c["attack_present"]]),
               "clean": _metrics([c for c in cases if not c["attack_present"]])}
              for (method, role), cases in grouped.items()]
     result = {"origin": summary["origin"], "run": str(run), "roots": rows, "table": table,
-              "candidates": candidates, "reviews": reviews, "groups": summary["groups"],
+              "candidates": candidates, "reviews": reviews, "sources": sources, "slots": slots,
+              "groups": summary["groups"],
               "resources": {r["root_id"]: dict(usage_totals(r["resources"])) for r in summary["rows"]},
+              "effect_replay": {**effect_replay, "api_calls": 0, "mismatches": 0,
+                                "scope": "saved_simulated_actions_and_native_predicates;not_independent_human_labels"},
               "analysis_sha256": digest(Path(__file__).read_text()), "input_inventory_sha256": digest(before),
-              "scope": "development;shadow_review;four_final_tasks;two_roots_per_method;not_a_method_ranking"}
+              "design": {"roots_by_method": dict(Counter(r["method"] for r in summary["rows"])),
+                         "heldout_tasks": len({c["pair_id"] for c in catalog.cases("heldout")}),
+                         "heldout_conditions": len(catalog.cases("heldout")),
+                         "repeats": manifest["config"]["evaluation"]["repeats"]},
+              "scope": "development;shadow_review;not_a_method_ranking"}
     if inventory(run) != before:
         raise ValueError("Analysis changed the immutable run")
     return result
@@ -140,12 +197,15 @@ def export(run, output):
         writer.writeheader(); writer.writerows(flat)
     fmt = lambda n: "missing" if n is None else f"{100*n:.1f}%"
     lines = ["# AgentDojo natural-update pilot", "", f"Origin: **{data['origin']}**.",
-        "Two roots per method; four final tasks, clean/attack pairs, three executions per source.",
+        f"Search roots by method: {data['design']['roots_by_method']}. "
+        f"{data['design']['heldout_tasks']} final tasks, {data['design']['heldout_conditions']} conditions, "
+        f"{data['design']['repeats']} executions per source/condition.",
         "Review is prospective and observe-only. Rejection decisions do not block activation.", "",
-        "| Method | Version | Task Success Rate ↑ | Selected Violation Rate ↓ | Safety labels | Clean success | Attacked success | Attack Success Rate ↓ |",
-        "|---|---|---:|---:|---:|---:|---:|---:|"]
+        "Rates use available labels; both label counts and fixed allocations are reported.", "",
+        "| Method | Version | Task Success Rate ↑ | Task labels | Selected Violation Rate ↓ | Safety labels | Clean success | Attacked success | Attack Success Rate ↓ |",
+        "|---|---|---:|---:|---:|---:|---:|---:|---:|"]
     for r in data["table"]:
-        lines.append(f"| {r['method']} | {r['role']} | {fmt(r['task_success_rate'])} | {fmt(r['violation_rate'])} | "
+        lines.append(f"| {r['method']} | {r['role']} | {fmt(r['task_success_rate'])} | {r['task_known']}/{r['allocated']} | {fmt(r['violation_rate'])} | "
                      f"{r['risk_known']}/{r['allocated']} | {fmt(r['clean']['task_success_rate'])} | "
                      f"{fmt(r['attacked']['task_success_rate'])} | {fmt(r['attacked']['violation_rate'])} |")
     lines += ["", "| Root | Step | Candidate | Retained | Deployed | Paired utility Δ | Paired risk Δ | New / removed / known risk pairs |",
@@ -159,7 +219,20 @@ def export(run, output):
               "|---|---:|---|---|---|"]
     for r in data["reviews"]:
         lines.append(f"| {r['root_id']} | {r['step']} | {r['decision']} | {', '.join(r['reasons'])} | {r['any_independent_violation']} |")
+    lines += ["", "| Method | Commits / opportunities | Generation failures | Deployment changes | Review accept / reject / inconclusive |",
+              "|---|---:|---:|---:|---|"]
+    for r in data["groups"]:
+        review = r["review"]
+        lines.append(f"| {r['method']} | {r['commits']}/{r['opportunities']} | {r['generation_failures']} | "
+                     f"{r['deployment_changes']} | {review['accept']} / {review['reject']} / {review['inconclusive']} |")
+    lines += ["", "| Root | API requests | Reported tokens | Unknown responses | Retained token reservations |",
+              "|---|---:|---:|---:|---:|"]
+    for root, r in data["resources"].items():
+        lines.append(f"| {root} | {r['dispatched_calls']} | {r['actual_total_tokens']} | "
+                     f"{r['unknown_responses']} | {r['reserved_tokens']} |")
     lines += ["", "Native task predicates have limited coverage. Risk means the selected harmful effect, not universal safety.",
+              f"Zero-API tool replay matched states/effects/labels for {data['effect_replay'].get('matched', 0)} records; "
+              f"{data['effect_replay'].get('unavailable', 0)} lacked saved effect evidence and remain missing.",
               "Final and founder measurements are paired within roots; repeated task executions are not independent search roots.",
               "Missing labels are not safe zero. Review/independent disagreement is not by itself a scoring error.",
               "Task-cluster intervals in JSON are exploratory; degenerate samples do not receive zero-width certainty.", ""]

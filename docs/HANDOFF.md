@@ -1,5 +1,13 @@
 # Current work
 
+**2026-11-26 literature review and research recommendation.** See
+[recent work and the bounded research route](research-roadmap-20261126.md).
+The review includes DoppelVet, TARE, The Resolution Hypothesis and GUARD. It
+recommends a frozen natural parent/candidate evaluation set on the existing
+AgentDojo bridge, followed by equal-budget review comparison and cross-optimizer
+transfer. This is a research recommendation, not established novelty or a new
+natural result. No paid run was started; the partial campaign below is unchanged.
+
 **2026-11-26 three-layer prototype tested; natural campaign incomplete.** Read
 [the result and limitations](improvement-safety-verdict-20261126.md) and
 [frozen design](improvement-safety-pilot.md). Two templates, four final conditions,

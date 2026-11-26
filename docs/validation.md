@@ -2,6 +2,19 @@
 
 ## 2026-11-26 safety-rating v0.1, before natural execution
 
+The complete frozen Bash control subsequently finished **864 independent
+allocations, zero missing labels**, across nine source measurements and all three
+methods. Its checkpoint bindings verified. It used implementation
+`8e543856039c1a45e503c67895a361a0946f73bfb3e2132d8f6c43ab401ce6ba`.
+
+A follow-up planning fix permits 1–200 fixed repeats only for rating allocations;
+ordinary development studies keep 1–10. **Two zero-API planning checks passed,
+3.52s**, including sufficient-budget validation (one additional distinct check,
+44 total). This does not alter the six-repeat frozen natural campaign. At its
+M=120 and n=12 per cell, even zero violations have an upper bound of 50.66%; the
+pilot can detect some failures but cannot award L1. The protocol now states the
+81/166-observation best-case sample floors instead of implying a grade is possible.
+
 **42 affected zero-API tests passed in 403.20s**: the statistical requirements,
 existing evidence mapper, authorization launcher/study and the three-method
 prospective checkpoint integration. An additional recovered-endpoint/all-reject

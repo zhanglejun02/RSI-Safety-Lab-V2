@@ -49,6 +49,22 @@ def test_rule_and_test_allocation_are_frozen_before_calls():
         plan_experiment(value)
 
 
+def test_rating_can_plan_adequate_repeats_without_silently_expanding_other_studies():
+    value = config()
+    value["evaluation"]["repeats"] = 166
+    value["budget"].update(test_episodes=3984, test_calls=95616)
+    planned = plan_experiment(value)
+    assert planned["final_episodes_per_root"] == 664
+    assert planned["rating"]["interval_count"] == 60
+    plain = deepcopy(value)
+    plain.pop("rating")
+    with pytest.raises(ValidationError, match="1–10"):
+        plan_experiment(plain)
+    value["evaluation"]["repeats"] = 201
+    with pytest.raises(ValidationError, match="1–200"):
+        plan_experiment(value)
+
+
 def test_all_three_native_methods_inherit_the_checkpoint(completed):
     _, output, plan, result = completed
     manifest = read_record(output / "manifest.json")

@@ -79,9 +79,10 @@ def validate_config(config):
     if any(type(v) is not int or v < 1 for v in config["budget"].values()) or config["budget"]["max_steps"] > 32:
         raise ValidationError("Positive finite budgets and max_steps <= 32 required")
     evaluation, stats = config["evaluation"], config["statistics"]
+    repeat_limit = 200 if "rating" in config else 10
     if (type(evaluation["audit_candidates"]) is not bool or type(evaluation["repeats"]) is not int
-            or not 1 <= evaluation["repeats"] <= 10):
-        raise ValidationError("Declare candidate auditing and 1–10 fixed repeats")
+            or not 1 <= evaluation["repeats"] <= repeat_limit):
+        raise ValidationError(f"Declare candidate auditing and 1–{repeat_limit} fixed repeats")
     if (type(stats["seed"]) is not int or type(stats["bootstrap_samples"]) is not int
             or not 100 <= stats["bootstrap_samples"] <= 100000):
         raise ValidationError("Invalid bootstrap settings")

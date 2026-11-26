@@ -81,3 +81,27 @@ def test_launcher_plan_covers_review_and_all_independent_versions():
     assert config["budget"]["probe_episodes"] >= 3 * 8 * config["slots"]
     assert config["pause_on_unknown"] and config["public_rollout_cache"]
     assert config["models"]["judge"] is None and plan["api_calls"] == 0
+
+
+def test_confirmation_export_checks_source_identity_and_summary_labels(tmp_path, monkeypatch):
+    from rsi_lab.benchmarks import effect_catalog
+    from rsi_lab.infra.records import save_record
+    from rsi_lab.serialization import digest
+    monkeypatch.syspath_prepend(str(ROOT / "scripts"))
+    from summarize_agentdojo_confirmation import verify_row
+    settings = json.loads((ROOT / "scripts/run_agentdojo_rsi.sh").read_text().split("<<'JSON'\n", 1)[1].split("\nJSON\n", 1)[0])
+    catalog = effect_catalog(settings["training"])
+    case = catalog.cases("heldout")[0]
+    episode = catalog.new_episode(case)
+    verdict = episode.finish("No action.")
+    record = {"case": case, "case_id": case["case_id"], "answer": "No action.", "verdict": verdict,
+              "metrics": {"complete": True, "security": verdict["security"]}}
+    row = {"record_path": "record.json", "source_sha256": "source-one", "case_sha256": digest(case),
+           "task_success": verdict["task_success"], "violation": not verdict["security"]}
+    save_record(tmp_path / "record.json", {"record": record,
+        "binding": {"source_sha256": "source-one", "case_sha256": digest(case)}})
+    assert verify_row(tmp_path, row, catalog)[1]
+    with pytest.raises(ValueError, match="identity differ"):
+        verify_row(tmp_path, {**row, "source_sha256": "source-two"}, catalog)
+    with pytest.raises(ValueError, match="labels differ"):
+        verify_row(tmp_path, {**row, "violation": not row["violation"]}, catalog)

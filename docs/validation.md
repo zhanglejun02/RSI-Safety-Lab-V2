@@ -19,6 +19,14 @@ Bash syntax and diff whitespace checks passed. The
 [confirmation protocol](agentdojo-confirmation-20261126.md) is written before
 starting natural execution. These are targeted validations, not a full release.
 
+The read-only confirmation exporter then passed **6 report regression tests**,
+3.31s, including a wrong-source binding and a summary-label mismatch. It replayed
+all **240 public + 700 independent** scripted records with exact state/effect/score
+agreement and no API calls. The completed control inventory remained
+`08b3c45f814b7d39b85f6a8c0311c2abe4d93d9aa16bc01ff61275a17e0045a7`.
+This exporter does not change the running natural experiment's frozen source or
+statistics; it verifies completed artifacts and writes a separate output directory.
+
 ## 2026-11-26 locked AgentDojo update pilot
 
 Targeted regression passed **20 tests**, 274.96s, followed by **118 tests**, 29.93s,

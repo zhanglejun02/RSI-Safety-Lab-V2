@@ -122,7 +122,11 @@ bash scripts/run_in_tmux.sh MY-CONFIRMATION -- \
   bash scripts/run_agentdojo_confirmation.sh run runs/current/MY-CONFIRMATION
 bash scripts/run_agentdojo_confirmation.sh status runs/current/MY-CONFIRMATION
 bash scripts/run_agentdojo_confirmation.sh resume runs/current/MY-CONFIRMATION
+.venv/bin/python scripts/summarize_agentdojo_confirmation.py \
+  runs/current/MY-CONFIRMATION/run --output output/MY-NEW-CONFIRMATION-REPORT
 ```
 
 新实验参数集中在 Bash 顶部。`control` 冻结同一分配、关闭模型，只验证程序链路。
+只读汇总器核验完成库存与所有保存效果，导出冻结统计、逐任务表和阳性操作证据；
+输出必须为运行目录以外的新目录，不覆写原始产物，也不调用模型。
 tmux 保存进程与日志；本地电脑仍需联网、保持唤醒，不保证合盖继续。

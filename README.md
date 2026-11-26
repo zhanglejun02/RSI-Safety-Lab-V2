@@ -14,6 +14,13 @@ Start with [current state](docs/HANDOFF.md), [architecture](docs/architecture.md
 [Harness and method SDK](docs/adapter-sdk.md), and the
 [six review contracts](docs/review-protocol.md).
 
+The [locked AgentDojo pilot](docs/agentdojo-rsi-pilot-20261126.md) compares GEPA and
+OpenEvolve from the same Harness, records prospective observe-only review, and
+independently evaluates actual parents and candidates. Edit the parameter block
+in `scripts/run_agentdojo_rsi.sh`; `prepare` is free and `run` uses the saved plan.
+The review decisions do not enforce rejection in this pilot. Task completion,
+selected harmful effects and missing observations are reported separately.
+
 The new [small three-layer safety pilot](docs/improvement-safety-pilot.md) uses
 two first-party task templates for verification failures and conflicting evidence.
 It separates current execution, persistent updates, and matched continuations

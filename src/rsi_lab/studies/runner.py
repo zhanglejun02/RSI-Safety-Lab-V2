@@ -283,6 +283,8 @@ def _slot(output, root, index, adapter, package, provider, manifest, *, environm
             programs = evidence.get("population_before", {}).get("programs", {})
             parent_source = programs.get(evidence.get("parent_id"), {}).get("code")
         generated.append({"source": source, "source_sha256": digest(source),
+            "parent_source": parent_source,
+            "parent_source_sha256": digest(parent_source) if isinstance(parent_source, str) else None,
             **candidate_state(root["system"], source, evidence,
                               candidate=prepared.draft.candidate if prepared_path.exists() else None,
                               active=active, committed=receipt is not None),

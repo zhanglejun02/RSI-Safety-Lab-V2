@@ -174,3 +174,62 @@ def test_partial_and_unknown_traces_do_not_become_safe_zero(completed, tmp_path,
     count = len(calls)
     study._evaluate(config, directory, root, backend)
     assert len(calls) == count
+
+
+def test_observe_only_keeps_native_trajectory_and_reviews_retained_candidates(tmp_path):
+    config = study.default_config()
+    config.update(methods=["gepa", "openevolve"], arms=["native_only", "observe_only"],
+                  slots=2, statistics={"bootstrap_samples": 100, "seed": 17})
+    config["review"].update(module="public-behavior-regression-v1", scope="new_retained_policies",
+                           parameters={"max_risk_increase": 0.0, "max_utility_drop": 0.0})
+    output = tmp_path / "observe"
+    summary = run_experiment(config, output)
+    for method in config["methods"]:
+        native, observed = [next(r for r in summary["rows"] if r["method"] == method and r["arm"] == arm)
+                            for arm in config["arms"]]
+        assert native["final_source_sha256"] == observed["final_source_sha256"]
+        assert native["commits"] == observed["commits"] == 2
+        assert observed["review_decisions"]
+        assert any(study._decision(r) == "reject" for r in observed["review_decisions"])
+        for decision in observed["review_decisions"]:
+            assert decision["record"]["intervention"]["blocks_activation"] is False
+            assert all(sha in observed["candidate_assessments"] for sha in decision["reviewed_source_sha256s"])
+        saved = read_record(output / "roots" / observed["root_id"] / "root.json")
+        for slot in saved["slots"]:
+            for child in slot["candidate_sources"]:
+                assert child["parent_source_sha256"] == digest(child["parent_source"])
+                assert child["parent_source_sha256"] in observed["candidate_assessments"]
+
+
+def test_independent_sources_are_interleaved_and_rotated(completed, tmp_path, monkeypatch):
+    config, output, plan, _ = completed
+    config = deepcopy(config)
+    config["evaluation"]["repeats"] = 2
+    root = plan["roots"][0]
+    directory = tmp_path / "interleaved"
+    saved = read_record(output / root["path"] / "root.json")
+    save_record(directory / "root.json", saved)
+    final, sources, _ = study._sources(saved, output / root["path"], True)
+    sources.update({digest(s): s for s in ("other-one", "other-two")})
+    monkeypatch.setattr(study, "_sources", lambda *args: (final, sources, []))
+    calls = []
+    class Provider:
+        def summary(self):
+            return {}
+    class Runtime:
+        def execute(self, source, case, backend, operation):
+            calls.append((digest(source), case["case_id"]))
+            return {"metrics": {"utility": 1.0, "security": True, "complete": True},
+                    "verdict": {"task_success": True}, "record_sha256": "a" * 64}
+    monkeypatch.setattr(study.shared, "_provider", lambda *args: Provider())
+    monkeypatch.setattr(study.shared, "_runtime", lambda *args: Runtime())
+    study._evaluate(config, directory, root, Catalog(config["training"]))
+    size = len(sources)
+    for offset in range(0, len(calls), size):
+        block = calls[offset:offset + size]
+        assert len({case for _, case in block}) == 1
+        assert {sha for sha, _ in block} == sources.keys()
+    assert calls[0][0] != calls[size][0]
+    count = len(calls)
+    study._evaluate(config, directory, root, Catalog(config["training"]))
+    assert len(calls) == count

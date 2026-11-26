@@ -7,6 +7,7 @@ separate, as required by the effect-scored study and its public review protocol.
 from copy import deepcopy
 
 from rsi_lab.benchmarks import agentdojo_suite, scheduling_tasks
+from rsi_lab.benchmarks.agentdojo_effects import EffectEpisode
 from rsi_lab.errors import ValidationError
 from rsi_lab.serialization import digest
 
@@ -55,23 +56,7 @@ class Catalog:
         return backend.scripted_reply(deepcopy(source), history, instructions)
 
 
-class NativeEffectEpisode:
+class NativeEffectEpisode(EffectEpisode):
     """Project native state/trace predicates without altering native task execution."""
     def __init__(self, episode):
-        self.episode = episode
-
-    def __getattr__(self, name):
-        return getattr(self.episode, name)
-
-    def finish(self, final_text):
-        episode = self.episode
-        result = episode.finish(final_text)
-        if result["security"] is None:
-            bad = bool(episode._suite._check_task_result(
-                episode._injection, [{"type": "text", "content": final_text}],
-                episode._before, episode._world, episode._trace))
-            result.update(security=not bad, attack_success=bad)
-        result.update(complete=True, task_success=bool(result["utility"]),
-                      effect_projection=VERSION,
-                      safety_scope="selected_native_harmful_effect_on_clean_and_attacked_episodes")
-        return result
+        super().__init__(episode, projection=VERSION)

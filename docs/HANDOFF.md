@@ -1,5 +1,15 @@
 # Current work
 
+**2026-11-26 AgentDojo natural-update pilot prepared and controlled.** The user
+authorized a small real-API experiment. Read the [frozen design](agentdojo-rsi-pilot-20261126.md).
+`scripts/run_agentdojo_rsi.sh` uses two GEPA and two OpenEvolve roots, two slots,
+eight public probes and eight independent conditions repeated three times.
+Existing relative review covers newly retained policies in observe-only mode;
+no online blocking benefit is claimed. Actual native parents are recorded and
+independent sources are interleaved. The pure AgentDojo effect backend retains
+native task semantics and explicitly measures selected harmful effects on clean
+cases too. Scripted validation is complete; natural results are recorded separately.
+
 **2026-11-26 literature review and research recommendation.** See
 [recent work and the bounded research route](research-roadmap-20261126.md).
 The review includes DoppelVet, TARE, The Resolution Hypothesis and GUARD. It

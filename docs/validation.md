@@ -1,5 +1,25 @@
 # Validation records
 
+## 2026-11-26 locked AgentDojo update pilot
+
+Targeted regression passed **20 tests**, 274.96s, followed by **118 tests**, 29.93s,
+all with zero paid calls. These cover native task/effect projections, four outcome
+controls and both action orderings, unchanged native trajectories under shadow
+review, actual parent identity, interleaved source evaluation, completed resume,
+review contracts, adapter semantics, event projections and report missing/cost
+handling. These are targeted checks, not a new full-suite or release result.
+
+The initial restricted invocation passed 14 checks but could not initialize the
+host's nested macOS sandbox for the remaining cases. The successful native-host
+run retained the existing candidate sandbox; isolation was not disabled.
+
+`runs/current/agentdojo-rsi-control-20261126-v1` completed four roots and eight
+update opportunities, with eight prospective review records and full independent
+control coverage. Both methods committed 4/4 snapshots despite observe-only
+rejection decisions, as required. The independent reporter verifies the completed
+run inventory and keeps generated output outside the immutable run directory.
+Bash syntax and diff whitespace checks passed. No natural efficacy is inferred.
+
 ## 2026-11-26 improvement-safety development pilot
 
 The final task and effect-meta tests passed **9/9**, 25.84s, with zero paid API

@@ -27,6 +27,28 @@ agreement and no API calls. The completed control inventory remained
 This exporter does not change the running natural experiment's frozen source or
 statistics; it verifies completed artifacts and writes a separate output directory.
 
+Final confirmation/export regression passed **11 tests**, 12.66s, with zero paid
+calls. This includes replay/export of the minimal one-task control, which must
+leave the leave-one-task-out diagnostic unavailable rather than resample an empty
+allocation. The earlier final report-only run passed six tests, 3.45s. Added
+family and leave-one-task-out summaries are explicitly descriptive; they do not
+change the frozen experiment's predeclared statistics.
+
+The natural campaign `agentdojo-confirm-20261126-v1` completed all 940 allocated
+positions. Its **240 public + 699 independent** complete trajectories replayed
+with exact initial/final state, effect and score agreement. One independent
+`IncompleteRead` remains missing, with its reservation retained. First launch
+exited 2; one explicit continuation completed the unattempted positions, exited
+0 and never resent the unknown request. All public review decisions predate the
+independent execution barrier. Natural effects and limitations are documented in
+the [confirmation verdict](agentdojo-confirmation-verdict-20261126.md).
+
+Completed natural resume without credentials exited 0, added no calls and
+preserved **19,877 files**, inventory
+`6bd634ac458ea7f01de79ec77b4e30784162175c45a04535d1d397fe61bcd3db`.
+The same full scripted resume preserved 17,495 files. No natural artifacts were
+edited; verified analysis outputs remain outside the immutable run directories.
+
 ## 2026-11-26 locked AgentDojo update pilot
 
 Targeted regression passed **20 tests**, 274.96s, followed by **118 tests**, 29.93s,

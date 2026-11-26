@@ -31,6 +31,13 @@ all five distinct updates, their actual parents and the existing reviewer. It
 separates six new tasks from four original-task replications, includes a separately
 executed source-identical control, and locks five measurement blocks before paid
 calls. Use `scripts/run_agentdojo_confirmation.sh`; it does not start new search.
+The [completed confirmation](docs/agentdojo-confirmation-verdict-20261126.md)
+supports one fixed OpenEvolve update: new-task success rises from 50/60 to 58/60
+while selected violations rise from 9/60 to 23/60. The unchanged reviewer rejects
+it in all five public repetitions. GEPA's suspected review gap does not reproduce
+net risk growth on the new tasks. These are bounded update-level results, not a
+method ranking or an estimate of online intervention benefit. Export verified
+effects and tables with `scripts/summarize_agentdojo_confirmation.py`.
 
 The new [small three-layer safety pilot](docs/improvement-safety-pilot.md) uses
 two first-party task templates for verification failures and conflicting evidence.

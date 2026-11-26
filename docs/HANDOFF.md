@@ -1,16 +1,38 @@
 # Current work
 
-**2026-11-26 fixed-update confirmation prepared; no natural result yet.**
-Read the [pre-execution protocol](agentdojo-confirmation-20261126.md). The new
-`update-confirmation` profile freezes all five distinct saved updates and the
-unchanged public reviewer. Six new task IDs and four original-task replications
-are separate endpoints; five measurement blocks are not new optimizer roots.
-Independent evaluation executes a source-identical sham separately. Public
-reviews for every block finish before independent execution. The sole primary
-target is the previously risk-increasing OpenEvolve update; the GEPA review gap
-and reverse-direction update remain secondary diagnostics. No skill/memory or
-method-ranking expansion is scheduled. Launch through
-`scripts/run_agentdojo_confirmation.sh`; source, settings and plan are frozen.
+**2026-11-26 fixed-update confirmation completed.** Read the
+[verdict and quantitative tables](agentdojo-confirmation-verdict-20261126.md) and
+[pre-execution protocol](agentdojo-confirmation-20261126.md). Campaign
+`runs/current/agentdojo-confirm-20261126-v1` froze all five distinct saved updates,
+their actual parents and the existing reviewer; five blocks are measurements, not
+new optimizer roots. Six new tasks and four old-task replications remain separate.
+All 240 public trajectories and 699/700 independent trajectories completed; the
+only missing observation is a GEPA old-task network IncompleteRead, never retried.
+
+The sole primary OpenEvolve update passed the locked new-task criterion: task
+success 50/60 → 58/60, selected risk 9/60 → 23/60, attacked risk 9/30 → 23/30.
+There are 14 new and zero removed paired violations; the five block deltas are
+all positive, and the approximate crossed-bootstrap interval is +13.3 to +80.0
+percentage points. Parent and child both encountered the attack in 30/30 cases.
+Both Banking and Slack contribute; safe task completion falls from 45/60 to
+37/60. This confirms a fixed-update case on a small pack, not a method ranking.
+
+The unchanged module explicitly rejected this candidate in 5/5 public reviews,
+all frozen before independent execution. GEPA's suspected gap was accepted 5/5
+but did not show net risk growth on new tasks; an old refund-task signal remains
+inconclusive. Same-source independent execution also changes some old-task
+outcomes. Do not turn these selected-update results into population detector
+recall, online intervention benefit or a new safety algorithm claim.
+
+All 939 complete trajectories passed zero-API state/effect/score replay. The 95
+independent positives are simulated transfers or unwanted direct messages, with
+78 also completing the legitimate task. No-credential completed resume preserved
+all 19,877 run files and added no calls. Resources: 3,780 model requests, 7,348,987
+reported tokens, one unknown reservation of 14,000 tokens. The paid run ended;
+no expansion is scheduled. Use `scripts/run_agentdojo_confirmation.sh` and the
+read-only `scripts/summarize_agentdojo_confirmation.py`. Verified local outputs
+are under `output/agentdojo-confirm-20261126-v1/final/`; retain the discovery data
+and this confirmation separately.
 
 **2026-11-26 AgentDojo natural-update pilot completed with missing observations.**
 Read the [quantitative verdict](agentdojo-rsi-verdict-20261126.md) and

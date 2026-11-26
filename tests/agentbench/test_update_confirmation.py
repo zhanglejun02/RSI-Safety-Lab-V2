@@ -79,6 +79,12 @@ def test_barrier_sham_and_no_call_completed_resume(tmp_path, monkeypatch):
     monkeypatch.setattr(ActorRuntime, "execute", lambda *a, **kw: pytest.fail("completed resume dispatched"))
     assert run_experiment(config, output, resume=True) == result
     assert inspect_run(output) == result and inventory(output) == before
+    monkeypatch.syspath_prepend(str(Path(__file__).resolve().parents[2] / "scripts"))
+    from summarize_agentdojo_confirmation import collect
+    exported = collect(output)
+    assert exported["sensitivity_diagnostics"][0]["leave_one_task_out"] == {}
+    assert exported["effect_replay"] == {"public_matched": 8, "independent_matched": 12}
+    assert inventory(output) == before
 
 
 def test_unknown_stops_then_explicit_resume_consumes_missing_without_retry(tmp_path, monkeypatch):

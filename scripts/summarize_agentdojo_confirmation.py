@@ -13,6 +13,7 @@ from rsi_lab.infra.records import read_record
 from rsi_lab.review import inventory
 from rsi_lab.serialization import digest
 from rsi_lab.studies.update_confirmation import PROTOCOL, inspect
+from rsi_lab.studies.update_search_metrics import contrast
 from summarize_agentdojo_rsi import measured_metrics, verify_saved_effects
 
 
@@ -43,6 +44,7 @@ def collect(run):
     manifest = read_record(run / "manifest.json")
     catalog = effect_catalog(manifest["config"]["training"])
     replay, execution, positives, per_task = Counter(), [], [], []
+    exposure_by_cohort = {}
     for block in summary["rows"]:
         directory = run / block["path"]
         for phase, measurements in (("public", block["public_assessments"]),
@@ -61,6 +63,13 @@ def collect(run):
                         if type(record["metrics"].get(key)) is int:
                             calls[key] += record["metrics"][key]
                     verdict = record["verdict"]
+                    if row["attack_present"]:
+                        exposure_key = "/".join((phase, row["cohort"], variant))
+                        coverage = exposure_by_cohort.setdefault(exposure_key, Counter())
+                        coverage["allocated"] += 1
+                        if type(verdict.get("injection_observed")) is bool:
+                            coverage["known"] += 1
+                            coverage["exposed"] += verdict["injection_observed"]
                     if row["attack_present"] and type(verdict.get("injection_observed")) is bool:
                         exposure.append(verdict["injection_observed"])
                     if row["violation"] is True:
@@ -82,12 +91,33 @@ def collect(run):
                 "clean": measured_metrics([r for r in selected if not r["attack_present"]])})
     if inventory(run) != before:
         raise ValueError("Read-only verification changed completed artifacts")
+    # Descriptive sensitivity checks, not new confirmation criteria or p-values.
+    diagnostics = []
+    for comparison in manifest["config"]["comparisons"]:
+        if not comparison["primary"]:
+            continue
+        parent, child = ([r for block in summary["rows"] for r in block["assessments"][comparison[k]]
+                          if r["cohort"] == "new"] for k in ("parent", "child"))
+        families = {}
+        for family in sorted({r["family"] for r in parent}):
+            left, right = ([r for r in cases if r["family"] == family] for cases in (parent, child))
+            families[family] = {"parent": measured_metrics(left), "child": measured_metrics(right),
+                "attacked_contrast": contrast([r for r in left if r["attack_present"]],
+                                              [r for r in right if r["attack_present"]])}
+        tasks = sorted({r["pair_id"] for r in parent})
+        without_task = {task: contrast([r for r in parent if r["pair_id"] != task and r["attack_present"]],
+                                      [r for r in child if r["pair_id"] != task and r["attack_present"]])
+                        for task in tasks} if len(tasks) > 1 else {}
+        diagnostics.append({"comparison": comparison["id"], "cohort": "new",
+            "scope": "posthoc_descriptive_sensitivity;unchanged_primary_statistics",
+            "by_family": families, "leave_one_task_out": without_task})
     return {"run": str(run), "origin": summary["origin"], "implementation": manifest["implementation"],
         "inventory_sha256": digest(before), "file_count": len(before), "effect_replay": dict(replay),
         "resources": summary["resources"], "criteria": summary["criteria"],
         "table": summary["table"], "comparisons": summary["comparisons"],
         "sham_control_warning": summary["sham_control_warning"], "per_task": per_task,
-        "execution": execution, "positives": positives, "api_calls_for_analysis": 0}
+        "execution": execution, "exposure_by_cohort": exposure_by_cohort,
+        "sensitivity_diagnostics": diagnostics, "positives": positives, "api_calls_for_analysis": 0}
 
 
 def main():

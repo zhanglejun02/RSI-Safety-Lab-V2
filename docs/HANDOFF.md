@@ -1,29 +1,53 @@
 # Current work
 
-**2026-11-26 rating v0.1 implementation and fixed requirements.** Read
-[the frozen protocol](safety-rating-v0.1.md). The research question now asks which
-safety claims the available evidence supports; it does not require an endpoint
-recovery example or any method to obtain a particular level. Thresholds and the
-simultaneous binary KL decision rule are explicit. Per-requirement outcomes and
-highest cumulative level remain separate. Update exposure is a sufficiency
-condition; inherited-state changes and deployed-source changes are counted apart.
+**2026-11-26 rating v0.1 and first prospective allocation completed.** Read the
+[frozen requirements](safety-rating-v0.1.md) and [quantitative verdict](safety-rating-verdict-20261126.md).
+The protocol grades concrete configurations with five-way requirement outcomes
+and a separate cumulative level. It does not require an endpoint-recovery example
+or a particular method ranking. Full declared snapshot inheritance, public-cache
+bindings and the independent-feedback barrier are checked before reporting.
 
-The existing authorization profile optionally writes a full snapshot/public-cache
-receipt after the predeclared prefix, before the next proposal. Continuation must
-inherit that exact snapshot. All independent evaluation still follows the global
-generation barrier. The existing reviewer stays observe-only. Use
-`scripts/run_rating_experiment.sh` (models, allocation and budgets at its top).
-The planned natural pilot is three methods, one new root each, 1+1 opportunities,
-four prefix and four continuation tasks, clean/attack, six repetitions.
+The original `rating-20261126-v01` cohort had three transport failures before any
+editor call, zero candidates/commits, and 288 independent founder measurements.
+It remains intact and is not a method comparison. One recovery cohort was
+registered before reading those independent risk/utility results. That cohort,
+`rating-20261126-v01-recovery`, completed three roots, 1+1 opportunities each,
+and 480 independent allocations: 479 replayable records and one network unknown.
+Six additional negative safety labels remain unknown under the existing
+step-limit rule; these are not judge extraction failures. No further batch is
+scheduled. Both natural commands exited 0 after explicit continuation; unknown
+requests were never resent.
 
-Validation: 42 affected checks passed, with one additional grading counterexample
-added in an 11-test statistical rerun (43 distinct checks). The full frozen Bash
-control uses `runs/current/rating-control-20261126-v01`; check its completion
-before launching HTTP. No new paid run has started at this implementation checkpoint.
-Read-only historical cards are under `output/rating-v01-20261126-exploratory-v2`:
-GEPA insufficient, OpenEvolve fails an absolute-risk requirement, HyperAgents
-untested on that allocation. These rules were chosen after those data; no L3 or
-prospective method rating is inferred from them.
+Recovery commits were GEPA 1/2, OpenEvolve 2/2, HyperAgents 1/2. No method changed
+deployment before the checkpoint. GEPA and OpenEvolve each changed deployment
+during continuation; HyperAgents changed meta/state but kept the same policy.
+The current observe-only reviewer issued three risk rejections across two new
+policy sources, and accepted the same-policy HyperAgents update. These did not
+block activation and do not establish online safety benefit.
+
+All nine L1/L2/L3 cells are **insufficient evidence**, with no awarded level or
+statistically failed requirement in the new cohort. The predeclared M=120 and
+n=12 per stratum cannot pass the absolute risk limit, or confirm a 5-point
+regression even in the most extreme observed contrast. Do not enlarge this
+completed allocation until it passes. Best-case planning floors and the
+structural step-limit missingness are explicit in the report. On the same four
+continuation tasks, GEPA risk was 6/48 → 8/48 and task success 36/48 → 36/48;
+OpenEvolve was 8/48 → 9/42 with six safety unknowns and success 36/48 → 40/48.
+These are descriptive changes, not established deterioration. HyperAgents reuses
+the same behavioral source; its newly committed meta has no later execution here.
+
+All 479 recovery and 288 original records with effect evidence replayed exactly,
+using zero model calls. No-credential completed resumes preserved 18,961 and
+9,553 run files respectively. Recovery used 3,618 requests / 7,311,042 reported
+tokens; original used 1,827 / 3,393,656. Keep their costs and inference separate.
+Generated cards/tables are under `output/rating-20261126-v01{,-recovery}/`.
+
+Use `scripts/run_rating_experiment.sh`; models, allocation and budgets are at its
+top, and resume loads saved source/configuration. Validation includes 44 distinct
+affected zero-API tests and a completed 864-allocation scripted control with no
+missing labels. This was not a full release acceptance. Historical cards remain
+in `output/rating-v01-20261126-exploratory-v2`, explicitly rules-after-data; the
+old OpenEvolve failure does not substitute for a failure in this new cohort.
 
 **2026-11-26 safety-rating proposal: offline evidence map, no new paid run.**
 Read the [research draft and related-work check](safety-rating-protocol.md).

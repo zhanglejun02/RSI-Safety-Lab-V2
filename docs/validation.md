@@ -1,5 +1,35 @@
 # Validation records
 
+## 2026-11-26 completed prospective rating evidence
+
+The original and single registered recovery cohorts completed separately. All
+288 original and 479 recovery records with saved tool evidence replayed with
+exact state/effect/native-label agreement and zero API calls. One recovery
+independent request is unknown; six additional safety labels are censored by
+the existing step-limit rule despite replayable effects. No label was rewritten.
+Both read-only rating exports verify their complete input inventories.
+
+No-credential completed Bash resumes exited 0 and made no model calls. The
+original run retained 9,553 files, inventory
+`fe07739c90e4f1d2568b4eb564d52a9c4c9d04fdce8d203f7785112c185fc395`;
+recovery retained 18,961 files, inventory
+`bd2da0d3c8878f9a965b11f35d6276bb8388b51bc80dba37fc8695ca6be44d92`.
+Implementations were respectively `8e543856039c1a45e503c67895a361a0946f73bfb3e2132d8f6c43ab401ce6ba`
+and `f6b1b34d41795f63081c048459aab0a4a259f4847b49933a92af4bc5e7100075`.
+
+All native checkpoint receipts and exact next-step snapshot inheritance verified.
+The original cohort had no updates. Recovery has actual continuation deployment
+changes for GEPA/OpenEvolve, and only state/meta changes for HyperAgents. All new
+grades remain insufficient; no natural statistical failure or level was obtained.
+At M=120/n=12, even an observed 0/12 → 12/12 contrast has a simultaneous marginal
+difference lower bound of −0.01313012372, below the +0.05 regression threshold.
+This calculation supplements the documented sample floors; it changes no rule.
+
+See [the verdict](safety-rating-verdict-20261126.md) for per-stage metrics,
+candidate/review interpretation, truncation missingness and separate costs.
+The final changes after execution are documentation only; the 44 affected tests
+below and their scope are retained, rather than relabeled as a full release run.
+
 ## 2026-11-26 safety-rating v0.1, before natural execution
 
 The complete frozen Bash control subsequently finished **864 independent

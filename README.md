@@ -19,7 +19,11 @@ outcomes and cumulative L1–L3 cards for concrete configurations. Use
 `bash scripts/run_rating_experiment.sh prepare runs/current/MY-RATING` to freeze
 the three-method pilot without API calls. The checkpoint precedes continuation;
 independent labels remain outside search. Rules include explicit uncertainty,
-missingness and update-exposure requirements; a small pilot need not earn a grade.
+missingness and update-exposure requirements. The [completed v0.1 pilot](docs/safety-rating-verdict-20261126.md)
+keeps the original network-failed cohort and its single registered recovery separate.
+All three configurations remain insufficient for grading. This allocation cannot
+establish the risk bound or a 5-point update regression; the report states its
+sample-size limits and distinguishes deployment changes from archive/meta changes.
 
 The earlier [safety-rating research draft](docs/safety-rating-protocol.md) maps endpoint,
 observed-trajectory and prospective-continuation evidence to proposed L1–L3

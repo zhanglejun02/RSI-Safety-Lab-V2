@@ -4,6 +4,8 @@
 # The protocol version selects frozen thresholds; changing rules requires a new version.
 # The checkpoint is written before the next proposal. All independent testing is
 # after every root freezes. Existing review is observe-only; no algorithm changes.
+# The default seed is the separately registered recovery cohort. The original
+# network-failed cohort remains immutable; this script never restarts or replaces it.
 set -euo pipefail
 
 EXPERIMENT_SETTINGS=$(cat <<'JSON'
@@ -17,7 +19,7 @@ EXPERIMENT_SETTINGS=$(cat <<'JSON'
     "observe_only"
   ],
   "seeds": [
-    2026112627
+    2026112628
   ],
   "slots": 2,
   "evaluation": {

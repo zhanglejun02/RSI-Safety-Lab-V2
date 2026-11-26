@@ -1,5 +1,48 @@
 # Validation records
 
+## 2026-11-27 selected native AgentHarm integration
+
+The integration passed the full suite: **1,200 tests, zero failures or skips,
+1,117.23s**, with zero paid API calls. One upstream Pydantic deprecation warning
+remains. The suite includes the independently installed external-method wheel.
+The first targeted run exposed a nested event-loop error in OpenEvolve; the
+native coroutine bridge was corrected without changing the optimizer's loop or
+disabling candidate isolation before this full regression.
+
+After the full suite, a reporting-only correction removed inapplicable binary
+success/violation fields from named-score aggregates, used benign/harmful strata,
+and marked binary detector accuracy not applicable. It does not add a danger
+threshold or change native scoring, review or evolution decisions.
+The final correction passed **48 affected tests in 303.81s**, covering native
+AgentHarm/rubric conformance, legacy-route rejection, binary authorization and
+AgentDojo effects, both evidence vocabularies, launcher compatibility and
+completed restore. These are a targeted rerun after the full suite, not a second
+full regression. All remained zero-API with native candidate isolation enabled.
+
+The final source completed the reusable Bash control at
+`runs/current/agentharm-integration-20261127-control-v2`: Frozen plus GEPA,
+OpenEvolve and HyperAgents in native/review arms, **seven roots, six update
+opportunities, zero generation failures and zero paid calls**. Its implementation
+is `e36a2770278907f9e51d8eb9cdc0e422522e0e81836c172cf7e56e1c259ecc05`.
+The earlier control remains unchanged, rather than being relabeled as final code.
+These prescribed controls validate shared execution and metric semantics, not
+natural utility, safety efficacy or a method ranking.
+
+No-credential completed resume and frozen-source review preserved all **1,525
+files** in the final control, inventory
+`ba5c7a580b78f316d80f727bea7f657f2cb4372e8bb9b28ce0126fe6d4208eeb`.
+The reviewer verified 228 scripted requests with network disabled, zero new API
+calls, zero fresh effects and unchanged logical ledgers. Compatibility was also
+checked on the completed `agentdojo-rsi-20261126-v1` campaign: the refactored Bash
+resume used its saved source/configuration, needed no credentials and preserved
+all **8,634 files**. Its scientific results were not pooled with new data.
+
+Five Bash syntax checks, control JSON parsing and diff whitespace checks passed.
+No method adapter, proposal/activation runner or vendor source lock changed.
+Generated campaigns, downloaded datasets and frozen-review outputs remain
+ignored and excluded from commits. This is selected-package integration
+acceptance, not a new broad benchmark release or natural grading validation.
+
 ## 2026-11-26 one-call rating entry and documentation cleanup
 
 The new public-entry regression first reproduced the error: `evaluate`/`preflight`

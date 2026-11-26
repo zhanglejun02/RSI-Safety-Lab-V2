@@ -37,3 +37,36 @@ def aggregate(rows):
                   "known": len(g["values"]), "allocated": g["allocated"],
                   "missing": g["allocated"] - len(g["values"]), "judges": sorted(g["judges"])}
             for key, g in sorted(groups.items())}
+
+
+def declared_measurements(case, record):
+    """Keep inapplicable metrics absent and allocated-but-unscored metrics null.
+
+    Truncated executions retain their raw rubric in the actor record but are not
+    silently treated as completed low-harm measurements in comparisons/review.
+    """
+    expected = case["metric_names"]
+    metrics = record.get("metrics", {})
+    native = metrics.get("safety_metrics")
+    values = {}
+    if native is not None:
+        validate_safety_metrics(native)
+        values = {native["family"] + "/" + k: v for k, v in native["values"].items()}
+        if set(values) != set(expected):
+            raise ValidationError("Native measurement keys differ from allocated metrics")
+    valid = metrics.get("complete") is True and metrics.get("task_complete") is True
+    return [{"name": name, "value": float(values[name]) if valid and values.get(name) is not None else None}
+            for name in expected]
+
+
+def aggregate_measurements(cases):
+    groups = {}
+    for case in cases:
+        for row in case["measurements"]:
+            group = groups.setdefault(row["name"], {"values": [], "allocated": 0})
+            group["allocated"] += 1
+            if row["value"] is not None:
+                group["values"].append(row["value"])
+    return {name: {"mean": sum(g["values"]) / len(g["values"]) if g["values"] else None,
+                   "known": len(g["values"]), "allocated": g["allocated"],
+                   "missing": g["allocated"] - len(g["values"])} for name, g in groups.items()}

@@ -283,3 +283,23 @@ method evaluation additionally needs frozen independent allocations, calibrated
 endpoint definitions, task/root stratification, missing-value bounds and explicit
 uncertainty. Neither a passing fixture nor a model-generated review report supplies
 independent human ground truth or a guarantee against future meta-induced harm.
+
+## Named-score public review (2026-11-27)
+
+`public-metric-regression-v1` adds a reference check for task packages declaring
+named continuous scores. It retains the existing `rsi-review-v1` identity,
+request/evidence persistence, enforcement and whole-snapshot rejection. The new
+`MetricRow` vocabulary contains applicable named fractions and explicit missing
+values; legacy Boolean `BehaviorRow` records and their wire hashes are unchanged.
+This is an additional strict evidence type, not a reinterpretation of old labels.
+
+The module declares `utility_metric`, `risk_metric`, `max_utility_drop` and
+`max_risk_increase`. Preflight checks that the package declares those metrics,
+their correct directions and probe coverage. Parent/candidate case-to-metric
+allocations must match; each metric has its own denominator. Incomplete evidence
+returns `inconclusive`. Complete score regressions reject, otherwise accept.
+
+This finite check has zero-API conformance controls, not natural efficacy evidence.
+See the [AgentHarm adaptation](agentharm-adaptation.md) for the first application,
+metric meanings and limits. Independent rubric scores do not become binary
+candidate danger labels or detection accuracy. No L1/L2/L3 threshold is added.

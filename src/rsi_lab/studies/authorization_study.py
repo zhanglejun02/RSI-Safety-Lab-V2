@@ -66,13 +66,22 @@ def validate_config(config):
         raise ValidationError("Declare unique nonnegative independent root seeds")
     if type(config["slots"]) is not int or not 1 <= config["slots"] <= 10:
         raise ValidationError("Development pilot supports 1–10 slots")
-    effect_catalog(config["training"])
+    backend = effect_catalog(config["training"])
     spec = validate_review_spec(config["review"])
     if spec["module"] not in ("public-authorization-contract-v1", "public-full-validation-v1",
-                              "public-behavior-regression-v1"):
+                              "public-behavior-regression-v1", "public-metric-regression-v1"):
         raise ValidationError("This pilot requires a registered public behavior review")
-    if spec["module"] != "public-behavior-regression-v1" and spec["scope"] != "deployed_policy":
+    if spec["module"] not in ("public-behavior-regression-v1", "public-metric-regression-v1") and spec["scope"] != "deployed_policy":
         raise ValidationError("Absolute effect review requires deployed_policy scope")
+    contract = backend.describe().get("metric_contract")
+    if bool(contract) != (spec["module"] == "public-metric-regression-v1"):
+        raise ValidationError("Named-score task packs require named metric review; binary probes retain their original module")
+    if contract:
+        for role, direction in (("utility", "higher"), ("risk", "lower")):
+            name = spec["parameters"][role + "_metric"]
+            if contract.get(name, {}).get("direction") != direction or not any(
+                    name in c["metric_names"] for c in backend.cases("probe")):
+                raise ValidationError("Review metric is absent or has the wrong direction: " + name)
     for field in ("budget", "models", "evaluation", "statistics"):
         if type(config[field]) is not dict or set(config[field]) != set(default[field]):
             raise ValidationError("Invalid " + field)
@@ -206,6 +215,8 @@ def run(config, output, *, resume=False, expected_plan=None):
                    "rows": rows, "groups": _groups(rows), "paid_calls": 0 if config["mode"] == "scripted" else None,
                    "statistics": summarize(rows, seed=config["statistics"]["seed"], samples=config["statistics"]["bootstrap_samples"]),
                    "manifest_sha256": digest(manifest), "plan_sha256": digest(compiled)}
+        if "metric_contract" in compiled["benchmark"]:
+            summary["metric_contract"] = compiled["benchmark"]["metric_contract"]
         _report(output, summary)
         if "rating" in config:
             from .safety_rating import rate_run, markdown
@@ -329,6 +340,10 @@ def _evaluate(config, directory, root, backend):
                               "authorization": verdict.get("authorization", {}),
                               "record_sha256": record.get("record_sha256"), "error": record.get("error"),
                               "record_path": str(path.relative_to(directory))})
+                if "metric_contract" in backend.describe():
+                    from rsi_lab.benchmarks.metrics import declared_measurements
+                    measured[sha][-1]["measurements"] = declared_measurements(case, record)
+                    measured[sha][-1]["condition"] = case["condition"]
     evaluated = {sha: {"source_sha256": sha, "cases": cases, "metrics": _metrics(cases)}
                  for sha, cases in measured.items()}
     for row in reviews:
@@ -337,21 +352,30 @@ def _evaluate(config, directory, root, backend):
         reviewed = sorted(covered - {record["evidence"]["parent_sha256"]} or covered)
         row["reviewed_source_sha256s"] = reviewed
         cases = [case for sha in reviewed for case in evaluated.get(sha, {}).get("cases", [])]
-        risk = True if any(c["violation"] is True for c in cases) else (
-            False if cases and all(sha in evaluated for sha in reviewed)
-            and all(c["violation"] is False for c in cases) else None)
-        row["independent_candidate_violation"] = risk
-        row["assessment_scope"] = "any_observed_violation_on_reviewed_sources;not_new_risk_or_universal_safety"
+        if "metric_contract" in backend.describe():
+            from rsi_lab.benchmarks.metrics import aggregate_measurements
+            row["independent_candidate_metrics"] = aggregate_measurements(cases)
+            row["assessment_scope"] = "named_rubric_scores;no_binary_danger_label_or_detector_accuracy"
+        else:
+            risk = True if any(c["violation"] is True for c in cases) else (
+                False if cases and all(sha in evaluated for sha in reviewed)
+                and all(c["violation"] is False for c in cases) else None)
+            row["independent_candidate_violation"] = risk
+            row["assessment_scope"] = "any_observed_violation_on_reviewed_sources;not_new_risk_or_universal_safety"
     cases = evaluated[final_sha]["cases"]
     metrics = _metrics(cases)
+    if "native_metrics" in metrics:
+        estimates = {name: m["mean"] if m["missing"] == 0 else None
+                     for name, m in metrics["native_metrics"].items()}
+    else:
+        estimates = {"task_success_rate": metrics["task_success_rate"] if metrics["task_known"] == len(cases) else None,
+                     "authorized_completion_rate": metrics["authorized_completion_rate"] if all(c["utility"] is not None for c in cases) else None,
+                     "violation_rate": metrics["violation_rate"] if metrics["risk_missing"] == 0 else None,
+                     "full_correct_rate": metrics["full_correct_rate"] if metrics["risk_missing"] == 0 and metrics["task_known"] == len(cases) else None}
     row = {"root_id": root["root_id"], "method": root.get("comparison", root["system"]), "arm": root["arm"], "seed": root["seed"],
            "benchmark": backend.describe()["version"], "final_source_sha256": final_sha,
            "final_matches_founder": final_sha == digest(SystemSnapshot.from_dict(saved["origin"]).version.component("policy")["source"]),
-           "cases": cases, "metrics": metrics,
-           "estimates": {"task_success_rate": metrics["task_success_rate"] if metrics["task_known"] == len(cases) else None,
-                         "authorized_completion_rate": metrics["authorized_completion_rate"] if all(c["utility"] is not None for c in cases) else None,
-                         "violation_rate": metrics["violation_rate"] if metrics["risk_missing"] == 0 else None,
-                         "full_correct_rate": metrics["full_correct_rate"] if metrics["risk_missing"] == 0 and metrics["task_known"] == len(cases) else None},
+           "cases": cases, "metrics": metrics, "estimates": estimates,
            "candidate_assessments": evaluated, "review_decisions": reviews,
            "source_measurements_reused_within_root": True,
            "opportunities": len(saved["slots"]), "commits": sum(s["committed"] for s in saved["slots"]),
@@ -363,6 +387,10 @@ def _evaluate(config, directory, root, backend):
 
 
 def _metrics(cases):
+    if cases and "measurements" in cases[0]:
+        from rsi_lab.benchmarks.metrics import aggregate_measurements
+        return {"allocated": len(cases), "protocol_complete": sum(c["protocol_complete"] for c in cases),
+                "native_metrics": aggregate_measurements(cases)}
     successes = [c["task_success"] for c in cases if type(c["task_success"]) is bool]
     utility = [c["utility"] for c in cases if type(c["utility"]) in (int, float)]
     risk = [c["violation"] for c in cases if type(c["violation"]) is bool]
@@ -390,8 +418,8 @@ def _detection(reviews):
 
     def reason_kind(row):
         reasons = set(row["record"]["result"].get("reason_codes", []))
-        safety = bool(reasons & {"public_authorization_violation", "public_safety_violation_increase"})
-        utility = bool(reasons & {"public_task_completion_regression", "public_task_incomplete"})
+        safety = bool(reasons & {"public_authorization_violation", "public_safety_violation_increase", "public_risk_score_increase"})
+        utility = bool(reasons & {"public_task_completion_regression", "public_task_incomplete", "public_utility_score_regression"})
         return "safety_and_utility" if safety and utility else "safety_only" if safety else "utility_only" if utility else "other"
 
     safety_rejected = [r for r in rejected if reason_kind(r) in ("safety_only", "safety_and_utility")]
@@ -420,9 +448,16 @@ def _groups(rows):
         members = [r for r in rows if (r["method"], r["arm"]) == (method, arm)]
         cases = [c for r in members for c in r["cases"]]
         reviews = [d for r in members for d in r["review_decisions"] if d["record"]["executed"]]
-        groups.append({"method": method, "arm": arm, "roots": len(members), "metrics": _metrics(cases),
-                       "strata": {"attack" if attack else "clean": _metrics([c for c in cases if c["attack_present"] == attack])
-                                  for attack in (False, True)},
+        metrics = _metrics(cases)
+        named = "native_metrics" in metrics
+        strata = ({kind: _metrics([c for c in cases if c["condition"] == kind])
+                   for kind in sorted({c["condition"] for c in cases})} if named else
+                  {"attack" if attack else "clean": _metrics([c for c in cases if c["attack_present"] == attack])
+                   for attack in (False, True)})
+        detection = ({"status": "not_applicable", "reason": "named_scores_have_no_binary_danger_threshold"}
+                     if named else _detection(reviews))
+        groups.append({"method": method, "arm": arm, "roots": len(members), "metrics": metrics,
+                       "strata": strata,
                        "families": {f: _metrics([c for c in cases if c["family"] == f]) for f in sorted({c["family"] for c in cases})},
                        "opportunities": sum(r["opportunities"] for r in members),
                        "commits": sum(r["commits"] for r in members),
@@ -431,11 +466,13 @@ def _groups(rows):
                        "generation_failures": sum(r["generation_failures"] for r in members),
                        "review_skipped_native": sum(not d["record"]["executed"] for r in members for d in r["review_decisions"]),
                        "review": {d: sum(_decision(r) == d for r in reviews) for d in ("accept", "reject", "inconclusive")},
-                       "detection": _detection(reviews)})
+                       "detection": detection})
     return groups
 
 
 def _report(output, summary):
+    if "metric_contract" in summary:
+        return _named_metric_report(output, summary)
     def percent(value):
         return "missing" if value is None else f"{100 * value:.1f}%"
     lines = ["# Effect-scored task development pilot", "", "Origin: " + summary["origin"],
@@ -458,6 +495,40 @@ def _report(output, summary):
               "Rejection for any reason, safety-based rejection, utility-only rejection and inconclusive blocking are counted separately in summary.json; only safety-based rejection records a safety finding.",
               "One root per condition cannot establish stable method differences. Bootstrap intervals remain null with fewer than two roots.",
               "No random-rejection control in this pilot; review effects cannot yet be separated from generic search restriction."]
+    (output / "report.md").write_text("\n".join(lines) + "\n")
+    with (output / "metrics.csv").open("w", newline="") as handle:
+        writer = csv.DictWriter(handle, fieldnames=list(flat[0]))
+        writer.writeheader()
+        writer.writerows(flat)
+
+
+def _named_metric_report(output, summary):
+    """Same root/candidate/review records, with the declared metric vocabulary."""
+    contract, flat = summary["metric_contract"], []
+    lines = ["# Named-score risk package", "", "Origin: " + summary["origin"],
+             "Scores are native rubric fractions, not binary safety violation rates. Missing is not zero.",
+             "Only benign development utility enters optimization. Independent tests follow the all-roots barrier.",
+             "Scripted controls establish integration behavior, not natural safety efficacy or a rating.", "",
+             "| Method | Condition | Roots | Metric | Mean | Known / allocated | Missing | Commits / opportunities | Deployment changes | Review A/R/I |",
+             "|---|---|---:|---|---:|---:|---:|---:|---:|---|"]
+    for group in summary["groups"]:
+        for name, m in group["metrics"]["native_metrics"].items():
+            spec, review = contract[name], group["review"]
+            value = "missing" if m["mean"] is None else f"{m['mean']:.4f}"
+            arrow = "↑" if spec["direction"] == "higher" else "↓"
+            lines.append(f"| {group['method']} | {group['arm']} | {group['roots']} | {name} {arrow} | {value} | {m['known']}/{m['allocated']} | {m['missing']} | {group['commits']}/{group['opportunities']} | {group['deployment_changes']} | {review['accept']}/{review['reject']}/{review['inconclusive']} |")
+            flat.append({"method": group["method"], "condition": group["arm"], "roots": group["roots"],
+                         "metric": name, "direction": spec["direction"], "unit": spec["unit"], **m,
+                         "commits": group["commits"], "opportunities": group["opportunities"],
+                         "deployment_changes": group["deployment_changes"],
+                         **{"review_" + k: v for k, v in review.items()}})
+    lines += ["", "Metric definitions:"]
+    for name, spec in contract.items():
+        lines.append(f"- {name}: {spec['description']}; denominator: {spec['denominator']}; unit: {spec['unit']}.")
+    lines += ["", "Means use known labels; statistics with any missing allocation remain unknown.",
+              "Benign and harmful denominators are separate. A partial execution has a retained raw rubric, but an unknown comparison score.",
+              "Candidate-level rubric measurements, review decisions, resource use and root-level intervals are in summary.json.",
+              "Observe-only does not enforce decisions. No binary danger threshold or detector accuracy is inferred from rubric fractions."]
     (output / "report.md").write_text("\n".join(lines) + "\n")
     with (output / "metrics.csv").open("w", newline="") as handle:
         writer = csv.DictWriter(handle, fieldnames=list(flat[0]))

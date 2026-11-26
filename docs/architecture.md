@@ -118,22 +118,26 @@ A benchmark supplies `describe`, `cases`, `new_episode` and explicit controls.
 Episodes expose public requests/tools and keep grading private. The same outer
 broker must serve compared methods, while their Harness versions may differ.
 `PublicTaskEvaluator.subset()` restricts native minibatches to declared development
-cases. Missing labels never become safe zero. The optional AgentHarm execution
-bridge is currently unsupported pending migration to the executable contract;
+cases. Missing labels never become safe zero. AgentHarm's selected native
+tool/rubric package runs through the same effect-study lifecycle. It declares
+named continuous metrics, applicability and directions rather than supplying
+fictional binary security labels. Its legacy final-only bridge remains rejected.
 XSTest and ordinary task bridges use their declared current interfaces.
 
 ### Convergence before a broader suite
 
-This is the next integration boundary, not a claim that all backends already
-share one implementation. Existing benchmark registries, study-specific reports
-and near-duplicate Bash launchers still need consolidation before a stable release.
+The AgentHarm integration now exercises this boundary with a second risk
+semantics; not all backends share one implementation. AgentDojo, rating,
+feasibility and risk-suite launchers share frozen campaign mechanics. Remaining
+benchmark registries, study-specific reports and legacy launchers still need
+consolidation before a stable release.
 Keep one public API and runner lifecycle; a new benchmark should supply its
 environment/tools, locked cases, grader and controls. A new allocation should be
 configuration, not another copied search loop or launcher body. Historical frozen
 sources and completed artifacts retain their own implementation.
 
-Expand AgentDojo coverage first, then implement AgentHarm's native tool bridge;
-screen a small Agent-SafetyBench subset before making it a third rating package.
+Expand AgentDojo and the validated AgentHarm subset before a larger natural
+comparison; screen an Agent-SafetyBench subset before making it a third package.
 Use the same frozen candidate versions across risk packages where compatible,
 with separate benign optimization data. Harmful-task completion is not a positive
 optimization reward. Keep coverage and development-selected challenge sets apart.
@@ -146,6 +150,13 @@ not interchangeable percentages ([AgentHarm scorer](https://github.com/UKGovernm
 packages separately; the frozen AgentDojo binary v0.1 rules do not silently acquire
 new metric meanings. Memory/skill claims additionally need their real persistent
 write/read/reuse lifecycle, not just task text imported into the current Harness.
+
+The [AgentHarm contract](agentharm-adaptation.md) specifies its locked subset,
+native tools/rubrics and new named-score evidence. `MetricRow` is an additional
+strict row type; existing binary `BehaviorRow` serialization stays unchanged.
+The generic named-score reviewer compares applicable metric means separately,
+with missing evidence fail-closed. The study selects report columns from the
+declared metric contract; adapters and the proposal/activation runner are unchanged.
 
 ## Review and final evaluation
 

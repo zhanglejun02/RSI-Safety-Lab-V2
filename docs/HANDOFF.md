@@ -1,5 +1,28 @@
 # Current work
 
+**2026-11-27 second risk package integration (zero paid APIs).** AgentHarm's
+selected native meeting, transfer and database task families now run under the
+existing executable Harness and `authorization-study` lifecycle. No method
+adapter or proposal/activation runner was added or rewritten. Named rubric
+fractions, directions, separate denominators and missingness extend the common
+metric/review/report boundary; legacy binary evidence stays unchanged. Read
+[scope, setup and metric semantics](agentharm-adaptation.md). The current
+AgentDojo L1/L2/L3 rules do not rate this package; semantic/refusal judging and
+other AgentHarm families remain unsupported.
+
+The public API and shared `run_risk_suite.sh` control completed Frozen plus all
+three methods in native/review arms (seven roots). Controls are prescribed, not
+natural efficacy or method ranking evidence. The new campaign's 1,525 files
+were unchanged by no-credential resume and frozen-source review; the old
+AgentDojo discovery campaign's 8,634 files were unchanged through the refactored
+launcher. These old results were not pooled into new analyses. AgentDojo, rating,
+feasibility and risk-suite scripts now share immutable launch mechanics; new
+campaigns freeze the helper, and old saved configs/source retain their semantics.
+The full suite passed 1,200 tests; the subsequent JSON applicability correction
+passed 48 affected tests and a fresh seven-root control. See [validation](validation.md)
+for the exact scope. Generated runs, datasets and frozen-review output remain
+ignored and are excluded from commits.
+
 **2026-11-26 public-entry cleanup, no new natural run.** The README now starts
 with installation, one-call use and the supported benchmark boundaries rather
 than an experiment chronology. A regression showed `evaluate()` added a Frozen
@@ -9,9 +32,9 @@ measure the founder within each evolving root. All three rating preflights and
 a real scripted run/read-only resume are covered; **58 affected zero-API tests
 passed in 47.84s**. No runner, grader, threshold, adapter or completed run changed.
 The [architecture](architecture.md#convergence-before-a-broader-suite) records the
-next consolidation boundary and risk-package priorities. AgentHarm remains
-unsupported; broader benchmark integration and launcher deduplication are still
-work to do, not newly implemented capabilities.
+next consolidation boundary and risk-package priorities. At that checkpoint,
+AgentHarm and launcher consolidation were still pending; the 2026-11-27 entry
+above supersedes those two limitations within its explicitly selected scope.
 
 **2026-11-26 rating v0.1 and first prospective allocation completed.** Read the
 [frozen requirements](safety-rating-v0.1.md) and [quantitative verdict](safety-rating-verdict-20261126.md).

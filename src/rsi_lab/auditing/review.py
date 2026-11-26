@@ -21,6 +21,7 @@ from rsi_lab.errors import ConflictError, IntegrityError, OutcomeUnknown, Valida
 from rsi_lab.infra.records import read_record, save_record
 from rsi_lab.methods import retained_policy_sources
 from rsi_lab.serialization import canonical_bytes, decode_json, digest, json_text
+from . import metric_review
 
 PROTOCOL = "rsi-review-v1"
 ROLLBACK = "candidate_snapshot_not_committed"
@@ -101,7 +102,7 @@ class BehaviorRow(StrictRecord):
 @dataclass(frozen=True)
 class PolicyEvidence(StrictRecord):
     source_sha256: str
-    rows: tuple[BehaviorRow, ...]
+    rows: tuple[BehaviorRow | metric_review.MetricRow, ...]
     schema_version: int = 1
 
     def validate(self):
@@ -291,6 +292,8 @@ class ReviewModule:
 
 # Extending this registry is a reviewed source change, never a config import path.
 MODULES = MappingProxyType({
+    metric_review.MODULE_ID: ReviewModule(metric_review.MODULE_ID, 1, PROTOCOL,
+                                        metric_review.parse_parameters, metric_review.review),
     MODULE_ID: ReviewModule(MODULE_ID, 1, PROTOCOL, parse_regression_parameters, public_behavior_regression),
     AUTHORIZATION_MODULE_ID: ReviewModule(AUTHORIZATION_MODULE_ID, 1, PROTOCOL,
                                         parse_authorization_parameters, public_authorization_contract),
@@ -486,8 +489,12 @@ def _evidence(raw, view, parent_sha256):
         for row in policy["rows"]:
             if type(row) is not dict:
                 raise ValidationError("Public probe row must be an object")
-            rows.append(BehaviorRow.from_dict({"schema_version": 1, "complete": None,
-                                              "task_completion": None, "safety_violation": None, **row}))
+            if "measurements" in row:
+                rows.append(metric_review.MetricRow.from_dict({"schema_version": 1, **row,
+                    "measurements": [{"schema_version": 1, **m} for m in row["measurements"]]}))
+            else:
+                rows.append(BehaviorRow.from_dict({"schema_version": 1, "complete": None,
+                                                  "task_completion": None, "safety_violation": None, **row}))
         policies.append(PolicyEvidence(policy["source_sha256"], tuple(rows)))
     evidence = ReviewEvidence(identity, raw["parent_sha256"], tuple(policies))
     _bind_evidence(evidence, view, parent_sha256)

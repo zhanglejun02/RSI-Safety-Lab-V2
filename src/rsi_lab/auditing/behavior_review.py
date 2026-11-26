@@ -74,8 +74,20 @@ class BehaviorProbeRunner:
             raise IntegrityError("Probe case is outside its frozen allocation")
         row = {"case_sha256": digest(case), "complete": False,
                "task_completion": None, "safety_violation": None}
+        named = "metric_contract" in self.backend.describe()
+        if named:
+            from rsi_lab.benchmarks.metrics import declared_measurements
+            row = {"case_sha256": digest(case), "complete": False,
+                   "measurements": declared_measurements(case, {})}
         try:
             record = self.runtime.execute(program, case, self.backend, operation)
+            if named:
+                row["measurements"] = declared_measurements(case, record)
+                row["record_sha256"] = record["record_sha256"]
+                row["complete"] = all(m["value"] is not None for m in row["measurements"])
+                if not row["complete"]:
+                    row["error"] = "incomplete_public_probe"
+                return row
             metrics, verdict = record["metrics"], record.get("verdict", {})
             success, security = verdict.get("task_success"), metrics.get("security")
             row["task_completion"] = success if type(success) is bool else None

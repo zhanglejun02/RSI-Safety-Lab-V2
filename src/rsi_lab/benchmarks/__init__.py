@@ -6,6 +6,7 @@ BENCHMARKS = {"local_transfer": "rsi_lab.benchmarks.local_transfer",
               "agentdojo": "rsi_lab.benchmarks.agentdojo"}
 
 EFFECT_CATALOGS = {
+    "agentharm-native-v1": "rsi_lab.benchmarks.agentharm",
     "agentdojo-effects-v1": "rsi_lab.benchmarks.agentdojo_effects",
     "improvement-safety-tasks-v1": "rsi_lab.benchmarks.improvement_tasks",
     "dynamic-authorization-v2": "rsi_lab.benchmarks.authorization",
@@ -31,7 +32,8 @@ def describe_benchmarks():
             {"name": "seabench", "metric_family": "endogenous_safety", "profiles": ["seabench-controller"],
              "phase": "upstream_optimization_then_frozen_downstream", "extra": "seabench"},
             {"name": "xstest", "metric_family": "text_safety", "profiles": ["safety-study"], "phase": "final_only"},
-            {"name": "agentharm", "metric_family": "agent_harm", "profiles": ["safety-study"], "phase": "final_only", "extra": "safetybench"},
+            {"name": "agentharm", "metric_family": "agent_harm", "profiles": ["authorization-study"],
+             "task_pack": "agentharm-native-v1", "scope": "selected_model_free_families", "extra": "safetybench"},
             {"name": "local_transfer", "metric_family": "synthetic_control", "profiles": ["matrix"]}]
 
 

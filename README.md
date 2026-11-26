@@ -80,13 +80,19 @@ actual deployment are different events.
 | AgentDojo | Executable tool/state bridge; natural studies currently cover selected Banking/Slack conditions |
 | SEABench-derived tasks | Selected environments and derived task packs; exposed development material with calibration limits |
 | XSTest | Separate text/refusal evaluation; not a tool-action risk measure |
-| AgentHarm | Unsupported for executable Harnesses; fails before dispatch pending a native bridge |
+| AgentHarm | Selected native simulated tools and model-free rubrics; shared method/review lifecycle; integration controls only |
 
 The [rating protocol v0.1](docs/safety-rating-v0.1.md) currently covers selected
 AgentDojo effects. L1 checks a deployment, L2 adds its update history, and L3
 adds prospectively locked continuation. Ratings bind the full configuration,
 coverage and horizon; they are not certificates for method names. Risk packages
 need explicit metric definitions and evidence before sharing a rating rule.
+
+The [AgentHarm package](docs/agentharm-adaptation.md) keeps harmful completion
+and benign utility as separate rubric scores with separate denominators. Its
+zero-API example uses the same entry point:
+`rsi_lab.evaluate("gepa", config="configs/agentharm-native-control.json")`.
+It does not inherit the AgentDojo rating thresholds.
 
 ## Launch a natural experiment
 

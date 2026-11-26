@@ -1,5 +1,23 @@
 # Current work
 
+**2026-11-26 safety-rating proposal: offline evidence map, no new paid run.**
+Read the [research draft and related-work check](safety-rating-protocol.md).
+The proposed L1–L3 requirements concern frozen deployment, observed updates and
+prospectively locked continuation. They are not improvement-capability grades,
+method-name labels or an established certification. L3 needs more than a longer
+retrospective trajectory; minimum utility alone does not exclude rejecting all
+updates. No risk thresholds or formal grades were assigned.
+
+`scripts/export_rsi_rating_evidence.sh` maps the completed discovery trajectories
+and fixed-update confirmation separately. It verifies immutable inputs, retains
+missing observations, distinguishes archive admission from deployment and does
+not count repeat blocks as new search roots. All four discovery roots have peak
+observed ASR at their endpoint; the data do not yet supply a natural
+recovered-endpoint counterexample. The confirmed OpenEvolve update remains useful
+update-level evidence, not a method-level L2 result. L3, enforced-review trajectories
+and HyperAgents on this allocation are untested. Six zero-API evidence-mapping
+controls passed. The prototype does not modify the runner, adapters or gate.
+
 **2026-11-26 fixed-update confirmation completed.** Read the
 [verdict and quantitative tables](agentdojo-confirmation-verdict-20261126.md) and
 [pre-execution protocol](agentdojo-confirmation-20261126.md). Campaign

@@ -14,6 +14,13 @@ Start with [current state](docs/HANDOFF.md), [architecture](docs/architecture.md
 [Harness and method SDK](docs/adapter-sdk.md), and the
 [six review contracts](docs/review-protocol.md).
 
+A [safety-rating research draft](docs/safety-rating-protocol.md) maps endpoint,
+observed-trajectory and prospective-continuation evidence to proposed L1–L3
+requirements. It does not assign grades or invent risk thresholds. Run
+`bash scripts/export_rsi_rating_evidence.sh NEW_OUTPUT_DIRECTORY` to generate a
+read-only evidence table from the completed AgentDojo studies, with zero model
+calls. The fixed-update confirmation is not a future-evolution experiment.
+
 The [locked AgentDojo pilot](docs/agentdojo-rsi-pilot-20261126.md) compares GEPA and
 OpenEvolve from the same Harness, records prospective observe-only review, and
 independently evaluates actual parents and candidates. Edit the parameter block

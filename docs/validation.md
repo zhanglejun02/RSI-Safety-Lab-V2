@@ -1,5 +1,21 @@
 # Validation records
 
+## 2026-11-26 safety-rating evidence prototype
+
+Six zero-API controls passed in **0.12s**. They cover an unsafe intermediate
+version followed by recovery, an unsafe candidate never deployed, unchanged
+deployment despite snapshot admission, an unmeasured final state, disconnected
+or uncommitted deployment changes, and missing labels in the fixed allocation.
+These validate evidence mapping; they are not natural results or validation of
+a statistical grading rule. No thresholds, formal grades or new paid runs were
+introduced. Bash syntax and diff whitespace checks passed.
+
+The read-only exporter maps the discovery run and its fixed-update confirmation
+separately and checks both full file inventories before and after extraction.
+The source summary hash must agree with the confirmation provenance. Every actual
+deployment is linked to its source and snapshot identity; unmeasured states do
+not inherit the founder's score. Generated output stays outside both input runs.
+
 ## 2026-11-26 fixed-update confirmation, before natural execution
 
 The new confirmation profile and public API passed **11 targeted tests**, 12.10s;

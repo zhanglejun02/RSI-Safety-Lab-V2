@@ -81,6 +81,11 @@ def resolve_settings(settings, actor="deepseek", strategy="baseline"):
 
 
 def build(settings, *, mode="http", screen=False, actor="deepseek", strategy="baseline"):
+    if isinstance(settings, dict) and settings.get("profile") == "update-confirmation":
+        from rsi_lab.studies.update_confirmation import resolve_study
+        if screen or actor != "deepseek" or strategy != "baseline":
+            raise ValueError("Update confirmation uses its declared frozen-source profile")
+        return resolve_study(settings, mode=mode)
     if isinstance(settings, dict) and settings.get("profile") == "update-search":
         from rsi_lab.studies.update_search import validate_config
         if screen or actor != "deepseek" or strategy != "baseline":
@@ -137,11 +142,11 @@ def freeze_config(directory, settings, config, *, mode, screen, launcher, runtim
     _source_helper(directory / "source-helper.py").freeze_source(directory)
     write(directory / "campaign.json", {
         "protocol": "authorization-campaign-v1", "mode": mode, "screen": screen,
-        "confirmatory": False, "automatic_retry": False,
+        "confirmatory": plan.get("confirmatory", False), "automatic_retry": False,
         "files": {name: sha(directory / name) for name in frozen_files},
     })
     return {"campaign": str(directory), "mode": mode, "screen": screen,
-            "roots": len(plan["roots"]), "slots": config["slots"],
+            "roots": len(plan["roots"]), "slots": config.get("slots", 0),
             "implementation": plan["implementation"], "api_calls": 0}
 
 
@@ -170,13 +175,17 @@ def status(directory):
     plan = read_record(directory / "plan.json")
     run = directory / "run"
     root_dirs = [run / root["path"] for root in plan["roots"]]
-    return {"campaign": str(directory), "mode": config["mode"],
+    result = {"campaign": str(directory), "mode": config["mode"],
             "status": ("completed" if (run / "summary.json").exists() else
                        "started_incomplete" if run.exists() else "prepared"),
             "roots": len(root_dirs),
             "generated_roots": sum((p / "root.json").exists() or (p / "generation.json").exists() for p in root_dirs),
             "evaluated_roots": sum((p / "scores.json").exists() for p in root_dirs),
             "process_liveness_assessed": False, "api_calls": 0}
+    if config["profile"] == "update-confirmation":
+        result.update(generated_roots=None, roots_kind="measurement_blocks_not_search_roots",
+                      reviewed_blocks=sum((p / "reviews.json").exists() for p in root_dirs))
+    return result
 
 
 def load_credentials(directory, env_file):

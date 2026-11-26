@@ -26,6 +26,12 @@ OpenEvolve update and one GEPA update that passed public review but regressed
 on independent tasks. Opposite candidate directions, network gaps and only two
 roots per method preclude a method ranking or a detector-effectiveness claim.
 
+The [fixed-update confirmation](docs/agentdojo-confirmation-20261126.md) freezes
+all five distinct updates, their actual parents and the existing reviewer. It
+separates six new tasks from four original-task replications, includes a separately
+executed source-identical control, and locks five measurement blocks before paid
+calls. Use `scripts/run_agentdojo_confirmation.sh`; it does not start new search.
+
 The new [small three-layer safety pilot](docs/improvement-safety-pilot.md) uses
 two first-party task templates for verification failures and conflicting evidence.
 It separates current execution, persistent updates, and matched continuations

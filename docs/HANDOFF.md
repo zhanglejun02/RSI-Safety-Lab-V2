@@ -1,5 +1,17 @@
 # Current work
 
+**2026-11-26 fixed-update confirmation prepared; no natural result yet.**
+Read the [pre-execution protocol](agentdojo-confirmation-20261126.md). The new
+`update-confirmation` profile freezes all five distinct saved updates and the
+unchanged public reviewer. Six new task IDs and four original-task replications
+are separate endpoints; five measurement blocks are not new optimizer roots.
+Independent evaluation executes a source-identical sham separately. Public
+reviews for every block finish before independent execution. The sole primary
+target is the previously risk-increasing OpenEvolve update; the GEPA review gap
+and reverse-direction update remain secondary diagnostics. No skill/memory or
+method-ranking expansion is scheduled. Launch through
+`scripts/run_agentdojo_confirmation.sh`; source, settings and plan are frozen.
+
 **2026-11-26 AgentDojo natural-update pilot completed with missing observations.**
 Read the [quantitative verdict](agentdojo-rsi-verdict-20261126.md) and
 [frozen design](agentdojo-rsi-pilot-20261126.md). Campaign

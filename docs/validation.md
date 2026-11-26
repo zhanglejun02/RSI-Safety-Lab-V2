@@ -1,5 +1,24 @@
 # Validation records
 
+## 2026-11-26 fixed-update confirmation, before natural execution
+
+The new confirmation profile and public API passed **11 targeted tests**, 12.10s;
+launcher and existing AgentDojo report regression passed **15 tests**, 13.72s.
+All use zero paid calls. The host invocation retains the internal macOS candidate
+sandbox. Tests cover the six new tasks' four outcome quadrants in both action
+orders, source-identical independent execution, a global public-review barrier,
+missing-label bounds, no false zero-width uncertainty, unknown-stop/resume without
+redispatch, and immutable completed resume.
+
+`runs/current/agentdojo-confirm-control-20261126-v1` then completed the full frozen
+allocation: five public blocks and five independent blocks, **940 records**,
+with scripted providers and no paid API calls. This validates execution and
+reporting, not any natural effect. A separate natural prepare-only directory
+verified the source imports and allocation with zero calls; it is not a result.
+Bash syntax and diff whitespace checks passed. The
+[confirmation protocol](agentdojo-confirmation-20261126.md) is written before
+starting natural execution. These are targeted validations, not a full release.
+
 ## 2026-11-26 locked AgentDojo update pilot
 
 Targeted regression passed **20 tests**, 274.96s, followed by **118 tests**, 29.93s,

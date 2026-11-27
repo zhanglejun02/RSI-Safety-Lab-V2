@@ -184,7 +184,8 @@ def status(directory):
             "process_liveness_assessed": False, "api_calls": 0}
     if config["profile"] == "update-confirmation":
         result.update(generated_roots=None, roots_kind="measurement_blocks_not_search_roots",
-                      reviewed_blocks=sum((p / "reviews.json").exists() for p in root_dirs))
+                      reviewed_blocks=sum((p / "reviews.json").exists() for p in root_dirs) if config["review"] is not None else 0,
+                      review_status="requested" if config["review"] is not None else "not_requested")
     return result
 
 

@@ -1,5 +1,35 @@
 # Validation records
 
+## 2026-11-27 frozen-version cross-risk transfer, before natural execution
+
+**29 affected zero-API tests passed in 57.55s**, covering named-score allocation,
+all-version import, original actor/source binding, independent same-source sham,
+fractional contrasts, missing bounds, unknown-stop/resume without redispatch,
+legacy AgentDojo confirmation, native AgentHarm and frozen-source review. Candidate
+isolation remained enabled. The first failure was a test fixture attempting to
+overwrite an immutable source manifest; it now creates a separate counterexample.
+
+The complete Bash control at `runs/current/cross-risk-20261127-control` completed
+**210 allocations with no missing scores**, five measurement blocks and seven
+version labels. No optimization or public review was requested. Its implementation
+is `d47de6d8b93f9513a673eb7bb0279027c0d243c245333ddeaf42aacb8e5d4a81`.
+Its **3,926 files** were unchanged by no-credential completed resume and restored
+source inspection; the reviewer checked 735 scripted request records with zero
+new calls/effects and unchanged logical ledgers. Inventory:
+`3b29827af0b821f2c6c4f9becd73a53d4cfa95aec4868ccc8955421446b4d4d1`.
+
+The frozen-review check exposed a missing registry entry for the already existing
+`saved-update-confirmation-v1` protocol. The one-entry registry fix was included
+in the final 29-test run, including a fresh named-score run and frozen review.
+The full 210-allocation control remains bound to its original source; its results
+are not relabeled as a new implementation. No broad release regression or new
+natural safety result is claimed by these controls.
+
+The [prospective allocation](cross-risk-transfer-20261127.md) fixes all saved
+versions, three native families, five blocks, actor settings, missing handling
+and descriptive contrasts before paid execution. Generated artifacts stay out
+of Git; original natural runs remain immutable.
+
 ## 2026-11-27 selected native AgentHarm integration
 
 The integration passed the full suite: **1,200 tests, zero failures or skips,

@@ -86,6 +86,9 @@ def qualification(overall, attacked, clean, criteria):
 
 def summarize(manifest, rows):
     config = manifest["config"]
+    if config["review"] is None:
+        from .fixed_metric_report import summarize
+        return summarize(manifest, rows)
     combined = {name: [r for block in rows for r in block["assessments"][name]] for name in config["variants"]}
     cohorts = [name for name in ("new", "replication") if any(r["cohort"] == name for r in next(iter(combined.values())))]
     primary_count = sum(c["primary"] for c in config["comparisons"])
@@ -132,6 +135,9 @@ def summarize(manifest, rows):
 
 
 def report(output, summary):
+    if "metric_contract" in summary:
+        from .fixed_metric_report import report
+        return report(output, summary)
     output = Path(output)
     pct = lambda value: "missing" if value is None else f"{value * 100:.1f}%"
     lines = ["# Frozen-update confirmation", "", "Origin: " + summary["origin"],

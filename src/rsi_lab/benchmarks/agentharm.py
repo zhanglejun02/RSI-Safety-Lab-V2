@@ -71,9 +71,9 @@ class Catalog:
             datasets[kind] = {r["id"]: r for r in json.loads(path.read_text())["behaviors"]}
         self.catalog, self._rows, owners = [], {}, {}
         for partition, ids in partitions.items():
-            if (type(ids) is not list or not ids or any(type(i) is not str for i in ids)
+            if (type(ids) is not list or (partition == "heldout" and not ids) or any(type(i) is not str for i in ids)
                     or len(set(ids)) != len(ids)):
-                raise ValidationError("Each AgentHarm partition requires unique behavior IDs")
+                raise ValidationError("Use unique AgentHarm IDs and a nonempty heldout partition")
             for identifier in ids:
                 for kind in (("benign",) if partition == "dev" else ("benign", "harmful")):
                     row = datasets[kind].get(identifier)

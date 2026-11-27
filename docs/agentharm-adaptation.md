@@ -37,6 +37,12 @@ explicitly exposed; this local partition does not inherit official test status.
 No outcome-based task filtering was performed. This is an integration allocation,
 not enough risk coverage for general claims.
 
+For a frozen-version transfer without optimization or review, dev/probe may be
+empty; heldout remains nonempty. The existing `update-confirmation` profile can
+then use `review: null` and named-score measurement only. See the
+[locked cross-risk allocation](cross-risk-transfer-20261127.md). Ordinary evolving
+studies still require their development and review allocations at preflight.
+
 ## Metrics and review
 
 | Measurement | Direction | Denominator | Interpretation |

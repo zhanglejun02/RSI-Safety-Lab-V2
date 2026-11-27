@@ -53,6 +53,8 @@ def resolve_study(settings, *, mode):
     """Copy sources once from a verified completed study; later resume is local."""
     config = deepcopy(settings)
     source_run = Path(config.pop("source_run")).resolve()
+    if config.get("review") is None:
+        return _resolve_transfer(config, source_run, mode)
     requests = config.pop("source_requests")
     summary = authorization_study.inspect(source_run)
     if summary["origin"] != "natural":
@@ -116,6 +118,37 @@ def resolve_study(settings, *, mode):
     return validate_config(config)
 
 
+def _resolve_transfer(config, source_run, mode):
+    """Transfer every already frozen version; never select on new risk outcomes."""
+    if {"variants", "comparisons", "source_requests", "source_provenance"} & config.keys():
+        raise ValidationError("Transfer imports the complete frozen version set")
+    summary = inspect(source_run)
+    original = read_record(source_run / "manifest.json")["config"]
+    if summary["origin"] != "natural" or original.get("profile") != "update-confirmation" or original["review"] is None:
+        raise ValidationError("Transfer requires a completed natural fixed-update confirmation")
+    files = read_record(source_run / "source-manifest.json")["files"]
+    package = Path(__file__).resolve().parents[1]
+    for name in ("agents/runtime.py", "agents/harness_process.py", "agents/harness_worker.py", "harness.py", "infra/chat_models.py"):
+        if hashlib.sha256((package / name).read_bytes()).hexdigest() != files.get("rsi_lab/" + name):
+            raise IntegrityError("Frozen-version execution changed: " + name)
+    request_settings = lambda model: {k: v for k, v in model.items() if k not in ("max_calls", "max_total_tokens")}
+    if (request_settings(config["models"]["actor"]) != request_settings(original["models"]["actor"])
+            or config["budget"]["max_steps"] != original["budget"]["max_steps"]):
+        raise ValidationError("Transfer preserves the original actor settings and step cap")
+    config["variants"] = deepcopy(original["variants"])
+    config["comparisons"] = [{**c, "primary": False} for c in original["comparisons"]]
+    config["source_provenance"] = {"kind": "completed_frozen_update_study", "run": str(source_run),
+        "summary_sha256": digest(summary), "selection": "all_saved_versions_including_separately_executed_sham",
+        "original_provenance": original["source_provenance"],
+        "reference": {"benchmark": "agentdojo-effects-v1", "cohort": "new",
+            "table": [row for row in summary["table"] if row["cohort"] == "new"],
+            "comparisons": [row for row in summary["comparisons"] if row["cohort"] == "new"]}}
+    config["mode"] = mode
+    if mode == "scripted":
+        config["models"] = {"actor": None, "editor": None, "judge": None}
+    return validate_config(config)
+
+
 def validate_config(config):
     defaults = default_config()
     if (type(config) is not dict or set(config) != set(defaults)
@@ -142,19 +175,28 @@ def validate_config(config):
     if (len(sham) != 1 or sham[0]["primary"] or config["variants"][sham[0]["parent"]]
             != config["variants"][sham[0]["child"]]):
         raise ValidationError("A separately executed, source-identical sham control is required")
-    if not any(c["primary"] for c in config["comparisons"]):
+    measuring_only = config["review"] is None
+    if not measuring_only and not any(c["primary"] for c in config["comparisons"]):
         raise ValidationError("Declare the primary update targets before execution")
     if type(config["blocks"]) is not int or not 2 <= config["blocks"] <= 20 or type(config["order_seed"]) is not int:
         raise ValidationError("Declare two to twenty measurement blocks and an order seed")
-    if config["training"].get("task_pack") != "agentdojo-effects-v1":
-        raise ValidationError("This profile requires native AgentDojo effect tasks")
+    if measuring_only:
+        backend = effect_catalog(config["training"])
+        if not backend.describe().get("metric_contract") or backend.cases("dev") or backend.cases("probe"):
+            raise ValidationError("Measurement-only transfer requires named metrics and heldout-only cases")
+        if config["replication_tasks"] or any(c["primary"] for c in config["comparisons"]):
+            raise ValidationError("Cross-risk transfer is descriptive, without confirmation thresholds")
+    elif config["training"].get("task_pack") != "agentdojo-effects-v1":
+        raise ValidationError("Binary confirmation requires native AgentDojo effect tasks")
     if (type(config["replication_tasks"]) is not list or
             any(type(v) is not str for v in config["replication_tasks"]) or
             len(set(config["replication_tasks"])) != len(config["replication_tasks"])):
         raise ValidationError("Declare unique old-task IDs, distinct from the new-task endpoint")
-    parse_regression_parameters(config["review"])
+    if not measuring_only:
+        parse_regression_parameters(config["review"])
     criteria = config["criteria"]
-    if set(criteria) != set(defaults["criteria"]):
+    expected_criteria = {"bootstrap_samples", "family_alpha"} if measuring_only else set(defaults["criteria"])
+    if type(criteria) is not dict or set(criteria) != expected_criteria:
         raise ValidationError("Declare all confirmation criteria")
     for key, value in criteria.items():
         if key == "bootstrap_samples":
@@ -163,9 +205,12 @@ def validate_config(config):
         elif type(value) not in (int, float) or not 0 < value < 1:
             raise ValidationError("Confirmation criteria must be finite fractions")
     if (type(config["budget"]) is not dict or set(config["budget"]) != set(defaults["budget"])
-            or any(type(v) is not int or v < 1 for v in config["budget"].values())
+            or any(type(v) is not int or v < (0 if measuring_only and k.startswith("probe_") else 1)
+                   for k, v in config["budget"].items())
             or config["budget"]["max_steps"] > 32):
         raise ValidationError("Declare finite actor budgets")
+    if measuring_only and (config["budget"]["probe_calls"] or config["budget"]["probe_episodes"]):
+        raise ValidationError("Unrequested public review has zero allocation")
     if (config["mode"] not in ("scripted", "http") or set(config["models"]) != {"actor", "editor", "judge"}
             or config["models"]["editor"] is not None or config["models"]["judge"] is not None):
         raise ValidationError("Confirmation runs actors only, without editors or judges")
@@ -192,6 +237,8 @@ def plan(config):
     counts = {"probe": unique * len(backend.cases("probe")),
               "test": len(config["variants"]) * len(backend.cases("heldout"))}
     for phase, count in counts.items():
+        if phase == "probe" and config["review"] is None:
+            continue
         if (not count or config["budget"][phase + "_episodes"] < count
                 or config["budget"][phase + "_calls"] < count * config["budget"]["max_steps"]):
             raise ValidationError("Budget does not cover the fixed allocation: " + phase)
@@ -199,7 +246,7 @@ def plan(config):
              for i in range(config["blocks"])]
     options = scheduling.settings(config)
     calls = len(roots) * sum(config["budget"][p + "_calls"] for p in counts)
-    tokens = len(roots) * 2 * config["models"]["actor"].get("max_total_tokens", 1000000) if config["mode"] == "http" else 0
+    tokens = len(roots) * sum(bool(n) for n in counts.values()) * config["models"]["actor"].get("max_total_tokens", 1000000) if config["mode"] == "http" else 0
     for key, value in (("max_total_calls", calls), ("max_total_tokens", tokens)):
         if options[key] is not None and options[key] < value:
             raise ValidationError("Global allocation is smaller than provider caps")
@@ -211,7 +258,8 @@ def plan(config):
         "episodes_per_block": counts, "total_episodes": len(roots) * sum(counts.values()),
         "variant_hashes": {k: digest(v) for k, v in config["variants"].items()},
         "execution": {**options, "allocated_calls": calls, "allocated_tokens": tokens},
-        "confirmatory": True, "confirmation_scope": "predeclared_fixed_updates_and_new_task_ids;not_method_populations",
+        "confirmatory": config["review"] is not None,
+        "confirmation_scope": "descriptive_cross_risk_transfer" if config["review"] is None else "predeclared_fixed_updates_and_new_task_ids;not_method_populations",
         "source_reuse": "public exact-source reuse only; all independent variants including sham execute separately",
         "api_calls": 0})
 
@@ -271,10 +319,12 @@ def _job(output, root, phase):
         config = manifest["config"]
         backend = effect_catalog(config["training"])
         if phase == "review":
-            backend = PublicProbeBackend(backend)
-            variants = {digest(v): v for v in config["variants"].values()}
-            measured, resources = _measure(config, directory, root, backend, variants, "probe", "probe")
-            decisions = _reviews(config, root, backend, measured)
+            measured, resources, decisions = {}, {}, {}
+            if config["review"] is not None:
+                backend = PublicProbeBackend(backend)
+                variants = {digest(v): v for v in config["variants"].values()}
+                measured, resources = _measure(config, directory, root, backend, variants, "probe", "probe")
+                decisions = _reviews(config, root, backend, measured)
             save_record(directory / "reviews.json", {"assessments": measured, "decisions": decisions, "resources": resources})
         elif phase == "final":
             if read_record(output / "review_complete.json") != _barrier(output, manifest, "reviews.json"):
@@ -299,6 +349,10 @@ def _measure(config, directory, root, backend, variants, phase, partition):
             row = _execute(directory, runtime, backend, variants[name], case, operation, root["block"], partition)
             row.update(variant=name, source_sha256=digest(variants[name]), pair_id=case["pair_id"],
                 cohort="public" if phase == "probe" else "replication" if case["pair_id"] in config["replication_tasks"] else "new")
+            if "metric_contract" in backend.describe():
+                from rsi_lab.benchmarks.metrics import declared_measurements
+                record = read_record(directory / row["record_path"])["record"]
+                row.update(measurements=declared_measurements(case, record), condition=case["condition"])
             measured[name].append(row)
     return measured, provider.summary()
 

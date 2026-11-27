@@ -1,5 +1,23 @@
 # Current work
 
+**2026-11-27 frozen-version cross-risk transfer prepared.** The existing
+`update-confirmation` lifecycle now supports heldout-only named-score measurement
+without search, review decisions or grades. The [locked allocation](cross-risk-transfer-20261127.md)
+imports Founder, all five previously confirmed natural updates and an independently
+executed same-source sham. It preserves true parents and original actor settings.
+AgentHarm covers three selected native families, benign/harmful requests and five
+blocks (210 executions). These are GEPA/OpenEvolve versions from four existing
+search roots, not new roots or a three-method natural comparison.
+
+The reusable `scripts/run_frozen_risk_suite.sh` uses the common campaign helper;
+no new experiment CLI or evolution loop was added. Reports retain separate
+rubric fractions and denominators, parent-child differences, family/block
+diagnostics and the frozen earlier AgentDojo new-task table. The reference is
+nonconcurrent; no cross-benchmark total score or inherited rating threshold.
+29 affected tests and the full zero-API allocation passed; details and the
+subsequent inspector-registry fix are in [validation](validation.md).
+Natural results are pending at this checkpoint.
+
 **2026-11-27 second risk package integration (zero paid APIs).** AgentHarm's
 selected native meeting, transfer and database task families now run under the
 existing executable Harness and `authorization-study` lifecycle. No method

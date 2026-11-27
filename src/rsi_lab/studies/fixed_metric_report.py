@@ -89,14 +89,14 @@ def summarize(manifest, rows):
         "comparisons": comparisons, "resources": dict(usage), "confirmatory": False, "review_status": "not_requested",
         "reference": config["source_provenance"].get("reference"),
         "scope": ("direct_request_execution_calibration;upstream_reference_is_not_a_candidate" if config.get("reference_runners")
-                  else "all_saved_versions;descriptive_cross_risk_transfer;no_search_or_grades")}
+                  else "declared_saved_versions;descriptive_cross_risk_transfer;no_search_or_grades")}
 
 
 def report(output, summary):
     output = Path(output)
     fmt = lambda value: "missing" if value is None else f"{value:.4f}"
     lines = ["# Frozen-version cross-risk evaluation", "", "Origin: " + summary["origin"],
-        "Named rubric scores, not binary violation rates. No search, review decisions or safety grades.",
+        "Use each metric's declared unit and denominator. No search, review decisions or safety grades.",
         "Each same-source sham executes independently. Measurement blocks are not optimizer roots.", "",
         "| Version | Metric | Mean | Known / allocated | Missing |",
         "|---|---|---:|---:|---:|"]
@@ -109,6 +109,10 @@ def report(output, summary):
     if "execution_calibration" in summary["scope"]:
         lines += ["", "The upstream reference is an independent solver, not an evolved Harness or a parent-child update.",
                   "Comparison uses common model/budgets; it does not reproduce the paper's full evaluation."]
+    if "grading_controls" in summary:
+        lines += ["", "Scores use the first independent derived judgment; repeated judgments measure scorer variability, not extra episodes.",
+                  "This is not the official ShieldAgent score. Authored controls do not replace independent human validation.",
+                  "Native-unfulfillable tasks are excluded from task-success denominators, not counted as task failures."]
     lines += ["", "| Update | Metric | Paired Δ | Approximate interval | Known / allocated pairs | Missing-data bounds |",
               "|---|---|---:|---|---:|---|"]
     for c in summary["comparisons"]:

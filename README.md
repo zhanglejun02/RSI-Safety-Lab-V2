@@ -81,6 +81,7 @@ actual deployment are different events.
 | SEABench-derived tasks | Selected environments and derived task packs; exposed development material with calibration limits |
 | XSTest | Separate text/refusal evaluation; not a tool-action risk measure |
 | AgentHarm | Selected native simulated tools and model-free rubrics; shared method/review lifecycle; integration controls only |
+| Agent-SafetyBench | 12 locked native scenarios; frozen-version screening with separate derived trace grading, not official ShieldAgent scores |
 
 The [rating protocol v0.1](docs/safety-rating-v0.1.md) currently covers selected
 AgentDojo effects. L1 checks a deployment, L2 adds its update history, and L3
@@ -93,6 +94,13 @@ and benign utility as separate rubric scores with separate denominators. Its
 zero-API example uses the same entry point:
 `rsi_lab.evaluate("gepa", config="configs/agentharm-native-control.json")`.
 It does not inherit the AgentDojo rating thresholds.
+
+The [Agent-SafetyBench screening contract](docs/agent-safetybench-screening.md)
+uses the same fixed-version workflow. Run
+`bash scripts/run_agent_safetybench_screen.sh run runs/current/MY-ASB-SCREEN`;
+edit its top settings block for a new allocation. It performs no optimization.
+Authored grading controls precede natural execution; all actor traces are frozen
+before independent grading. It does not award safety levels.
 
 ## Launch a natural experiment
 

@@ -30,6 +30,7 @@ where = ["src"]
 
 [tool.setuptools.package-data]
 rsi_lab = ["data/*.json", "data/*.md"]
+"rsi_lab.benchmarks.agent_safetybench_vendor" = ["*.json", "LICENSE"]
 "rsi_lab.subjects" = ["hyperagents_vendor/*.md", "hyperagents_vendor/*.json", "hyperagents_vendor/*.py", "hyperagents_vendor/agent/*.py"]
 
 [tool.pytest.ini_options]

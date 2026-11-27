@@ -119,10 +119,11 @@ def resolve_study(settings, *, mode):
 
 
 def _resolve_transfer(config, source_run, mode):
-    """Transfer every already frozen version; never select on new risk outcomes."""
+    """Transfer frozen versions, with any subset declared before new outcomes."""
     if {"variants", "comparisons", "source_requests", "source_provenance"} & config.keys():
         raise ValidationError("Transfer imports the complete frozen version set")
     execution_reference = config.pop("execution_reference", None)
+    selection = config.pop("source_versions", None)
     summary = inspect(source_run)
     original = read_record(source_run / "manifest.json")["config"]
     if summary["origin"] != "natural" or original.get("profile") != "update-confirmation" or original["review"] is None:
@@ -144,6 +145,15 @@ def _resolve_transfer(config, source_run, mode):
         "reference": {"benchmark": "agentdojo-effects-v1", "cohort": "new",
             "table": [row for row in summary["table"] if row["cohort"] == "new"],
             "comparisons": [row for row in summary["comparisons"] if row["cohort"] == "new"]}}
+    if selection is not None:
+        if (execution_reference is not None or type(selection) is not list
+                or any(type(n) is not str for n in selection) or len(selection) != len(set(selection))
+                or set(selection) - config["variants"].keys()):
+            raise ValidationError("Select unique saved version names before transfer")
+        config["variants"] = {name: config["variants"][name] for name in selection}
+        config["comparisons"] = [c for c in config["comparisons"] if {c["parent"], c["child"]} <= set(selection)]
+        config["source_provenance"]["selection"] = "predeclared_saved_subset;not_selected_on_new_outcomes"
+        config["source_provenance"]["selected_versions"] = selection
     if execution_reference is not None:
         from rsi_lab.benchmarks.agentharm_reference import REFERENCE
         if execution_reference != REFERENCE or "founder" not in original["variants"]:
@@ -164,7 +174,7 @@ def _resolve_transfer(config, source_run, mode):
 
 def validate_config(config):
     defaults = default_config()
-    if (type(config) is not dict or set(config) - {"reference_runners"} != set(defaults)
+    if (type(config) is not dict or set(config) - {"reference_runners", "grading"} != set(defaults)
             or config["profile"] != defaults["profile"] or config["protocol"] != PROTOCOL):
         raise ValidationError("Use the complete saved-update confirmation profile")
     if type(config["variants"]) is not dict or not 2 <= len(config["variants"]) <= 12:
@@ -227,7 +237,7 @@ def validate_config(config):
                 raise ValidationError("Bound the bootstrap allocation")
         elif type(value) not in (int, float) or not 0 < value < 1:
             raise ValidationError("Confirmation criteria must be finite fractions")
-    if (type(config["budget"]) is not dict or set(config["budget"]) != set(defaults["budget"])
+    if (type(config["budget"]) is not dict or set(config["budget"]) != set(defaults["budget"]) | ({"judge_calls"} if "grading" in config else set())
             or any(type(v) is not int or v < (0 if measuring_only and k.startswith("probe_") else 1)
                    for k, v in config["budget"].items())
             or config["budget"]["max_steps"] > 32):
@@ -235,8 +245,13 @@ def validate_config(config):
     if measuring_only and (config["budget"]["probe_calls"] or config["budget"]["probe_episodes"]):
         raise ValidationError("Unrequested public review has zero allocation")
     if (config["mode"] not in ("scripted", "http") or set(config["models"]) != {"actor", "editor", "judge"}
-            or config["models"]["editor"] is not None or config["models"]["judge"] is not None):
-        raise ValidationError("Confirmation runs actors only, without editors or judges")
+            or config["models"]["editor"] is not None or "grading" not in config and config["models"]["judge"] is not None):
+        raise ValidationError("Confirmation has no editor; a judge requires independent grading")
+    if "grading" in config:
+        from .fixed_grading import validate
+        validate(config, effect_catalog(config["training"]))
+    elif effect_catalog(config["training"]).describe().get("grading_protocol"):
+        raise ValidationError("This benchmark requires independent trace grading")
     if config["mode"] == "scripted":
         if config["models"]["actor"] is not None:
             raise ValidationError("Scripted controls cannot use paid models")
@@ -270,6 +285,13 @@ def plan(config):
     options = scheduling.settings(config)
     calls = len(roots) * sum(config["budget"][p + "_calls"] for p in counts)
     tokens = len(roots) * sum(bool(n) for n in counts.values()) * config["models"]["actor"].get("max_total_tokens", 1000000) if config["mode"] == "http" else 0
+    control_calls = 0
+    if "grading" in config:
+        from .fixed_grading import control_count
+        control_calls = control_count(config, backend)
+        calls += control_calls + len(roots) * config["budget"]["judge_calls"]
+        if config["mode"] == "http":
+            tokens += (len(roots) + 1) * config["models"]["judge"].get("max_total_tokens", 1000000)
     for key, value in (("max_total_calls", calls), ("max_total_tokens", tokens)):
         if options[key] is not None and options[key] < value:
             raise ValidationError("Global allocation is smaller than provider caps")
@@ -279,6 +301,8 @@ def plan(config):
         "catalog": backend.catalog, "catalog_sha256": digest(backend.catalog), "benchmark": backend.describe(),
         "new_tasks": sorted(tasks - old), "replication_tasks": sorted(old),
         "episodes_per_block": counts, "total_episodes": len(roots) * sum(counts.values()),
+        **({"grading": {**config["grading"], "control_calls": control_calls,
+              "allocated_trace_judge_calls": len(roots) * config["budget"]["judge_calls"]}} if "grading" in config else {}),
         "variant_hashes": {k: digest(v) for k, v in config["variants"].items()},
         **({"reference_runners": config["reference_runners"]} if config.get("reference_runners") else {}),
         "execution": {**options, "allocated_calls": calls, "allocated_tokens": tokens},
@@ -309,16 +333,30 @@ def run(config, output, *, resume=False, expected_plan=None):
         save_record(output / "manifest.json", manifest)
         matrix._archive(output)
         scheduler = scheduling.Scheduler(compiled["execution"])
-        for phase, filename in (("review", "reviews.json"), ("final", "scores.json")):
+        if "grading" in config:
+            from .fixed_grading import check_controls
+            check_controls(config, output / "grading-controls", effect_catalog(config["training"]))
+        phases = [("review", "reviews.json"), ("final", "scores.json")]
+        if "grading" in config:
+            phases.append(("grading", "graded.json"))
+        for phase, filename in phases:
             scheduling.ensure_roots_idle(output, compiled["roots"])
             scheduler.run(_job, [(output, root, phase) for root in compiled["roots"]
                                 if not (output / root["path"] / filename).exists()])
             scheduling.ensure_roots_idle(output, compiled["roots"])
             save_record(output / (phase + "_complete.json"), _barrier(output, manifest, filename))
         from .update_confirmation_metrics import summarize, report
-        rows = [read_record(output / r["path"] / "scores.json") for r in compiled["roots"]]
+        rows = [read_record(output / r["path"] / phases[-1][1]) for r in compiled["roots"]]
         summary = summarize(manifest, rows)
+        if "grading" in config:
+            summary["grading_controls"] = read_record(output / "grading-controls/controls.json")
+            for key, value in summary["grading_controls"]["resources"].items():
+                if key in summary["resources"] and type(value) in (int, float):
+                    summary["resources"][key] += value
         report(output, summary)
+        if "grading" in config:
+            from .fixed_grading import export_annotations
+            export_annotations(output, summary, effect_catalog(config["training"]))
         summary["manifest_sha256"] = digest(manifest)
         summary["verified_records"] = {str(p.relative_to(output)): digest(read_record(p)) for p in sorted(output.rglob("*.json"))}
         from rsi_lab.review import inventory
@@ -358,6 +396,11 @@ def _job(output, root, phase):
             save_record(directory / "scores.json", {**root, "assessments": measured,
                 "reviews": reviewed["decisions"], "public_assessments": reviewed["assessments"],
                 "resources": {"probe": reviewed["resources"], "test": resources}})
+        elif phase == "grading":
+            from .fixed_grading import grade_block
+            if read_record(output / "final_complete.json") != _barrier(output, manifest, "scores.json"):
+                raise IntegrityError("Trace grading requires all actors to finish first")
+            grade_block(config, directory, backend)
         else:
             raise ValidationError("Unknown confirmation phase")
 

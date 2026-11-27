@@ -1,5 +1,21 @@
 # Current work
 
+**2026-11-28 Agent-SafetyBench screening prepared.**
+
+The third environment has a locked 12-scenario subset and unchanged native
+simulated tools. It reuses fixed-version confirmation with predeclared version
+selection and a separate post-actor grading phase. The derived Kimi judge is not
+official ShieldAgent. Authored safe/unsafe/unhelpful controls precede natural
+actors; two judgments per frozen trace expose scorer disagreement. Human labels
+remain empty. See `agent-safetybench-screening.md` and the reusable
+`scripts/run_agent_safetybench_screen.sh` settings block.
+
+Targeted zero-API regression: 32 passed. The full saved-Harness scripted campaign
+completed all 96 episodes and 66 control + 192 trace judgments with no paid API
+calls. These are transport/protocol controls, not natural safety findings. New
+natural artifacts and any analysis belong only in ignored `runs/current/` and
+`output/`. Do not merge their scores into earlier AgentDojo/AgentHarm denominators.
+
 **2026-11-27 AgentHarm execution reference prepared.** The existing frozen
 measurement profile can now compare executable candidate Harnesses with a
 separately labeled upstream default solver. The [prospective calibration](agentharm-execution-calibration.md)

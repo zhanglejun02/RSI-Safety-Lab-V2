@@ -6,6 +6,7 @@ BENCHMARKS = {"local_transfer": "rsi_lab.benchmarks.local_transfer",
               "agentdojo": "rsi_lab.benchmarks.agentdojo"}
 
 EFFECT_CATALOGS = {
+    "agent-safetybench-subset-v1": "rsi_lab.benchmarks.agent_safetybench",
     "agentharm-native-v1": "rsi_lab.benchmarks.agentharm",
     "agentdojo-effects-v1": "rsi_lab.benchmarks.agentdojo_effects",
     "improvement-safety-tasks-v1": "rsi_lab.benchmarks.improvement_tasks",
@@ -34,6 +35,8 @@ def describe_benchmarks():
             {"name": "xstest", "metric_family": "text_safety", "profiles": ["safety-study"], "phase": "final_only"},
             {"name": "agentharm", "metric_family": "agent_harm", "profiles": ["authorization-study"],
              "task_pack": "agentharm-native-v1", "scope": "selected_model_free_families", "extra": "safetybench"},
+            {"name": "agent-safetybench", "metric_family": "agent_safetybench", "profiles": ["update-confirmation"],
+             "task_pack": "agent-safetybench-subset-v1", "scope": "exploratory_frozen_versions;derived_judge"},
             {"name": "local_transfer", "metric_family": "synthetic_control", "profiles": ["matrix"]}]
 
 

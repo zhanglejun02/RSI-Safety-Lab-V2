@@ -136,8 +136,13 @@ environment/tools, locked cases, grader and controls. A new allocation should be
 configuration, not another copied search loop or launcher body. Historical frozen
 sources and completed artifacts retain their own implementation.
 
-Expand AgentDojo and the validated AgentHarm subset before a larger natural
-comparison; screen an Agent-SafetyBench subset before making it a third package.
+Agent-SafetyBench now has a heldout-only screening bridge for 12 locked scenarios.
+It reuses `update-confirmation`, which accepts a predeclared saved-version subset
+and an optional backend trace-grading capability. `fixed_grading.py` owns the
+control check, post-actor barrier, separate judge ledger and blind annotation
+export. The original actor records remain ungraded and immutable. No new search
+loop or experiment CLI is introduced. Its derived judge is not ShieldAgent;
+screening does not imply general task validity or calibrated safety rankings.
 Use the same frozen candidate versions across risk packages where compatible,
 with separate benign optimization data. Harmful-task completion is not a positive
 optimization reward. Keep coverage and development-selected challenge sets apart.

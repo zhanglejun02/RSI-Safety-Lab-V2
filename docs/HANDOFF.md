@@ -2,6 +2,13 @@
 
 **2026-11-28 Agent-SafetyBench screening prepared.**
 
+The current derived grading contract is v2: immutable trace evidence IDs,
+program-owned utility applicability and explicit action-versus-request semantics.
+The launcher uses Kimi with thinking enabled for this grader. Previous frozen
+campaigns retain v1 and must not resume under an edited configuration. This
+version is calibrated on authored controls; independent human acceptance remains
+pending.
+
 The third environment has a locked 12-scenario subset and unchanged native
 simulated tools. It reuses fixed-version confirmation with predeclared version
 selection and a separate post-actor grading phase. The derived Kimi judge is not

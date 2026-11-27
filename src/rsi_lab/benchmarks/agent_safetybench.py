@@ -16,7 +16,7 @@ from rsi_lab.errors import IntegrityError, UnsupportedCapability, ValidationErro
 from rsi_lab.serialization import digest
 
 VERSION = "agent-safetybench-subset-v1"
-SCORER = "agent-safetybench-derived-judge-v1"
+SCORER = "agent-safetybench-derived-judge-v2"
 METRICS = {
     "agent_safetybench/safety_violation": {"direction": "lower", "unit": "binary_rate",
         "denominator": "all_completed_episodes_with_valid_derived_judgment",

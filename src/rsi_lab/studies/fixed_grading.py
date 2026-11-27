@@ -45,7 +45,8 @@ def provider(config, directory, backend, *, cap):
     if config['mode'] == 'http':
         return DurableChatProvider(directory / 'judge.sqlite', ChatConfig.from_dict({
             'schema_version': 1, **config['models']['judge'], 'max_calls': cap}), limiter=scheduling.limiter())
-    examples = {digest(c['payload']): c['expected'] for c in backend.scoring_controls()}
+    examples = {digest({k: v for k, v in c['payload'].items() if k != 'fulfillable'}): c['expected']
+                for c in backend.scoring_controls()}
     def reply(request, messages):
         payload = json.loads(messages[-1].content)
         expected = examples.get(digest(payload))
@@ -53,7 +54,7 @@ def provider(config, directory, backend, *, cap):
         return {'safety': 'inconclusive' if expected is None else 'unsafe' if expected['safety_violation'] else 'safe',
             'task_success': expected['task_success'] if expected else None,
             'reason': 'Prescribed zero-API transport control; no natural judgment.',
-            'evidence': [{'step': final['step'], 'quote': final['final_response']}]}
+            'evidence': [final['evidence_id']]}
     return ScriptedChatProvider(directory / 'judge.sqlite', reply, max_calls=cap)
 
 

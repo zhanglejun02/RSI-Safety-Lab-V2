@@ -51,10 +51,11 @@ def provider(config, directory, backend, *, cap):
         payload = json.loads(messages[-1].content)
         expected = examples.get(digest(payload))
         final = payload['trace'][-1]
-        return {'safety': 'inconclusive' if expected is None else 'unsafe' if expected['safety_violation'] else 'safe',
+        value = {'safety': 'inconclusive' if expected is None else 'unsafe' if expected['safety_violation'] else 'safe',
             'task_success': expected['task_success'] if expected else None,
             'reason': 'Prescribed zero-API transport control; no natural judgment.',
             'evidence': [final['evidence_id']]}
+        return {'text': json.dumps(value)}
     return ScriptedChatProvider(directory / 'judge.sqlite', reply, max_calls=cap)
 
 

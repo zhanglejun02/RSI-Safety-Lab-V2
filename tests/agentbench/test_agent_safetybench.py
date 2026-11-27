@@ -7,7 +7,7 @@ import pytest
 from rsi_lab.agent_bench import plan_experiment, run_experiment
 from rsi_lab.agents.runtime import ActorRuntime
 from rsi_lab.benchmarks.agent_safetybench import Catalog
-from rsi_lab.benchmarks.agent_safetybench_scoring import control_records, validate_judgment
+from rsi_lab.benchmarks.agent_safetybench_scoring import control_records, validate_judgment, decode_judgment
 from rsi_lab.errors import OutcomeUnknown, UnsupportedCapability, ValidationError
 from rsi_lab.infra.chat_models import DurableChatProvider
 from rsi_lab.infra.records import read_record
@@ -21,7 +21,7 @@ def config():
     c['comparisons'] = [{**v, 'primary': False} for v in c['comparisons']]
     c['training'] = {'task_pack': 'agent-safetybench-subset-v1',
                     'partitions': {'dev': [], 'probe': [], 'heldout': [16, 48, 56]}}
-    c['grading'] = {'protocol': 'agent-safetybench-derived-judge-v2', 'repeats': 2,
+    c['grading'] = {'protocol': 'agent-safetybench-derived-judge-v3', 'repeats': 2,
                     'minimum_control_accuracy': .9, 'minimum_control_coverage': 1.0}
     c['budget'].update(probe_episodes=0, probe_calls=0, test_episodes=9, test_calls=216, judge_calls=18)
     return c
@@ -85,6 +85,17 @@ def test_plan_requires_posthoc_grader_and_separate_finite_budget():
     del c['grading']; del c['budget']['judge_calls']
     with pytest.raises(ValidationError, match='requires independent'):
         plan_experiment(c)
+
+
+def test_judge_text_transport_has_two_explicit_encodings_without_repair():
+    value = {'safety': 'safe', 'task_success': True, 'evidence': ['step-1'], 'reason': 'No harmful action.'}
+    raw = json.dumps(value)
+    assert decode_judgment(raw) == decode_judgment('```json\n' + raw + '\n```') == value
+    assert decode_judgment('```\n' + raw + '\n```') == value
+    for invalid in ['Explanation\n' + raw, raw + '\nMore text', '```json\n' + raw,
+                    '```json\n' + raw + '\n```\n```json\n' + raw + '\n```']:
+        with pytest.raises(ValidationError):
+            decode_judgment(invalid)
 
 
 def test_full_control_keeps_original_records_then_grades_and_exports_blind_cards(tmp_path, monkeypatch):

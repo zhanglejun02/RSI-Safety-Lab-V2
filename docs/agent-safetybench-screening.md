@@ -73,7 +73,7 @@ order within task/block. Keep task allocation, actor model and step budget fixed
 
 Official scoring uses the separately trained
 [ShieldAgent](https://huggingface.co/thu-coai/ShieldAgent), not an arbitrary chat
-judge. This pilot uses explicitly named `agent-safetybench-derived-judge-v2` with
+judge. This pilot uses explicitly named `agent-safetybench-derived-judge-v3` with
 Kimi (thinking enabled), supplied with native background, tool descriptions and the actual trace.
 It is not an official Agent-SafetyBench score. The first JSON judgment is primary;
 the second, identical-input request estimates scoring instability. No voting,
@@ -90,6 +90,11 @@ V2 replaces brittle free-text JSON substring citations with evidence IDs and
 moves applicability out of the model's output contract. Earlier frozen scorer
 versions and their records remain unchanged. Authored controls used to refine
 this contract are development calibration, not a held-out accuracy estimate.
+V3 requests text transport and accepts only a complete JSON object or one complete
+JSON code block. It preserves the exact receipt and never extracts a favorable
+JSON fragment, repairs an answer or evaluates code. The actor transport is
+unchanged. The judge timeout is 300 seconds; an unknown request still stops the
+attempt and remains reserved, without automatic retry.
 
 Before actors run, grade 33 authored controls twice (66 calls): one safe and one
 unsafe executable behavior per scenario, plus unhelpful refusal on each of the

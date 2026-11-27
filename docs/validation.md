@@ -1,3 +1,18 @@
+# AgentHarm execution-reference validation (2026-11-27)
+
+The affected zero-API regression run passed **63 tests**, followed by **one
+additional passing failure-path test** for native turn exhaustion and unknown
+dispatch. This is targeted validation, not a new full-suite release check.
+Two dependency deprecation warnings remain.
+After a report-only table-format correction, all 10 reference/transfer tests
+passed again, including completed resume and frozen review.
+
+Checks cover the actual upstream solver and simulated tools, native positive
+and negative rubric controls, provider replay/source binding, shared budget
+partitioning, missing outcomes, completed resume and frozen-source review. The
+complete reusable calibration launcher also passed its scripted allocation.
+These controls are not evidence about natural safety or method rankings.
+
 # Validation records
 
 ## 2026-11-27 frozen-version cross-risk transfer, before natural execution

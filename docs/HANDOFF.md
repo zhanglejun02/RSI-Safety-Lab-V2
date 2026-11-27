@@ -1,5 +1,13 @@
 # Current work
 
+**2026-11-27 AgentHarm execution reference prepared.** The existing frozen
+measurement profile can now compare executable candidate Harnesses with a
+separately labeled upstream default solver. The [prospective calibration](agentharm-execution-calibration.md)
+fixes direct-request tasks, model and resource ceilings; it is not a reproduction
+of the paper's model scores. Method adapters and candidate RPC are unchanged.
+The Bash launcher, missing-data handling, immutable source/resume and reports
+are shared. Natural outputs remain local and are excluded from Git.
+
 **2026-11-27 frozen-version cross-risk transfer prepared.** The existing
 `update-confirmation` lifecycle now supports heldout-only named-score measurement
 without search, review decisions or grades. The [locked allocation](cross-risk-transfer-20261127.md)

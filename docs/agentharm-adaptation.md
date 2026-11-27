@@ -139,6 +139,11 @@ Datasets, generated outputs, logs and credentials stay outside Git. Reference
 control actions are prescribed fixtures against native simulations; they do not
 show that natural optimization improves utility or increases harm.
 
+A separate [execution calibration](agentharm-execution-calibration.md) can compare
+the saved Lab founder with the pinned upstream default solver under common
+direct-request conditions and budgets. This trusted reference does not replace
+candidate execution or extend v1 to the paper's full attack/scoring conditions.
+
 The previous `safety-study.evaluation.agentharm` instruction-projection route
 remains rejected. Migrate explicitly to this task package; do not reinterpret
 completed historical runs. Broad AgentHarm coverage, model-grader calibration,

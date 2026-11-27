@@ -122,6 +122,7 @@ def _resolve_transfer(config, source_run, mode):
     """Transfer every already frozen version; never select on new risk outcomes."""
     if {"variants", "comparisons", "source_requests", "source_provenance"} & config.keys():
         raise ValidationError("Transfer imports the complete frozen version set")
+    execution_reference = config.pop("execution_reference", None)
     summary = inspect(source_run)
     original = read_record(source_run / "manifest.json")["config"]
     if summary["origin"] != "natural" or original.get("profile") != "update-confirmation" or original["review"] is None:
@@ -143,6 +144,18 @@ def _resolve_transfer(config, source_run, mode):
         "reference": {"benchmark": "agentdojo-effects-v1", "cohort": "new",
             "table": [row for row in summary["table"] if row["cohort"] == "new"],
             "comparisons": [row for row in summary["comparisons"] if row["cohort"] == "new"]}}
+    if execution_reference is not None:
+        from rsi_lab.benchmarks.agentharm_reference import REFERENCE
+        if execution_reference != REFERENCE or "founder" not in original["variants"]:
+            raise ValidationError("Use the locked AgentHarm reference and a saved founder")
+        config["variants"] = {name: original["variants"]["founder"] for name in ("founder", "sham-founder")}
+        config["reference_runners"] = {"inspect-default": REFERENCE}
+        config["comparisons"] = [
+            {"id": "sham", "parent": "founder", "child": "sham-founder", "primary": False},
+            {"id": "execution-reference", "parent": "founder", "child": "inspect-default", "primary": False}]
+        config["source_provenance"] = {"kind": "execution_calibration", "run": str(source_run),
+            "summary_sha256": digest(summary), "selection": "saved_founder_and_independent_sham;upstream_solver_separate",
+            "comparison": "direct_request;common_model_and_budgets;not_original_paper_model_reproduction"}
     config["mode"] = mode
     if mode == "scripted":
         config["models"] = {"actor": None, "editor": None, "judge": None}
@@ -151,7 +164,7 @@ def _resolve_transfer(config, source_run, mode):
 
 def validate_config(config):
     defaults = default_config()
-    if (type(config) is not dict or set(config) != set(defaults)
+    if (type(config) is not dict or set(config) - {"reference_runners"} != set(defaults)
             or config["profile"] != defaults["profile"] or config["protocol"] != PROTOCOL):
         raise ValidationError("Use the complete saved-update confirmation profile")
     if type(config["variants"]) is not dict or not 2 <= len(config["variants"]) <= 12:
@@ -160,6 +173,15 @@ def validate_config(config):
         require_id(name, "variant")
         if loads(source).dumps() != source:
             raise ValidationError("Variant must be a canonical executable Harness")
+    references = config.get("reference_runners", {})
+    if references:
+        from rsi_lab.benchmarks.agentharm_reference import REFERENCE
+        if (type(references) is not dict or references != {"inspect-default": REFERENCE}
+                or config["review"] is not None or config["training"].get("task_pack") != "agentharm-native-v1"
+                or references.keys() & config["variants"].keys()):
+            raise ValidationError("Upstream reference is a separate heldout-only AgentHarm calibration arm")
+    elif "reference_runners" in config:
+        raise ValidationError("Omit unused reference_runners")
     if type(config["comparisons"]) is not list or not config["comparisons"]:
         raise ValidationError("Declare parent-child comparisons")
     seen = set()
@@ -168,11 +190,12 @@ def validate_config(config):
             raise ValidationError("Invalid comparison declaration")
         require_id(row["id"], "comparison")
         if (row["id"] in seen or row["parent"] == row["child"]
-                or {row["parent"], row["child"]} - config["variants"].keys()):
+                or {row["parent"], row["child"]} - (config["variants"].keys() | references.keys())):
             raise ValidationError("Comparison must reference distinct declared measurement arms")
         seen.add(row["id"])
     sham = [c for c in config["comparisons"] if c["id"] == "sham"]
-    if (len(sham) != 1 or sham[0]["primary"] or config["variants"][sham[0]["parent"]]
+    if (len(sham) != 1 or sham[0]["primary"] or {sham[0]["parent"], sham[0]["child"]} - config["variants"].keys()
+            or config["variants"][sham[0]["parent"]]
             != config["variants"][sham[0]["child"]]):
         raise ValidationError("A separately executed, source-identical sham control is required")
     measuring_only = config["review"] is None
@@ -235,7 +258,7 @@ def plan(config):
         raise ValidationError("Replication tasks must be held out, with at least one new confirmation task")
     unique = len(set(config["variants"].values()))
     counts = {"probe": unique * len(backend.cases("probe")),
-              "test": len(config["variants"]) * len(backend.cases("heldout"))}
+              "test": (len(config["variants"]) + len(config.get("reference_runners", {}))) * len(backend.cases("heldout"))}
     for phase, count in counts.items():
         if phase == "probe" and config["review"] is None:
             continue
@@ -257,6 +280,7 @@ def plan(config):
         "new_tasks": sorted(tasks - old), "replication_tasks": sorted(old),
         "episodes_per_block": counts, "total_episodes": len(roots) * sum(counts.values()),
         "variant_hashes": {k: digest(v) for k, v in config["variants"].items()},
+        **({"reference_runners": config["reference_runners"]} if config.get("reference_runners") else {}),
         "execution": {**options, "allocated_calls": calls, "allocated_tokens": tokens},
         "confirmatory": config["review"] is not None,
         "confirmation_scope": "descriptive_cross_risk_transfer" if config["review"] is None else "predeclared_fixed_updates_and_new_task_ids;not_method_populations",
@@ -339,22 +363,36 @@ def _job(output, root, phase):
 
 
 def _measure(config, directory, root, backend, variants, phase, partition):
-    provider = safety_study._provider(directory, config, phase, backend, backend.cases(partition))
+    references = config.get("reference_runners", {}) if phase == "test" else {}
+    provider_config, reference_runtime = config, None
+    if references:
+        from rsi_lab.benchmarks.agentharm_reference import make_runtime
+        provider_config, reference_runtime = make_runtime(config, directory, backend)
+    provider = safety_study._provider(directory, provider_config, phase, backend, backend.cases(partition))
     runtime = safety_study._runtime(directory, provider, config, phase)
-    measured, order = {k: [] for k in variants}, sorted(variants)
+    arms = {**variants, **references}
+    measured, order = {k: [] for k in arms}, sorted(arms)
     for index, case in enumerate(backend.cases(partition)):
         offset = (config["order_seed"] + root["block"] + index) % len(order)
         for name in order[offset:] + order[:offset]:
             operation = f"{root['root_id']}/{phase}/{name}/{digest(case)}"
-            row = _execute(directory, runtime, backend, variants[name], case, operation, root["block"], partition)
-            row.update(variant=name, source_sha256=digest(variants[name]), pair_id=case["pair_id"],
+            row = _execute(directory, reference_runtime if name in references else runtime,
+                           backend, arms[name], case, operation, root["block"], partition)
+            row.update(variant=name, source_sha256=digest(variants[name]) if name in variants else None, pair_id=case["pair_id"],
                 cohort="public" if phase == "probe" else "replication" if case["pair_id"] in config["replication_tasks"] else "new")
             if "metric_contract" in backend.describe():
                 from rsi_lab.benchmarks.metrics import declared_measurements
                 record = read_record(directory / row["record_path"])["record"]
                 row.update(measurements=declared_measurements(case, record), condition=case["condition"])
             measured[name].append(row)
-    return measured, provider.summary()
+    resources = provider.summary()
+    if reference_runtime is not None:
+        reference_usage = reference_runtime.provider.summary()
+        resources = {"providers": {"harness": resources, "reference": reference_usage}, **{
+            k: (resources.get(k, 0) or 0) + (reference_usage.get(k, 0) or 0) for k in
+            ("dispatched_calls", "complete_responses", "invalid_responses", "unknown_responses",
+             "actual_total_tokens", "reserved_tokens", "usage_missing_calls")}}
+    return measured, resources
 
 
 def _reviews(config, root, backend, measured):

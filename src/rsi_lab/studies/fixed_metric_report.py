@@ -70,7 +70,8 @@ def paired(parent, child, name, *, samples, alpha, seed):
 def summarize(manifest, rows):
     config = manifest["config"]
     contract = effect_catalog(config["training"]).describe()["metric_contract"]
-    combined = {name: [r for block in rows for r in block["assessments"][name]] for name in config["variants"]}
+    arms = {**config["variants"], **config.get("reference_runners", {})}
+    combined = {name: [r for block in rows for r in block["assessments"][name]] for name in arms}
     comparisons = [{"id": c["id"], "parent": c["parent"], "child": c["child"], "metrics": {
         name: paired(combined[c["parent"]], combined[c["child"]], name,
                      samples=config["criteria"]["bootstrap_samples"], alpha=config["criteria"]["family_alpha"],
@@ -81,11 +82,14 @@ def summarize(manifest, rows):
             usage.update({k: phase.get(k, 0) or 0 for k in
                 ("dispatched_calls", "complete_responses", "invalid_responses", "unknown_responses", "actual_total_tokens", "reserved_tokens")})
     return {"protocol": manifest["protocol"], "origin": manifest["origin"], "rows": rows,
-        "metric_contract": contract, "table": [{"variant": name, "source_sha256": digest(config["variants"][name]),
+        "metric_contract": contract, "table": [{"variant": name,
+            "source_sha256": digest(config["variants"][name]) if name in config["variants"] else None,
+            **({"execution_kind": "upstream_reference", "reference": arms[name]} if name not in config["variants"] else {}),
             "metrics": aggregate_measurements(cases)} for name, cases in combined.items()],
         "comparisons": comparisons, "resources": dict(usage), "confirmatory": False, "review_status": "not_requested",
         "reference": config["source_provenance"].get("reference"),
-        "scope": "all_saved_versions;descriptive_cross_risk_transfer;no_search_or_grades"}
+        "scope": ("direct_request_execution_calibration;upstream_reference_is_not_a_candidate" if config.get("reference_runners")
+                  else "all_saved_versions;descriptive_cross_risk_transfer;no_search_or_grades")}
 
 
 def report(output, summary):
@@ -102,6 +106,9 @@ def report(output, summary):
             arrow = "↑" if summary["metric_contract"][name]["direction"] == "higher" else "↓"
             lines.append(f"| {row['variant']} | {name} {arrow} | {fmt(m['mean'])} | {m['known']}/{m['allocated']} | {m['missing']} |")
             flat.append({"variant": row["variant"], "source_sha256": row["source_sha256"], "metric": name, **m})
+    if "execution_calibration" in summary["scope"]:
+        lines += ["", "The upstream reference is an independent solver, not an evolved Harness or a parent-child update.",
+                  "Comparison uses common model/budgets; it does not reproduce the paper's full evaluation."]
     lines += ["", "| Update | Metric | Paired Δ | Approximate interval | Known / allocated pairs | Missing-data bounds |",
               "|---|---|---:|---|---:|---|"]
     for c in summary["comparisons"]:

@@ -41,7 +41,9 @@ def test_heldout_only_allocation_has_no_review_or_confirmation_thresholds():
 
 
 def test_transfer_imports_all_sources_and_freezes_reference_without_editing(tmp_path, monkeypatch):
+    from rsi_lab.benchmarks.task_pools import resolve_training
     settings = json.loads((ROOT / 'scripts/run_frozen_risk_suite.sh').read_text().split("<<'JSON'\n", 1)[1].split('\nJSON\n', 1)[0])
+    settings['training'] = resolve_training(settings['training'])  # Shared Bash builder's boundary.
     previous = study.default_config()
     previous['models']['actor'] = deepcopy(settings['models']['actor'])
     previous['source_provenance'] = {'kind': 'test_fixture'}

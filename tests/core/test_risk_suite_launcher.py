@@ -23,9 +23,12 @@ def settings():
 
 def test_allocation_changes_need_no_new_driver():
     from rsi_lab.agent_bench import plan_experiment
+    from rsi_lab.benchmarks.task_pools import resolve_training
     value = settings()
     base = plan_experiment(builder.build(value,mode='scripted'))
     more = deepcopy(value)
+    # A custom allocation is explicit; it no longer claims the frozen pool ID.
+    more['training'] = resolve_training(more['training'])
     more['seeds'].append(2026112702)
     more['evaluation']['repeats'] = 2
     more['training']['partitions']['heldout'].append('50-2')

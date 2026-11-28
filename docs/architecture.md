@@ -81,6 +81,7 @@ effects are outside this rollback boundary.
 | `studies/process_events.py`, `candidate_state.py`, `proposal_evidence.py` | Recorded source/object identity, retention/commit projection and failure-stage evidence |
 | `tasks/agent_benchmark.py`, `tasks/contracts.py` | Public task package, evaluator cache and real execution receipts |
 | `benchmarks/` | Task environments, tools, case allocation and independent scoring |
+| `benchmarks/task_pools.py`, `data/task_pools_v1.json` | Versioned task membership, size, retirement reasons; resolves to ordinary config before freezing |
 | `auditing/review.py`, `auditing/seabench_review.py` | Versioned public-behavior review, restricted evidence and durable decisions |
 | `auditing/behavior_review.py` | Public effect-based probe DTOs with no final allocation or optimizer handle |
 | `studies/process_audit.py`, `risk_report.py`, `statistics.py` | Frozen-state audits, risk/utility changes, missing evidence and root-level uncertainty |
@@ -126,6 +127,21 @@ XSTest and ordinary task bridges use their declared current interfaces.
 
 ### Convergence before a broader suite
 
+Active scope is the [three frozen development pools](task-pools.md). Selection
+metadata, benchmark semantics and experiment orchestration are separate:
+`task_pools` selects IDs; each backend owns tools/reset/scoring; existing studies
+own version measurement or evolution/review. The common Bash builder resolves
+pool names once and freezes the full allocation. There is no pool-specific
+runner, retry loop, optimizer branch or alternate entry CLI. Different metric
+semantics remain separate in the generic reporting layer.
+
+AgentHarm v2 uses the pinned Inspect argument conversion and exposes native
+and case-normalized benign rubric scores together. The original v1 backend and
+the upstream solver reference retain their original meanings. ASB's active
+core filters out four ambiguous cases; the original small source lock remains
+for historical compatibility. These are explicit versions, not silent changes
+to completed measurement. Native source locks and licenses stay untouched.
+
 The AgentHarm integration now exercises this boundary with a second risk
 semantics; not all backends share one implementation. AgentDojo, rating,
 feasibility and risk-suite launchers share frozen campaign mechanics. Remaining
@@ -136,7 +152,8 @@ environment/tools, locked cases, grader and controls. A new allocation should be
 configuration, not another copied search loop or launcher body. Historical frozen
 sources and completed artifacts retain their own implementation.
 
-Agent-SafetyBench now has a heldout-only screening bridge for 12 locked scenarios.
+Agent-SafetyBench has a heldout-only screening bridge with eight active scenarios
+from the original 12-scenario source lock.
 It reuses `update-confirmation`, which accepts a predeclared saved-version subset
 and an optional backend trace-grading capability. `fixed_grading.py` owns the
 control check, post-actor barrier, separate judge ledger and blind annotation

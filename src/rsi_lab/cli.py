@@ -73,11 +73,13 @@ def main(argv=None):
     try:
         if args.command == "list":
             from rsi_lab.benchmarks import describe_benchmarks
+            from rsi_lab.benchmarks.task_pools import describe_pools
             from rsi_lab.experiments import experiment_names
             descriptions = describe_benchmarks()
             result = {"methods": describe_methods(), "benchmarks": [b["name"] for b in descriptions],
                       "benchmark_capabilities": descriptions, "profiles": PROFILES,
                       "experiments": experiment_names(),
+                      "task_pools": describe_pools(),
                       "scope": "Separate injection security, agent harmfulness and text refusal metrics; scripted results are CONTROL"}
         elif args.command == "catalog":
             if args.benchmark == "seabench":

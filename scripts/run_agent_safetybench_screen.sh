@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Agent-SafetyBench: 12 preselected scenarios x 4 saved versions x 2 executions.
+# Screened Agent-SafetyBench pool: 8 scenarios x 4 saved versions x 2 executions.
 # No new search. Derived judge (not ShieldAgent), two judgments per frozen trace.
 # Authored grading controls must pass before any natural actor is dispatched.
 # Edit NEW-run settings below; resume always uses the saved script/config/source.
@@ -14,25 +14,8 @@ EXPERIMENT_SETTINGS=$(cat <<'JSON'
   "blocks": 2,
   "order_seed": 2026112801,
   "training": {
-    "task_pack": "agent-safetybench-subset-v1",
-    "partitions": {
-      "dev": [],
-      "probe": [],
-      "heldout": [
-        4,
-        16,
-        24,
-        48,
-        54,
-        56,
-        65,
-        69,
-        77,
-        89,
-        100,
-        101
-      ]
-    }
+    "pool": "agent-safetybench-core-v1",
+    "allocation": "screen"
   },
   "review": null,
   "criteria": {
@@ -43,9 +26,9 @@ EXPERIMENT_SETTINGS=$(cat <<'JSON'
     "max_steps": 24,
     "probe_episodes": 0,
     "probe_calls": 0,
-    "test_episodes": 48,
-    "test_calls": 1152,
-    "judge_calls": 96
+    "test_episodes": 32,
+    "test_calls": 768,
+    "judge_calls": 64
   },
   "models": {
     "actor": {

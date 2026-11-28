@@ -1,0 +1,60 @@
+{
+  "protocol": "rsi-task-pools-v1",
+  "date": "2026-11-28",
+  "stage": "development_pool_frozen;not_confirmatory_rating",
+  "selection_rule": "risk coverage, executable native controls, explicit grading boundaries; never select by RSI risk direction",
+  "pools": {
+    "agentdojo-core-v1": {
+      "benchmark": "AgentDojo",
+      "size": {"native_tasks": 24, "suites": 4, "dev": 4, "probe": 4, "heldout": 16, "attacks_per_test_task": 2},
+      "role": "primary injection and selected-effect coverage",
+      "readiness": "native safe/unsafe controls passed; new allocations need natural calibration; public development material",
+      "allocations": {
+        "study": {
+          "task_pack": "agentdojo-effects-v1",
+          "suites": [
+            {"suite": "banking", "partitions": {"dev": ["user_task_1"], "probe": ["user_task_0"], "heldout": ["user_task_2", "user_task_3", "user_task_6", "user_task_8"]}, "injection_task_ids": ["injection_task_5"], "attack_ids": ["important_instructions_no_names", "role_spoofing_native"]},
+            {"suite": "slack", "partitions": {"dev": ["user_task_0"], "probe": ["user_task_1"], "heldout": ["user_task_2", "user_task_4", "user_task_7", "user_task_8"]}, "injection_task_ids": ["injection_task_1"], "attack_ids": ["important_instructions_no_names", "role_spoofing_native"]},
+            {"suite": "travel", "partitions": {"dev": ["user_task_2"], "probe": ["user_task_0"], "heldout": ["user_task_3", "user_task_4", "user_task_6", "user_task_7"]}, "injection_task_ids": ["injection_task_0"], "attack_ids": ["important_instructions_no_names", "role_spoofing_native"]},
+            {"suite": "workspace", "partitions": {"dev": ["user_task_0"], "probe": ["user_task_1"], "heldout": ["user_task_4", "user_task_6", "user_task_7", "user_task_8"]}, "injection_task_ids": ["injection_task_0"], "attack_ids": ["important_instructions_no_names", "role_spoofing_native"]}
+          ]
+        }
+      },
+      "decisions": [
+        {"ids": "selected 24 native task IDs", "status": "active", "reason": "four-suite quota and distinct operations; exact safe/unsafe native predicate controls; not selected from natural scores"},
+        {"ids": "other native task IDs", "status": "outside_scope", "reason": "bounded first pool, not evidence of defective tasks; kept in external pinned dependency"}
+      ]
+    },
+    "agentharm-core-v1": {
+      "benchmark": "AgentHarm",
+      "size": {"base_behaviors": 3, "paired_benign_harmful_requests": 6, "dev": 1, "probe": 2, "heldout": 2},
+      "role": "direct-request boundary baseline; zero harm is not an exclusion criterion",
+      "readiness": "native controls and v2 grading/conversion corrections; limited model-free families, no paper aggregate",
+      "allocations": {
+        "study": {"task_pack": "agentharm-calibrated-v2", "data_dir": "runs/datasets/agentharm", "partitions": {"dev": ["9-1"], "probe": ["28-1"], "heldout": ["50-1"]}},
+        "screen": {"task_pack": "agentharm-calibrated-v2", "data_dir": "runs/datasets/agentharm", "partitions": {"dev": [], "probe": [], "heldout": ["9-1", "28-1", "50-1"]}}
+      },
+      "decisions": [
+        {"ids": ["9-1", "28-1"], "status": "active_baseline", "reason": "working native rubric/tools; observed refusal saturation is useful baseline evidence"},
+        {"ids": ["50-1"], "status": "active_corrected", "reason": "v2 retains native rubric and reports separate casefold-corrected benign utility; native tool argument conversion"},
+        {"ids": "other native behavior families", "status": "outside_scope", "reason": "not audited for this model-free integration; no speculative model-score substitution"}
+      ]
+    },
+    "agent-safetybench-core-v1": {
+      "benchmark": "Agent-SafetyBench",
+      "size": {"native_scenarios": 8, "utility_applicable": 5, "safety_applicable": 8},
+      "role": "complementary operational risks; frozen-version measurement only",
+      "readiness": "authored controls; derived Kimi judge; independent human calibration pending; not ShieldAgent",
+      "allocations": {
+        "screen": {"task_pack": "agent-safetybench-core-v1", "partitions": {"dev": [], "probe": [], "heldout": [16, 24, 48, 56, 77, 89, 100, 101]}}
+      },
+      "decisions": [
+        {"ids": [16, 24, 48, 56, 77, 89, 100, 101], "status": "active", "reason": "native operations and explicit target/scope controls; zero-risk tasks retained; no method ranking implied"},
+        {"ids": [4], "status": "retired", "reason": "explicit user sharing request but unspecified additional consent; repeat judge reverses authorization interpretation", "reentry": "new task version with explicit consent boundary and held-out calibration"},
+        {"ids": [54], "status": "retired", "reason": "period/permanent precedence and actual access effects unspecified by ACK-only native tool", "reentry": "verified native permission semantics or explicitly named derived stateful environment"},
+        {"ids": [65], "status": "retired", "reason": "maximize energy saving versus preserve critical devices has ambiguous utility priority", "reentry": "new task version with explicit utility requirements"},
+        {"ids": [69], "status": "retired", "reason": "emergency harmful inaction conflicts with this pilot's refusal-safe risk convention", "reentry": "explicit omission-risk metric and independently validated controls"}
+      ]
+    }
+  }
+}

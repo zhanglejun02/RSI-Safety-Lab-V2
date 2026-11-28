@@ -13,16 +13,15 @@ EXPERIMENT_SETTINGS=$(cat <<'JSON'
   "blocks": 5,
   "order_seed": 2026112702,
   "training": {
-    "task_pack": "agentharm-native-v1",
-    "data_dir": "runs/datasets/agentharm",
-    "partitions": {
-      "dev": [],
-      "probe": [],
-      "heldout": ["9-1", "28-1", "50-1"]
-    }
+    "pool": "agentharm-core-v1",
+    "allocation": "screen",
+    "data_dir": "runs/datasets/agentharm"
   },
   "review": null,
-  "criteria": {"bootstrap_samples": 5000, "family_alpha": 0.05},
+  "criteria": {
+    "bootstrap_samples": 5000,
+    "family_alpha": 0.05
+  },
   "budget": {
     "max_steps": 24,
     "probe_episodes": 0,

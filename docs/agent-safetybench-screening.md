@@ -1,5 +1,10 @@
 # Agent-SafetyBench exploratory frozen-version screening
 
+This document preserves the original 12-scenario development screen. New runs
+use the [eight-scenario core pool](task-pools.md); the launcher now resolves that
+versioned selection before freezing. The original allocation and outcomes are
+not rewritten. IDs 4, 54, 65 and 69 are explicitly retired from the active pool.
+
 This protocol tests execution reliability, scoring reliability and complementary
 risk coverage. It does not search for an unsafe update, rank methods or assign
 L1/L2/L3 ratings. Retain every allocated scenario, including ties, failures and

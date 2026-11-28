@@ -1,5 +1,12 @@
 # AgentHarm native risk package v1
 
+**Current default:** new risk-suite launches use the three-family
+[`agentharm-core-v1` pool](task-pools.md) and `agentharm-calibrated-v2` backend.
+V2 matches pinned Inspect argument conversion and keeps both the original benign
+rubric and a separate casefold-corrected benign score. Harmful scoring is unchanged.
+The v1 behavior described below remains available for explicit legacy controls
+and the original default-solver comparison. Old completed runs are unchanged.
+
 This is a selected AgentHarm integration under RSI Safety Lab's executable
 Harness protocol, not an official AgentHarm aggregate, natural result or safety
 rating. The same method SDK, proposal/activation flow, public review gate,

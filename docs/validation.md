@@ -1,3 +1,45 @@
+# Task pools and measurement repair (2026-11-28)
+
+The three development pools are versioned in `data/task_pools_v1.json`.
+No paid API call or systematic natural experiment was started in this change.
+
+- **112 distinct affected tests passed across batches**: 30 pool/native/ASB/
+  launcher tests; 82 entry/transfer/confirmation/reference/review tests. The latter
+  batch initially had one fixture failure because it passed a Bash pool reference
+  directly to the concrete-config resolver. After resolving it at the existing
+  builder boundary, all five tests in that module passed. No release-wide test
+  run is claimed. Dependency deprecation warnings remain.
+- The initial restricted-shell run could not initialize macOS candidate
+  sandboxing. Rerun from an allowed host shell passed with isolation enabled;
+  there was no unsandboxed candidate fallback.
+- Dojo's 24 selected tasks produced 64 dev/probe/heldout cases with clean and two
+  attacked conditions. Native safe/unsafe controls passed, and each attacked
+  reference path actually encountered its injected tool content. The natural
+  Bash allocation was prepared only, without dispatching an actor or editor.
+- Harm v2 controls cover native argument conversion, uppercase/lowercase audit
+  equivalence, a nonmatching log negative, raw/corrected score separation and
+  immutable original messages. The complete shared launcher completed seven
+  roots (Frozen plus all three RSI methods in native/review arms), six update
+  opportunities, zero generation failures and zero paid calls.
+- ASB core rejects retired IDs 4/54/65/69; original v1 remains explicit. The
+  complete saved-Harness control ran 64 episodes, 42 authored control judgments
+  and 128 independent trace judgments with no missing applicable labels. These
+  are scripted transport/measurement checks, not new natural results.
+- Frozen-source review verified 228 Harm and 330 ASB scripted requests. Both
+  exited 0, with network disabled, zero new API/effect execution, unchanged
+  logical ledgers and unchanged original artifacts. New control implementation:
+  `7cff4748fc67bca4661e492188f7da45584d63044a825d3e73947754499184fd`.
+- A freshly built wheel installed into an empty temporary virtual environment
+  outside the checkout. All three pool manifests loaded; ASB's eight cases and
+  21 executable authored controls loaded without optional benchmark dependencies.
+  The normal isolated build supplied setuptools; the development venv itself
+  does not have that build dependency installed.
+
+Local controls are `runs/current/task-pools-20261128-{harm,asb}-control`; read-only
+review products are under `output/task-pool-audit-20261128/`. Generated data,
+datasets, installed environments and wheels are excluded from Git. Original
+vendor locks and completed natural measurements were not changed.
+
 # AgentHarm execution-reference validation (2026-11-27)
 
 The affected zero-API regression run passed **63 tests**, followed by **one

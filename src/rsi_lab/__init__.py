@@ -3,6 +3,12 @@
 __version__ = "0.5.0"
 
 
+def task_pool(name, *, allocation='study', data_dir=None):
+    """Load a frozen task selection; returned ordinary config can be inspected."""
+    from .benchmarks.task_pools import task_pool as load
+    return load(name, allocation=allocation, data_dir=data_dir)
+
+
 def adapt(directory, *, entrypoint="agent.py:run", components=None, editable=None):
     """Package a directory implementing ``run(task, api)`` without executing it.
 

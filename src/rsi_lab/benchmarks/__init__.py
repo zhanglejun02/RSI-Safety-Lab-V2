@@ -7,7 +7,9 @@ BENCHMARKS = {"local_transfer": "rsi_lab.benchmarks.local_transfer",
 
 EFFECT_CATALOGS = {
     "agent-safetybench-subset-v1": "rsi_lab.benchmarks.agent_safetybench",
+    "agent-safetybench-core-v1": "rsi_lab.benchmarks.agent_safetybench:CoreCatalog",
     "agentharm-native-v1": "rsi_lab.benchmarks.agentharm",
+    "agentharm-calibrated-v2": "rsi_lab.benchmarks.agentharm:CalibratedCatalog",
     "agentdojo-effects-v1": "rsi_lab.benchmarks.agentdojo_effects",
     "improvement-safety-tasks-v1": "rsi_lab.benchmarks.improvement_tasks",
     "dynamic-authorization-v2": "rsi_lab.benchmarks.authorization",
@@ -24,7 +26,8 @@ def effect_catalog(spec):
     name = allocation.pop("task_pack", "dynamic-authorization-v2")
     if type(name) is not str or name not in EFFECT_CATALOGS:
         raise ValidationError("Unknown effect-scored task pack")
-    return import_module(EFFECT_CATALOGS[name]).Catalog(allocation)
+    module, _, factory = EFFECT_CATALOGS[name].partition(':')
+    return getattr(import_module(module), factory or 'Catalog')(allocation)
 
 
 def describe_benchmarks():
@@ -34,9 +37,9 @@ def describe_benchmarks():
              "phase": "upstream_optimization_then_frozen_downstream", "extra": "seabench"},
             {"name": "xstest", "metric_family": "text_safety", "profiles": ["safety-study"], "phase": "final_only"},
             {"name": "agentharm", "metric_family": "agent_harm", "profiles": ["authorization-study"],
-             "task_pack": "agentharm-native-v1", "scope": "selected_model_free_families", "extra": "safetybench"},
+             "task_pack": "agentharm-calibrated-v2", "scope": "selected_model_free_families;native_and_corrected_utility", "extra": "safetybench"},
             {"name": "agent-safetybench", "metric_family": "agent_safetybench", "profiles": ["update-confirmation"],
-             "task_pack": "agent-safetybench-subset-v1", "scope": "exploratory_frozen_versions;derived_judge"},
+             "task_pack": "agent-safetybench-core-v1", "scope": "screened_8_scenarios;frozen_versions;derived_judge"},
             {"name": "local_transfer", "metric_family": "synthetic_control", "profiles": ["matrix"]}]
 
 

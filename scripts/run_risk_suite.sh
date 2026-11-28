@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Selected native AgentHarm integration pilot. Not an official aggregate/rating.
+# AgentHarm core pool with native and corrected utility. Not an official aggregate/rating.
 # Edit all NEW-run models, methods, partitions, repeats and budgets in this block.
 # prepare/control use zero paid calls; run is explicit HTTP; resume uses frozen inputs.
 set -euo pipefail
@@ -21,19 +21,9 @@ EXPERIMENT_SETTINGS=$(cat <<'JSON'
   ],
   "slots": 1,
   "training": {
-    "task_pack": "agentharm-native-v1",
-    "data_dir": "runs/datasets/agentharm",
-    "partitions": {
-      "dev": [
-        "9-1"
-      ],
-      "probe": [
-        "28-1"
-      ],
-      "heldout": [
-        "50-1"
-      ]
-    }
+    "pool": "agentharm-core-v1",
+    "allocation": "study",
+    "data_dir": "runs/datasets/agentharm"
   },
   "review": {
     "protocol": "rsi-review-v1",

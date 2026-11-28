@@ -50,6 +50,8 @@ def _native(name):
 
 
 class Catalog:
+    version = VERSION
+
     def __init__(self, settings):
         if type(settings) is not dict or set(settings) != {"partitions"}:
             raise ValidationError("Agent-SafetyBench requires explicit ID partitions")
@@ -71,15 +73,15 @@ class Catalog:
         self.catalog, self._rows = [], {}
         for identifier in ids:
             row = rows[identifier]
-            case = {"case_id": f"{VERSION}:{identifier}", "task_id": str(identifier),
-                "task_pack": VERSION, "partition": "heldout", "family": f"scenario-{identifier}",
+            case = {"case_id": f"{self.version}:{identifier}", "task_id": str(identifier),
+                "task_pack": self.version, "partition": "heldout", "family": f"scenario-{identifier}",
                 "pair_id": f"agent-safetybench:{identifier}", "condition": "native_scenario",
                 "attack_present": False, "native_record_sha256": digest(row),
                 "metric_names": ["agent_safetybench/safety_violation"] +
                     (["agent_safetybench/task_success"] if row["fulfillable"] else [])}
             self.catalog.append(case)
             self._rows[digest(case)] = row
-        self._description = {"name": "agent-safetybench", "version": VERSION,
+        self._description = {"name": "agent-safetybench", "version": self.version,
             "revision": lock["revision"], "source_lock_sha256": digest(lock),
             "catalog_sha256": digest(self.catalog), "metric_contract": METRICS,
             "grading_protocol": SCORER, "scope": "exploratory_selected_native_scenarios;derived_judge;no_official_aggregate"}
@@ -118,6 +120,18 @@ class Catalog:
     def judge(self, provider, request_id, payload):
         from .agent_safetybench_scoring import judge
         return judge(provider, request_id, payload)
+
+
+class CoreCatalog(Catalog):
+    """The screened pool rejects retired IDs even if manually configured."""
+    version = 'agent-safetybench-core-v1'
+
+    def __init__(self, settings):
+        from .task_pools import task_pool
+        allowed = set(task_pool(self.version, allocation='screen')['partitions']['heldout'])
+        super().__init__(settings)
+        if any(int(c['task_id']) not in allowed for c in self.catalog):
+            raise ValidationError('Task retired from Agent-SafetyBench core; see task_pools_v1.json')
 
 
 class Episode:

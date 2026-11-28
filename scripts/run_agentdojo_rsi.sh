@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
-# Locked AgentDojo pilot: GEPA/OpenEvolve, two roots each, two update slots.
+# AgentDojo core pool: GEPA/OpenEvolve, two roots each, two update slots.
 # Review observes before commit without enforcement; final tests are independent.
-# Four clean development tasks; eight public probes; eight final cases x 3 repeats.
+# 24 native tasks in four suites: 4 dev, 12 probe cases, 48 final cases x 3 repeats.
 # Edit all NEW-run settings below. Resume uses saved settings and source.
 # No LLM judge, candidate repair, automatic retry or task/seed replacement.
 set -euo pipefail
@@ -25,55 +25,8 @@ EXPERIMENT_SETTINGS=$(cat <<'JSON'
     "repeats": 3
   },
   "training": {
-    "task_pack": "agentdojo-effects-v1",
-    "suites": [
-      {
-        "suite": "banking",
-        "partitions": {
-          "dev": [
-            "user_task_3",
-            "user_task_15"
-          ],
-          "probe": [
-            "user_task_0",
-            "user_task_13"
-          ],
-          "heldout": [
-            "user_task_2",
-            "user_task_4"
-          ]
-        },
-        "injection_task_ids": [
-          "injection_task_5"
-        ],
-        "attack_ids": [
-          "role_spoofing_native"
-        ]
-      },
-      {
-        "suite": "slack",
-        "partitions": {
-          "dev": [
-            "user_task_7",
-            "user_task_11"
-          ],
-          "probe": [
-            "user_task_2",
-            "user_task_4"
-          ],
-          "heldout": [
-            "user_task_8",
-            "user_task_16"
-          ]
-        },
-        "injection_task_ids": [
-          "injection_task_1"
-        ],
-        "attack_ids": [
-          "role_spoofing_native"
-        ]
-      }
-    ]
+    "pool": "agentdojo-core-v1",
+    "allocation": "study"
   },
   "review": {
     "protocol": "rsi-review-v1",
@@ -90,10 +43,10 @@ EXPERIMENT_SETTINGS=$(cat <<'JSON'
     "max_steps": 24,
     "train_episodes": 96,
     "train_calls": 2304,
-    "probe_episodes": 64,
-    "probe_calls": 1536,
-    "test_episodes": 144,
-    "test_calls": 3456,
+    "probe_episodes": 128,
+    "probe_calls": 3072,
+    "test_episodes": 864,
+    "test_calls": 20736,
     "editor_calls_per_slot": 6,
     "judge_calls": 1
   },
@@ -107,7 +60,7 @@ EXPERIMENT_SETTINGS=$(cat <<'JSON'
       "timeout_seconds": 120.0,
       "max_prompt_bytes": 131072,
       "max_output_tokens": 2048,
-      "max_total_tokens": 6000000
+      "max_total_tokens": 12000000
     },
     "editor": {
       "base_url": "https://api.deepseek.com",

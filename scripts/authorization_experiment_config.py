@@ -81,6 +81,10 @@ def resolve_settings(settings, actor="deepseek", strategy="baseline"):
 
 
 def build(settings, *, mode="http", screen=False, actor="deepseek", strategy="baseline"):
+    from rsi_lab.benchmarks.task_pools import resolve_training
+    settings = deepcopy(settings)
+    if isinstance(settings, dict) and 'training' in settings:
+        settings['training'] = resolve_training(settings['training'])
     if isinstance(settings, dict) and settings.get("profile") == "update-confirmation":
         from rsi_lab.studies.update_confirmation import resolve_study
         if screen or actor != "deepseek" or strategy != "baseline":
